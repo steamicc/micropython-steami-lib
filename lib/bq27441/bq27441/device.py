@@ -187,6 +187,15 @@ class BQ27441:
     def state_of_charge(self):
         """Return remaining charge %"""
         try:
+            result = self.soc(SocMeasureType.FILTERED)
+            return result
+        except Exception as e:
+            print("Failed to get state of charge (soc): %s" % e)
+            sys.print_exception(e)
+
+    def state_of_health(self):
+        """Return state of health %"""
+        try:
             result = self.soh(SohMeasureType.PERCENT)
             return result
         except Exception as e:
