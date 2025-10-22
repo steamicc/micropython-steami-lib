@@ -36,7 +36,7 @@ while True:
     y_c = (y - y_off) / scale
 
     # heading (adjust the sign according to your reference if needed)
-    angle = math.degrees(math.atan2(y_c, x_c))
+    angle = math.degrees(math.atan2(x_c,y_c))
     if angle < 0:
         angle += 360
     
