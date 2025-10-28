@@ -25,3 +25,13 @@ LIS2MDL_OFFSET_Y_REG_L = const(0x47)  # Y-axis offset low byte
 LIS2MDL_OFFSET_Y_REG_H = const(0x48)  # Y-axis offset high byte
 LIS2MDL_OFFSET_Z_REG_L = const(0x49)  # Z-axis offset low byte
 LIS2MDL_OFFSET_Z_REG_H = const(0x4A)  # Z-axis offset high byte
+
+# Temperature output registers
+LIS2MDL_TEMP_OUT_L_REG = const(0x6E)  # Temperature output low byte
+LIS2MDL_TEMP_OUT_H_REG = const(0x6F)  # Temperature output high byte
+
+# Interrupt control and source registers
+LIS2MDL_INT_CRTL_REG   = const(0x63)  # Interrupt control register
+LIS2MDL_INT_SOURCE_REG = const(0x64)  # Interrupt source register
+LIS2MDL_INT_THS_L_REG  = const(0x65)  # Interrupt threshold low byte
+LIS2MDL_INT_THS_H_REG  = const(0x66)  # Interrupt threshold high byte
