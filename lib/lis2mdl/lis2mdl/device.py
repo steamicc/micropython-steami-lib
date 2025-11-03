@@ -6,6 +6,7 @@ from lis2mdl.const import *
 import time
 import math
 
+
 class LIS2MDL(object):
     # Default calibration offsets and scales for the magnetometer
     x_off = -132.0
@@ -16,7 +17,15 @@ class LIS2MDL(object):
     y_scale = 313.5
     z_scale = 295.0
 
-    def __init__(self, i2c, address=LIS2MDL_I2C_ADDR, odr_hz=10, temp_comp=True, low_power=False, drdy_pin=False):
+    def __init__(
+        self,
+        i2c,
+        address=LIS2MDL_I2C_ADDR,
+        odr_hz=10,
+        temp_comp=True,
+        low_power=False,
+        drdy_pin=False,
+    ):
         # Initialize the LIS2MDL sensor with the given I2C interface and settings.
         self.i2c = i2c
         self.address = address
@@ -26,16 +35,16 @@ class LIS2MDL(object):
         # Perform a soft reset to ensure the sensor starts in a known state.
         self.setReg(0x20, LIS2MDL_CFG_REG_A)  # SOFT_RST=1 (not 0x10)
         try:
-            import time; time.sleep_ms(10)  # Small delay for reset to complete
+            time.sleep_ms(10)  # Small delay for reset to complete
         except:
             pass
 
         # Configure the sensor's operating mode, output data rate, and other settings.
-        odr_bits = {10:0b00, 20:0b01, 50:0b10, 100:0b11}.get(odr_hz, 0b00)
+        odr_bits = {10: 0b00, 20: 0b01, 50: 0b10, 100: 0b11}.get(odr_hz, 0b00)
         comp = 1 if temp_comp else 0
-        lp   = 1 if low_power else 0
-        cfg_a = (comp<<7) | (lp<<4) | (odr_bits<<2) | 0b00
-        self.setReg(cfg_a, LIS2MDL_CFG_REG_A)   # Essential to exit IDLE mode
+        lp = 1 if low_power else 0
+        cfg_a = (comp << 7) | (lp << 4) | (odr_bits << 2) | 0b00
+        self.setReg(cfg_a, LIS2MDL_CFG_REG_A)  # Essential to exit IDLE mode
 
         # Configure low-pass filter and other optional settings.
         self.setReg(0x00, LIS2MDL_CFG_REG_B)  # Default: LPF and offset cancellation off
@@ -44,71 +53,83 @@ class LIS2MDL(object):
         cfg_c = 0x10 | (0x01 if drdy_pin else 0x00)
         self.setReg(cfg_c, LIS2MDL_CFG_REG_C)
 
-
-
     ##
-        # --- SET functions ---
+    # --- SET functions ---
     ##
 
     # --- Modes / frequency (CFG_REG_A: 0x60) ---
     def set_mode(self, mode: str):
         # MD1..MD0: 00=continuous, 01=single, 11=idle
-        md = {"continuous":0b00, "single":0b01, "idle":0b11}.get(mode, 0b00)
+        md = {"continuous": 0b00, "single": 0b01, "idle": 0b11}.get(mode, 0b00)
         reg = self.read_reg(LIS2MDL_CFG_REG_A)
         reg = (reg & ~0b11) | md
         self.setReg(reg, LIS2MDL_CFG_REG_A)
 
     def set_odr(self, hz: int):
         # ODR1..0: 00=10Hz, 01=20Hz, 10=50Hz, 11=100Hz
-        odr_bits = {10:0b00, 20:0b01, 50:0b10, 100:0b11}.get(hz, 0b00)
+        odr_bits = {10: 0b00, 20: 0b01, 50: 0b10, 100: 0b11}.get(hz, 0b00)
         reg = self.read_reg(LIS2MDL_CFG_REG_A)
-        reg = (reg & ~(0b11<<2)) | (odr_bits<<2)
+        reg = (reg & ~(0b11 << 2)) | (odr_bits << 2)
         self.setReg(reg, LIS2MDL_CFG_REG_A)
 
     def set_low_power(self, enabled: bool):
         # LP bit (bit4) : 0=High-Res, 1=Low-Power
         reg = self.read_reg(LIS2MDL_CFG_REG_A)
-        if enabled:  reg |=  (1<<4)
-        else:        reg &= ~(1<<4)
+        if enabled:
+            reg |= 1 << 4
+        else:
+            reg &= ~(1 << 4)
         self.setReg(reg, LIS2MDL_CFG_REG_A)
 
     # --- Filters / offset cancellation (CFG_REG_B: 0x61) ---
     def set_low_pass(self, enabled: bool):
         # LPF (bit0)
         reg = self.read_reg(LIS2MDL_CFG_REG_B)
-        if enabled:  reg |=  (1<<0)
-        else:        reg &= ~(1<<0)
+        if enabled:
+            reg |= 1 << 0
+        else:
+            reg &= ~(1 << 0)
         self.setReg(reg, LIS2MDL_CFG_REG_B)
 
-    def set_offset_cancellation(self, enabled: bool, oneshot: bool=False):
+    def set_offset_cancellation(self, enabled: bool, oneshot: bool = False):
         # OFF_CANC (bit1), OFF_CANC_ONE_SHOT (bit4)
         reg = self.read_reg(LIS2MDL_CFG_REG_B)
-        if enabled:  reg |=  (1<<1)
-        else:        reg &= ~(1<<1)
-        if oneshot:  reg |=  (1<<4)
-        else:        reg &= ~(1<<4)
+        if enabled:
+            reg |= 1 << 1
+        else:
+            reg &= ~(1 << 1)
+        if oneshot:
+            reg |= 1 << 4
+        else:
+            reg &= ~(1 << 4)
         self.setReg(reg, LIS2MDL_CFG_REG_B)
 
     # --- Interface options / BDU (CFG_REG_C: 0x62) ---
     def set_bdu(self, enable=True):
         # BDU (bit4)
         reg = self.read_reg(LIS2MDL_CFG_REG_C)
-        if enable:  reg |=  (1<<4)
-        else:       reg &= ~(1<<4)
+        if enable:
+            reg |= 1 << 4
+        else:
+            reg &= ~(1 << 4)
         self.setReg(reg, LIS2MDL_CFG_REG_C)
 
     def set_endianness(self, big_endian: bool):
         # BLE (bit3)
         reg = self.read_reg(LIS2MDL_CFG_REG_C)
-        if big_endian: reg |=  (1<<3)
-        else:          reg &= ~(1<<3)
+        if big_endian:
+            reg |= 1 << 3
+        else:
+            reg &= ~(1 << 3)
         self.setReg(reg, LIS2MDL_CFG_REG_C)
 
     def use_spi_4wire(self, enable: bool):
         # 4WSPI (bit2)
         reg = self.read_reg(LIS2MDL_CFG_REG_C)
-        if enable:  reg |=  (1<<2)
-        else:       reg &= ~(1<<2)
+        if enable:
+            reg |= 1 << 2
+        else:
+            reg &= ~(1 << 2)
         self.setReg(reg, LIS2MDL_CFG_REG_C)
 
     # --- Compass: heading offset & declination (software) ---
@@ -123,7 +144,6 @@ class LIS2MDL(object):
 
     # (remember to correct your heading_flat_only with atan2(y, x) then + offsets)
 
-
     def setReg(self, data, reg):
         # Write a byte to a specific register.
         self.writebuffer[0] = data
@@ -132,16 +152,16 @@ class LIS2MDL(object):
     def _write_16(self, reg_l, value):
         value &= 0xFFFF
         self.setReg(value & 0xFF, reg_l)
-        self.setReg((value >> 8) & 0xFF, reg_l+1)
+        self.setReg((value >> 8) & 0xFF, reg_l + 1)
 
-    def set_hw_offsets(self, x:int, y:int, z:int):
+    def set_hw_offsets(self, x: int, y: int, z: int):
         # writes to OFFSET_X/Y/Z_REG_L/H
         self._write_16(LIS2MDL_OFFSET_X_REG_L, x)
         self._write_16(LIS2MDL_OFFSET_Y_REG_L, y)
         self._write_16(LIS2MDL_OFFSET_Z_REG_L, z)
 
-    ## 
-        # --- READ functions ---
+    ##
+    # --- READ functions ---
     ##
 
     def read_magnet_raw(self):
@@ -164,6 +184,7 @@ class LIS2MDL(object):
         # Read a byte from a specific register.
         self.i2c.readfrom_mem_into(self.address, reg, self.readbuffer)
         return self.readbuffer[0]
+
     # --- UNITS, CALIBRATION, MAGNITUDE ---
 
     _MAG_LSB_TO_uT = 0.15  # 1.5 mG/LSB ≈ 0.15 µT/LSB
@@ -171,7 +192,11 @@ class LIS2MDL(object):
     def read_magnet_uT(self):
         """Reads the magnetic field in µT, uncalibrated (simple conversion from LSB)."""
         x, y, z = self.read_magnet()
-        return (x * self._MAG_LSB_TO_uT, y * self._MAG_LSB_TO_uT, z * self._MAG_LSB_TO_uT)
+        return (
+            x * self._MAG_LSB_TO_uT,
+            y * self._MAG_LSB_TO_uT,
+            z * self._MAG_LSB_TO_uT,
+        )
 
     def read_magnet_calibrated_norm(self):
         """Reads the calibrated field (offset/scale per axis), normalized (unitless, ~circle in XY)."""
@@ -184,8 +209,8 @@ class LIS2MDL(object):
     def magnitude_uT(self) -> float:
         """Total magnetic field strength (µT)."""
         x, y, z = self.read_magnet_uT()
-        return math.sqrt(x*x + y*y + z*z)
-    
+        return math.sqrt(x * x + y * y + z * z)
+
     @staticmethod
     def _to_int16(v):
         # Convert an unsigned 16-bit value to a signed 16-bit value.
@@ -231,11 +256,18 @@ class LIS2MDL(object):
         oy = self._read_16(LIS2MDL_OFFSET_Y_REG_L)
         oz = self._read_16(LIS2MDL_OFFSET_Z_REG_L)
         return (ox, oy, oz)
-    
+
     def read_calibration(self):
         # Return the current calibration offsets and scales.
-        return (self.x_off, self.y_off, self.z_off, self.x_scale, self.y_scale, self.z_scale)
-    
+        return (
+            self.x_off,
+            self.y_off,
+            self.z_off,
+            self.x_scale,
+            self.y_scale,
+            self.z_scale,
+        )
+
     # --- DIAGNOSTIC / DUMP ---
 
     def read_registers(self, start_addr: int, length: int) -> bytes:
@@ -245,17 +277,14 @@ class LIS2MDL(object):
     def read_all(self) -> dict:
         """Grouped reading useful for debug & logs."""
         raw = self.read_magnet_raw()
-        uT  = self.read_magnet_uT()
+        uT = self.read_magnet_uT()
         cal = self.read_magnet_calibrated_norm()
-        T   = self.read_temperature_c()
-        st  = self.read_status()
-        return {
-            "raw": raw, "uT": uT, "cal_norm": cal,
-            "tempC": T, "status": st
-        }
+        T = self.read_temperature_c()
+        st = self.read_status()
+        return {"raw": raw, "uT": uT, "cal_norm": cal, "tempC": T, "status": st}
 
     ##
-        #  --- CALIBRATIONS ---
+    #  --- CALIBRATIONS ---
     ##
 
     def set_calibrate_step(self, xoff, yoff, zoff, xscale, yscale, zscale):
@@ -273,13 +302,15 @@ class LIS2MDL(object):
         Slowly rotate the board FLAT during acquisition.
         Updates x_off, y_off, x_scale, y_scale (leaves Z unchanged).
         """
-        xmin = ymin =  1e9
+        xmin = ymin = 1e9
         xmax = ymax = -1e9
 
         for _ in range(samples):
-            x, y, z = self.read_magnet()
-            xmin = min(xmin, x); xmax = max(xmax, x)
-            ymin = min(ymin, y); ymax = max(ymax, y)
+            x, y, _ = self.read_magnet()
+            xmin = min(xmin, x)
+            xmax = max(xmax, x)
+            ymin = min(ymin, y)
+            ymax = max(ymax, y)
             time.sleep_ms(delay_ms)
 
         self.x_off = (xmax + xmin) / 2.0
@@ -296,14 +327,17 @@ class LIS2MDL(object):
         MIN/MAX calibration on 3 axes (rotate the board in ALL directions).
         Updates offsets + scales for X, Y, Z.
         """
-        xmin = ymin = zmin =  1e9
+        xmin = ymin = zmin = 1e9
         xmax = ymax = zmax = -1e9
 
         for _ in range(samples):
             x, y, z = self.read_magnet()
-            xmin = min(xmin, x); xmax = max(xmax, x)
-            ymin = min(ymin, y); ymax = max(ymax, y)
-            zmin = min(zmin, z); zmax = max(zmax, z)
+            xmin = min(xmin, x)
+            xmax = max(xmax, x)
+            ymin = min(ymin, y)
+            ymax = max(ymax, y)
+            zmin = min(zmin, z)
+            zmax = max(zmax, z)
             time.sleep_ms(delay_ms)
 
         self.x_off = (xmax + xmin) / 2.0
@@ -330,28 +364,37 @@ class LIS2MDL(object):
         Returns a dict with useful metrics: center (mean), anisotropy, XY radius dispersion.
         (Move the board a bit while flat during the measurement.)
         """
-        xs = []; ys = []; zs = []
+        xs = []
+        ys = []
+        zs = []
         for _ in range(samples_check):
             x, y, z = self.read_magnet()
             xc, yc, zc = self.calibrate_apply(x, y, z)
-            xs.append(xc); ys.append(yc); zs.append(zc)
+            xs.append(xc)
+            ys.append(yc)
+            zs.append(zc)
             time.sleep_ms(delay_ms)
 
         # Means (residual center)
-        mx = sum(xs)/len(xs); my = sum(ys)/len(ys); mz = sum(zs)/len(zs)
+        mx = sum(xs) / len(xs)
+        my = sum(ys) / len(ys)
+        mz = sum(zs) / len(zs)
 
         # Radius dispersion in the XY plane
-        import math as _m
-        radii = [_m.sqrt(x*x + y*y) for x,y in zip(xs,ys)]
-        r_mean = sum(radii)/len(radii)
-        r_var  = sum((r - r_mean)**2 for r in radii)/len(radii)
-        r_std  = _m.sqrt(r_var)
+
+        radii = [math.sqrt(x * x + y * y) for x, y in zip(xs, ys)]
+        r_mean = sum(radii) / len(radii)
+        r_var = sum((r - r_mean) ** 2 for r in radii) / len(radii)
+        r_std = math.sqrt(r_var)
 
         # Simple anisotropy via standard deviations per axis
         def _std(arr, mean):
-            v = sum((a-mean)**2 for a in arr)/len(arr)
-            return _m.sqrt(v)
-        sx = _std(xs, mx); sy = _std(ys, my); sz = _std(zs, mz)
+            v = sum((a - mean) ** 2 for a in arr) / len(arr)
+            return math.sqrt(v)
+
+        sx = _std(xs, mx)
+        sy = _std(ys, my)
+        sz = _std(zs, mz)
         aniso_xy = max(sx, sy) / (min(sx, sy) + 1e-9)
 
         return {
@@ -373,12 +416,12 @@ class LIS2MDL(object):
         # Simple alias to calibrate_minmax_3d
         return self.calibrate_minmax_3d()
 
-    ## 
-        # --- Heading functions ---
+    ##
+    # --- Heading functions ---
     ##
 
-    _heading_offset_deg = 0.0   # user setting: align your physical 0°
-    _declination_deg    = 0.0   # true north vs magnetic north
+    _heading_offset_deg = 0.0  # user setting: align your physical 0°
+    _declination_deg = 0.0  # true north vs magnetic north
     # angle filter via vector averaging (robust around 0/360)
     _hf_alpha = 0.0
     _hf_cos = None
@@ -412,7 +455,7 @@ class LIS2MDL(object):
         """Filters the angle via vector averaging; returns filtered angle (or raw if alpha=0)."""
         if self._hf_alpha <= 0.0:
             return angle_deg
-        import math
+
         c = math.cos(math.radians(angle_deg))
         s = math.sin(math.radians(angle_deg))
         if self._hf_cos is None or self._hf_sin is None:
@@ -435,7 +478,7 @@ class LIS2MDL(object):
         - calibrated=True: applies offset/scale per axis (recommended)
         - flat only (uses XY)
         """
-        import math
+
         if calibrated:
             x = (x - self.x_off) / (self.x_scale or 1.0)
             y = (y - self.y_off) / (self.y_scale or 1.0)
@@ -457,7 +500,7 @@ class LIS2MDL(object):
         Tilt-compensated compass (if an accelerometer is available).
         read_accel() must return (ax, ay, az) ~g.
         """
-        import math
+
         x, y, z = self.read_magnet()
         # 3D calibration
         x = (x - self.x_off) / (self.x_scale or 1.0)
@@ -466,12 +509,16 @@ class LIS2MDL(object):
 
         ax, ay, az = read_accel()
         # roll / pitch from accelerometer
-        roll  = math.atan2(ay, az)
-        pitch = math.atan2(-ax, math.sqrt(ay*ay + az*az))
+        roll = math.atan2(ay, az)
+        pitch = math.atan2(-ax, math.sqrt(ay * ay + az * az))
         # straighten the magnetic vector
         Xh = x * math.cos(pitch) + z * math.sin(pitch)
-        Yh = x * math.sin(roll) * math.sin(pitch) + y * math.cos(roll) - z * math.sin(roll) * math.cos(pitch)
-        ang = math.degrees(math.atan2(Yh, Xh))       # atan2(Yh, Xh)
+        Yh = (
+            x * math.sin(roll) * math.sin(pitch)
+            + y * math.cos(roll)
+            - z * math.sin(roll) * math.cos(pitch)
+        )
+        ang = math.degrees(math.atan2(Yh, Xh))  # atan2(Yh, Xh)
         ang = self._apply_heading_offsets(ang)
         return self._filter_heading(ang)
 
@@ -479,29 +526,29 @@ class LIS2MDL(object):
         """Returns N/NE/E/... ; if angle=None, reads heading_flat_only()."""
         if angle is None:
             angle = self.heading_flat_only()
-        dirs = ["N","NE","E","SE","S","SW","W","NW","N"]
-        idx = int((angle + 22.5)//45)
+        dirs = ["N", "NE", "E", "SE", "S", "SW", "W", "NW", "N"]
+        idx = int((angle + 22.5) // 45)
         return dirs[idx]
 
     ##
-        # --- Power/reset functions ---
+    # --- Power/reset functions ---
     ##
 
     def get_mode(self) -> str:
         """Returns the current mode from MD1..0 (CFG_REG_A)."""
         r = self.read_reg(LIS2MDL_CFG_REG_A)
         md = r & 0b11
-        return {0b00:"continuous", 0b01:"single", 0b11:"idle"}.get(md, "idle")
+        return {0b00: "continuous", 0b01: "single", 0b11: "idle"}.get(md, "idle")
 
     def power_down(self):
         """Switches to IDLE mode (low power)."""
         r = self.read_reg(LIS2MDL_CFG_REG_A)
-        r = (r & ~0b11) | 0b11      # MD1..0 = 11
+        r = (r & ~0b11) | 0b11  # MD1..0 = 11
         self.setReg(r, LIS2MDL_CFG_REG_A)
 
     def wake(self, mode: str = "continuous"):
         """Wakes the sensor: 'continuous' (default) or 'single'."""
-        md = {"continuous":0b00, "single":0b01}.get(mode, 0b00)
+        md = {"continuous": 0b00, "single": 0b01}.get(mode, 0b00)
         r = self.read_reg(LIS2MDL_CFG_REG_A)
         r = (r & ~0b11) | md
         self.setReg(r, LIS2MDL_CFG_REG_A)
@@ -512,10 +559,10 @@ class LIS2MDL(object):
         The bit auto-clears; after reset, the sensor returns to default values (idle mode expected).
         """
         r = self.read_reg(LIS2MDL_CFG_REG_A)
-        r |= (1 << 5)               # SOFT_RST
+        r |= 1 << 5  # SOFT_RST
         self.setReg(r, LIS2MDL_CFG_REG_A)
         try:
-            import time; time.sleep_ms(wait_ms)
+            time.sleep_ms(wait_ms)
         except:
             pass
 
@@ -525,10 +572,10 @@ class LIS2MDL(object):
         The bit auto-clears.
         """
         r = self.read_reg(LIS2MDL_CFG_REG_A)
-        r |= (1 << 6)               # REBOOT
+        r |= 1 << 6  # REBOOT
         self.setReg(r, LIS2MDL_CFG_REG_A)
         try:
-            import time; time.sleep_ms(wait_ms)
+            time.sleep_ms(wait_ms)
         except:
             pass
 
