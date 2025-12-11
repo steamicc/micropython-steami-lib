@@ -420,18 +420,10 @@ class LIS2MDL(object):
     # --- Heading functions ---
     ##
 
-    _heading_offset_deg = 0.0  # user setting: align your physical 0°
-    _declination_deg = 0.0  # true north vs magnetic north
     # angle filter via vector averaging (robust around 0/360)
     _hf_alpha = 0.0
     _hf_cos = None
     _hf_sin = None
-
-    def set_heading_offset(self, deg: float):
-        self._heading_offset_deg = float(deg)
-
-    def set_declination(self, deg: float):
-        self._declination_deg = float(deg)
 
     def set_heading_filter(self, alpha: float):
         """
@@ -465,8 +457,9 @@ class LIS2MDL(object):
             self._hf_cos = (1.0 - a) * self._hf_cos + a * c
             self._hf_sin = (1.0 - a) * self._hf_sin + a * s
             # light normalization to avoid amplitude drift
+            NORMALIZATION_THRESHOLD = 1e-6
             norm = math.sqrt(self._hf_cos * self._hf_cos + self._hf_sin * self._hf_sin)
-            if norm > 1e-6:
+            if norm > NORMALIZATION_THRESHOLD:
                 self._hf_cos /= norm
                 self._hf_sin /= norm
         ang = math.degrees(math.atan2(self._hf_sin, self._hf_cos))
