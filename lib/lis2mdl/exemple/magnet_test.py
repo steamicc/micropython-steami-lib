@@ -400,7 +400,7 @@ def test_heading_after_calib(dev, n=200, delay_ms=20):
     maxA = max(angles)
     span = (maxA - minA) % 360.0
     print("Angle min={:.1f}°, max={:.1f}°, span~{:.1f}°".format(minA, maxA, span))
-    print("=> If you rotated ~one complete turn flat, we expect ~300–360° span.")
+    print("=> If you rotated ~one complete turn flat, we expect ~300-360° span.")
 
 
 def run_all_calibration_tests(dev):
