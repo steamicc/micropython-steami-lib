@@ -133,8 +133,8 @@ class LIS2MDL(object):
         self.setReg(reg, LIS2MDL_CFG_REG_C)
 
     # --- Compass: heading offset & declination (software) ---
-    _heading_offset_deg = 0.0
-    _declination_deg = 0.0
+    _heading_offset_deg = 0.0  # user setting: align your physical 0°
+    _declination_deg = 0.0  # true north vs magnetic north
 
     def set_heading_offset(self, deg: float):
         self._heading_offset_deg = float(deg)

@@ -4,6 +4,22 @@ from lis2mdl.device import LIS2MDL
 from lis2mdl.const import *
 import math
 
+# Définition des constantes pour remplacer les valeurs magiques
+MAGNETIC_FIELD_MIN = 5.0
+MAGNETIC_FIELD_MAX = 200.0
+TEMP_MIN = -100.0
+TEMP_MAX = 150.0
+CENTER_TOLERANCE = 0.2
+ROUND_TOLERANCE = 1.4
+CENTER_TOLERANCE_3D = 0.3
+ROUND_TOLERANCE_3D = 1.6
+ANGLE_DIFF_MIN = 14.0
+ANGLE_DIFF_MAX = 20.0
+ANGLE_DIFF_WRAP_MIN = 340.0
+ANGLE_DIFF_WRAP_MAX = 346.0
+SPAN_MIN = 300.0
+FILTER_DIFF_MAX = 90.0
+
 
 def _bits(v, hi, lo):
     m = (1 << (hi - lo + 1)) - 1
@@ -254,10 +270,10 @@ def test_reads(dev):
     # MAGNITUDE
     B = dev.magnitude_uT()
     print(
-        f"magnitude_uT: |B|={B:.1f} µT (Earth ~25–65 µT).  =>",
-        "OK" if 5.0 <= B <= 200.0 else "FAIL",
+        f"magnitude_uT: |B|={B:.1f} µT (Earth ~25-65 µT).  =>",
+        "OK" if MAGNETIC_FIELD_MIN <= B <= MAGNETIC_FIELD_MAX else "FAIL",
     )
-    ok &= 5.0 <= B <= 200.0  # wide, since local disturbances are possible
+    ok &= MAGNETIC_FIELD_MIN <= B <= MAGNETIC_FIELD_MAX  # wide, since local disturbances are possible
 
     # CALIBRATION NORM
     xc, yc, zc = dev.read_magnet_calibrated_norm()
@@ -276,8 +292,8 @@ def test_reads(dev):
     ok_temp = (
         isinstance(t1, float)
         and isinstance(t2, float)
-        and (-100.0 < t1 < 150.0)
-        and (-100.0 < t2 < 150.0)
+        and (TEMP_MIN < t1 < TEMP_MAX)
+        and (TEMP_MIN < t2 < TEMP_MAX)
     )
     print("Temp check =>", "OK" if ok_temp else "FAIL")
     ok &= ok_temp
@@ -331,8 +347,8 @@ def test_calibrate_2d(dev):
     )
     print("r_std_xy =", "{:.3f}".format(q["r_std_xy"]), " (smaller = better)")
 
-    ok_center = abs(q["mean_xy"][0]) < 0.2 and abs(q["mean_xy"][1]) < 0.2
-    ok_round = q["anisotropy_xy"] < 1.4  # realistic tolerances
+    ok_center = abs(q["mean_xy"][0]) < CENTER_TOLERANCE and abs(q["mean_xy"][1]) < CENTER_TOLERANCE
+    ok_round = q["anisotropy_xy"] < ROUND_TOLERANCE  # realistic tolerances
     print("=> Center close to 0 :", "OK" if ok_center else "WARN")
     print("=> Circle ≈ round    :", "OK" if ok_round else "WARN")
     return ok_center and ok_round
@@ -362,8 +378,8 @@ def test_calibrate_3d(dev):
         "{:.3f}".format(q["r_std_xy"]),
     )
 
-    ok_center = abs(q["mean_xy"][0]) < 0.3 and abs(q["mean_xy"][1]) < 0.3
-    ok_round = q["anisotropy_xy"] < 1.6
+    ok_center = abs(q["mean_xy"][0]) < CENTER_TOLERANCE_3D and abs(q["mean_xy"][1]) < CENTER_TOLERANCE_3D
+    ok_round = q["anisotropy_xy"] < ROUND_TOLERANCE_3D
     print("=> Center close to 0 :", "OK" if ok_center else "WARN")
     print("=> Circle ≈ round    :", "OK" if ok_round else "WARN")
     return ok_center and ok_round
@@ -425,7 +441,7 @@ def test_heading_offset_declination(dev):
     # difference mod 360
     diff = (a1 - a0) % 360.0
     # accept ~17° ±3° (due to noise/quantization/filtering)
-    ok = (14.0 <= diff <= 20.0) or (340.0 <= diff <= 346.0)  # wrap
+    ok = (ANGLE_DIFF_MIN <= diff <= ANGLE_DIFF_MAX) or (ANGLE_DIFF_WRAP_MIN <= diff <= ANGLE_DIFF_WRAP_MAX)  # wrap
     print(
         f"angle0={a0:.2f}°, angle1={a1:.2f}°, diff≈{diff:.2f}°  =>",
         "OK" if ok else "FAIL",
@@ -456,7 +472,7 @@ def test_heading_span_turn(dev, duration_ms=6000, step_ms=50):
     if span < 0:
         span += 360.0
     print(f"min={minA:.1f}°, max={maxA:.1f}°, span≈{span:.1f}°")
-    ok = span > 300.0  # we expect almost 360° for a full turn
+    ok = span > SPAN_MIN  # we expect almost 360° for a full turn
     print("SPAN =>", "OK" if ok else "WARN (do a more complete/slower turn)")
     return ok
 
@@ -483,7 +499,7 @@ def test_heading_filter_wrap(dev):
         outs.append(out)
         print(f"in={ang:>3}° -> out_filt={out:>6.2f}°")
     # Check that the output is monotonically increasing (no jump around ~180°)
-    ok = all((outs[i] - outs[i - 1]) % 360.0 < 90.0 for i in range(1, len(outs)))
+    ok = all((outs[i] - outs[i - 1]) % 360.0 < FILTER_DIFF_MAX for i in range(1, len(outs)))
     print("Wrap-safe filter =>", "OK" if ok else "FAIL")
     return ok
 
