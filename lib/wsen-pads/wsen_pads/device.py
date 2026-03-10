@@ -112,12 +112,14 @@ class WSEN_PADS:
         while self._read_u8(REG_INT_SOURCE) & INT_SOURCE_BOOT_ON:
             if ticks_diff(ticks_ms(), start) > timeout_ms:
                 raise WSENPADSTimeout("WSEN-PADS boot timeout")
+            sleep_ms(1)
 
     def _check_device(self):
         """Raise an exception if the device ID does not match."""
-        if self.device_id() != WSEN_PADS_DEVICE_ID:
+        device_id = self.device_id()
+        if device_id != WSEN_PADS_DEVICE_ID:
             raise WSENPADSInvalidDevice(
-                "Invalid WSEN-PADS device ID: 0x{:02X}".format(self.device_id())
+                "Invalid WSEN-PADS device ID: 0x{:02X}".format(device_id)
             )
 
     def _configure_default(self):
@@ -300,7 +302,6 @@ class WSEN_PADS:
         Returns:
             tuple: (pressure_hpa, temperature_c)
         """
-        self.trigger_one_shot(low_noise=low_noise)
         return self.read()
 
     # ---------------------------------------------------------------------

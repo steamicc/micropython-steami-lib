@@ -199,13 +199,6 @@ sensor.reboot()
 
 Examples are available in the `examples` directory.
 
-```
-examples/
-    example_basic.py
-    example_oneshot.py
-    test.py
-```
-
 ---
 
 # Driver Structure
