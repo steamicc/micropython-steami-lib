@@ -13,7 +13,7 @@ print("Calibration complete.")
 
 while True:
     angle = mag.heading_flat_only()
-    
+
     direction = mag.direction_label(angle)
     print("Cap:", angle, "°", "-", direction)
     sleep_ms(100)
