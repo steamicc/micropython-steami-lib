@@ -386,4 +386,3 @@ class WSEN_PADS:
         current = self._read_u8(REG_CTRL_1)
         current &= ~(CTRL1_EN_LPFP | CTRL1_LPFP_CFG)
         self._write_u8(REG_CTRL_1, current)
-        
