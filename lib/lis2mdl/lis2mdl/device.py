@@ -9,13 +9,13 @@ import math
 
 class LIS2MDL(object):
     # Default calibration offsets and scales for the magnetometer
-    x_off = -132.0
-    y_off = -521.5
-    z_off = -891.0
+    x_off = 0
+    y_off = 0
+    z_off = 0
 
-    x_scale = 273.0
-    y_scale = 313.5
-    z_scale = 295.0
+    x_scale = 1
+    y_scale = 1
+    z_scale = 1
 
     def __init__(
         self,
@@ -476,7 +476,7 @@ class LIS2MDL(object):
             x = (x - self.x_off) / (self.x_scale or 1.0)
             y = (y - self.y_off) / (self.y_scale or 1.0)
         # IMPORTANT: atan2(Y, X)
-        ang = math.degrees(math.atan2(y, x))
+        ang = math.degrees(math.atan2(x, y)) # atan2(Y, X) for compass heading (Y is forward, X is right)
         ang = self._apply_heading_offsets(ang)
         return self._filter_heading(ang)
 
@@ -520,7 +520,7 @@ class LIS2MDL(object):
         if angle is None:
             angle = self.heading_flat_only()
         dirs = ["N", "NE", "E", "SE", "S", "SW", "W", "NW", "N"]
-        idx = int((angle + 22.5) // 45)
+        idx = int((angle) // 45)
         return dirs[idx]
 
     ##
