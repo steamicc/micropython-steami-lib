@@ -12,3 +12,4 @@ for _ in range(10):
     print("P:", pressure, "hPa  T:", temperature, "°C")
 
     sleep(0.5)
+    
