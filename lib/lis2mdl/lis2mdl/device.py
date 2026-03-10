@@ -3,7 +3,7 @@
 
 from machine import I2C
 from lis2mdl.const import *
-import time
+from time import sleep_ms
 import math
 
 
@@ -24,7 +24,7 @@ class LIS2MDL(object):
         odr_hz=10,
         temp_comp=True,
         low_power=False,
-        drdy_pin=False,
+        drdy_enable=False,
     ):
         # Initialize the LIS2MDL sensor with the given I2C interface and settings.
         self.i2c = i2c
@@ -35,7 +35,7 @@ class LIS2MDL(object):
         # Perform a soft reset to ensure the sensor starts in a known state.
         self.setReg(0x20, LIS2MDL_CFG_REG_A)  # SOFT_RST=1 (not 0x10)
         try:
-            time.sleep_ms(10)  # Small delay for reset to complete
+            sleep_ms(10)  # Small delay for reset to complete
         except:
             pass
 
@@ -50,7 +50,7 @@ class LIS2MDL(object):
         self.setReg(0x00, LIS2MDL_CFG_REG_B)  # Default: LPF and offset cancellation off
 
         # Enable block data update and optionally configure the DRDY pin.
-        cfg_c = 0x10 | (0x01 if drdy_pin else 0x00)
+        cfg_c = 0x10 | (0x01 if drdy_enable else 0x00)
         self.setReg(cfg_c, LIS2MDL_CFG_REG_C)
 
     ##
@@ -311,7 +311,7 @@ class LIS2MDL(object):
             xmax = max(xmax, x)
             ymin = min(ymin, y)
             ymax = max(ymax, y)
-            time.sleep_ms(delay_ms)
+            sleep_ms(delay_ms)
 
         self.x_off = (xmax + xmin) / 2.0
         self.y_off = (ymax + ymin) / 2.0
@@ -338,7 +338,7 @@ class LIS2MDL(object):
             ymax = max(ymax, y)
             zmin = min(zmin, z)
             zmax = max(zmax, z)
-            time.sleep_ms(delay_ms)
+            sleep_ms(delay_ms)
 
         self.x_off = (xmax + xmin) / 2.0
         self.y_off = (ymax + ymin) / 2.0
@@ -373,7 +373,7 @@ class LIS2MDL(object):
             xs.append(xc)
             ys.append(yc)
             zs.append(zc)
-            time.sleep_ms(delay_ms)
+            sleep_ms(delay_ms)
 
         # Means (residual center)
         mx = sum(xs) / len(xs)
@@ -555,7 +555,7 @@ class LIS2MDL(object):
         r |= 1 << 5  # SOFT_RST
         self.setReg(r, LIS2MDL_CFG_REG_A)
         try:
-            time.sleep_ms(wait_ms)
+            sleep_ms(wait_ms)
         except:
             pass
 
@@ -568,7 +568,7 @@ class LIS2MDL(object):
         r |= 1 << 6  # REBOOT
         self.setReg(r, LIS2MDL_CFG_REG_A)
         try:
-            time.sleep_ms(wait_ms)
+            sleep_ms(wait_ms)
         except:
             pass
 

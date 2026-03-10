@@ -31,7 +31,7 @@ LIS2MDL_TEMP_OUT_L_REG = const(0x6E)  # Temperature output low byte
 LIS2MDL_TEMP_OUT_H_REG = const(0x6F)  # Temperature output high byte
 
 # Interrupt control and source registers
-LIS2MDL_INT_CRTL_REG = const(0x63)  # Interrupt control register
+LIS2MDL_INT_CTRL_REG = const(0x63)  # Interrupt control register
 LIS2MDL_INT_SOURCE_REG = const(0x64)  # Interrupt source register
 LIS2MDL_INT_THS_L_REG = const(0x65)  # Interrupt threshold low byte
 LIS2MDL_INT_THS_H_REG = const(0x66)  # Interrupt threshold high byte
