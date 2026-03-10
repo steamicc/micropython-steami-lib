@@ -12,3 +12,4 @@ class WSENPADSInvalidDevice(WSENPADSError):
 
 class WSENPADSTimeout(WSENPADSError):
     """Raised when a blocking operation exceeds the expected timeout."""
+    

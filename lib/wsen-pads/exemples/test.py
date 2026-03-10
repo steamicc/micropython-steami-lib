@@ -145,8 +145,12 @@ def test_one_shot(sensor):
         print("STATUS          : 0x{:02X}".format(status))
 
         # Basic sanity checks
-        pressure_ok = 260.0 <= pressure_hpa <= 1260.0
-        temperature_ok = -40.0 <= temperature_c <= 85.0
+        MIN_PRESSURE = 260.0
+        MAX_PRESSURE = 1260.0
+        MIN_TEMPERATURE = -40.0
+        MAX_TEMPERATURE = 85.0
+        pressure_ok = MIN_PRESSURE <= pressure_hpa <= MAX_PRESSURE
+        temperature_ok = MIN_TEMPERATURE <= temperature_c <= MAX_TEMPERATURE
         raw_ok = not (raw_p == 0 and raw_t == 0)
 
         if raw_ok:
