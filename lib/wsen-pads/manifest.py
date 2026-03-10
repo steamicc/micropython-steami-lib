@@ -3,4 +3,4 @@ metadata(
     version="0.0.1",
 )
 
-package("wsen-pads")
+package("wsen_pads")

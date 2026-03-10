@@ -49,7 +49,7 @@ def test_i2c_scan(i2c):
         print_pass("WSEN-PADS address found")
         return True
     else:
-        print_fail("WSEN-PADS address found")
+        print_fail("WSEN-PADS address not found")
         return False
 
 
@@ -114,7 +114,7 @@ def test_reboot(sensor):
     print_header("5) Reboot")
     try:
         sensor.reboot()
-        sleep(0.05)
+        sleep(1)
         dump_registers(sensor)
 
         if sensor.device_id() == 0xB3:
