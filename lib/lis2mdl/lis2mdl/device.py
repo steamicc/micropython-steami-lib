@@ -36,7 +36,7 @@ class LIS2MDL(object):
         self.setReg(0x20, LIS2MDL_CFG_REG_A)  # SOFT_RST=1 (not 0x10)
         try:
             sleep_ms(10)  # Small delay for reset to complete
-        except:
+        except Exception:
             pass
 
         # Configure the sensor's operating mode, output data rate, and other settings.
@@ -569,7 +569,7 @@ class LIS2MDL(object):
         self.setReg(r, LIS2MDL_CFG_REG_A)
         try:
             sleep_ms(wait_ms)
-        except:
+        except Exception:
             pass
 
     def is_idle(self) -> bool:
