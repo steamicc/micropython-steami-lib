@@ -41,6 +41,9 @@ class WSEN_HIDS:
     AVG_128 = AVG_128
     AVG_256 = AVG_256
 
+    DEFAULT_ONE_SHOT_TIMEOUT_MS = 100
+    DEFAULT_BOOT_TIME_MS = 10
+
     def __init__(
         self,
         i2c,
@@ -54,8 +57,6 @@ class WSEN_HIDS:
         self.address = address
 
         self._buffer_1 = bytearray(1)
-        self._buffer_2 = bytearray(2)
-        self._buffer_4 = bytearray(4)
 
         self._calibration = {}
 
@@ -173,7 +174,7 @@ class WSEN_HIDS:
 
     def set_one_shot_mode(self):
         ctrl1 = self._read_reg(REG_CTRL_1)
-        ctrl1 |= CTRL_1_PD          # capteur actif
+        ctrl1 |= CTRL_1_PD          # sensor active
         ctrl1 &= ~CTRL_1_ODR_MASK   # ODR = 00 => one-shot
         self._write_reg(REG_CTRL_1, ctrl1)
 
@@ -193,7 +194,7 @@ class WSEN_HIDS:
 
     def reboot_memory(self):
         self._update_reg(REG_CTRL_2, CTRL_2_BOOT, CTRL_2_BOOT)
-        sleep_ms(DEFAULT_BOOT_TIME_MS)
+        sleep_ms(self.DEFAULT_BOOT_TIME_MS)
         self._read_calibration()
 
     # -------------------------------------------------------------------------

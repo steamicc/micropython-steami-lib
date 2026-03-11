@@ -1,4 +1,4 @@
-from machine import I2C, Pin
+from machine import I2C
 from time import sleep
 
 from wsen_hids import WSEN_HIDS

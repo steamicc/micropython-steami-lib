@@ -236,5 +236,5 @@ Examples include:
 Run an example using:
 
 ```bash
-mpremote mount lib/wsen-hids run lib/wsen-hids/examples/example1.py
+mpremote mount lib/wsen-hids run lib/wsen-hids/examples/continuous_mode.py
 ```

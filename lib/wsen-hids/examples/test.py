@@ -1,4 +1,4 @@
-from machine import I2C, Pin
+from machine import I2C
 from time import sleep, sleep_ms
 
 from wsen_hids import WSEN_HIDS
@@ -302,7 +302,7 @@ def test_status_helpers(sensor):
 
         sensor.set_one_shot_mode()
 
-        # Au moins un indicateur doit être cohérent avec STATUS
+        # At least one indicator must match STATUS
         flags_match = (
             h_avail == bool(status & STATUS_H_DA)
             and t_avail == bool(status & STATUS_T_DA)
