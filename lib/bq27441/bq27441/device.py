@@ -155,11 +155,7 @@ class BQ27441:
 
     def current_average(self):
         """Return average current"""
-        try:
-            result = self.current(CurrentMeasureType.AVG)
-            return result
-        except Exception:
-            raise
+        return self.current(CurrentMeasureType.AVG)
 
     def capacity_full(self):
         """Return full capacity (mAh)"""
