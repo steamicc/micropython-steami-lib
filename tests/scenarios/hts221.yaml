@@ -1,0 +1,99 @@
+driver: hts221
+driver_class: HTS221
+i2c_address: 0x5F
+
+# I2C config for hardware tests (STeaMi board - STM32WB55)
+i2c:
+  id: 1
+
+# Register values for mock tests
+# These simulate a real HTS221 sensor with realistic calibration data
+mock_registers:
+  # WHO_AM_I
+  0x0F: 0xBC
+  # AV_CONF
+  0x10: 0x1B
+  # CTRL_REG1 (powered on, BDU=1, ODR=1Hz)
+  0x20: 0x85
+  # STATUS_REG (temperature and humidity data available)
+  0x27: 0x03
+  # Calibration registers
+  0x30: 0x48  # H0_rH_x2
+  0x31: 0x9E  # H1_rH_x2
+  0x32: 0xD4  # T0_degC_x8
+  0x33: 0x62  # T1_degC_x8
+  0x35: 0x03  # T1T0_msb
+  # H0_T0_OUT (little-endian)
+  0x36: 0x00  # H0_T0_OUT_L
+  0x37: 0x3F  # H0_T0_OUT_H
+  # H1_T0_OUT (little-endian)
+  0x3A: 0x00  # H1_T0_OUT_L
+  0x3B: 0x68  # H1_T0_OUT_H
+  # T0_OUT (little-endian)
+  0x3C: 0xFE  # T0_OUT_L
+  0x3D: 0xFC  # T0_OUT_H
+  # T1_OUT (little-endian)
+  0x3E: 0x1A  # T1_OUT_L
+  0x3F: 0x01  # T1_OUT_H
+  # TEMP_OUT (simulated ~25°C)
+  0x2A: 0x00  # TEMP_OUT_L
+  0x2B: 0xFF  # TEMP_OUT_H
+  # HUMIDITY_OUT (simulated ~50%)
+  0x28: 0x00  # HUMIDITY_OUT_L
+  0x29: 0x50  # HUMIDITY_OUT_H
+
+tests:
+  - name: "Verify device ID"
+    action: read_register
+    register: 0x0F
+    expect: 0xBC
+    mode: [mock, hardware]
+
+  - name: "Read WHO_AM_I via method"
+    action: call
+    method: whoAmI
+    expect: 0xBC
+    mode: [mock, hardware]
+
+  - name: "Read temperature returns float"
+    action: call
+    method: temperature
+    expect_not_none: true
+    mode: [mock]
+
+  - name: "Read humidity returns float"
+    action: call
+    method: humidity
+    expect_not_none: true
+    mode: [mock]
+
+  - name: "Temperature in plausible range"
+    action: call
+    method: temperature
+    expect_range: [10.0, 45.0]
+    mode: [hardware]
+
+  - name: "Humidity in plausible range"
+    action: call
+    method: humidity
+    expect_range: [10.0, 90.0]
+    mode: [hardware]
+
+  - name: "Status register has data ready"
+    action: call
+    method: status
+    expect_not_none: true
+    mode: [mock, hardware]
+
+  - name: "Temperature feels correct"
+    action: manual
+    display:
+      - method: temperature
+        label: "Temperature"
+        unit: "°C"
+      - method: humidity
+        label: "Humidity"
+        unit: "%"
+    prompt: "Ces valeurs sont-elles cohérentes avec l'ambiance ?"
+    expect_true: true
+    mode: [hardware]

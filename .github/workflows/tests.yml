@@ -1,0 +1,30 @@
+name: "🧪 Mock Tests"
+
+on:
+  push:
+    branches: ["main"]
+  pull_request:
+    branches: ["main"]
+
+jobs:
+  mock-tests:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+
+    steps:
+      - name: "⏳ Checkout repository"
+        uses: actions/checkout@v3
+
+      - name: "🐍 Set up Python"
+        uses: actions/setup-python@v4
+        with:
+          cache: "pip"
+          python-version: "3.10"
+
+      - name: "🛠 Install dependencies"
+        run: |
+          pip install -r .github/workflows/requirements.txt
+
+      - name: "🧪 Run mock tests"
+        run: python -m pytest tests/ -v -k mock

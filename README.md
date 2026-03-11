@@ -360,15 +360,155 @@ mic.stop()
 level = mic.sound_level(samples)  # Sound level in dB
 ```
 
+## Testing
+
+The project includes a test framework that supports both mock tests (without hardware) and hardware tests (with a STeaMi board connected).
+
+### Install test dependencies
+
+```bash
+pip install pytest pyyaml
+```
+
+### Run mock tests (no hardware needed)
+
+```bash
+python -m pytest tests/ -v -k mock
+```
+
+### Run hardware tests (STeaMi board connected)
+
+```bash
+python -m pytest tests/ -v --port /dev/ttyACM0
+```
+
+### Run tests for a specific driver
+
+```bash
+python -m pytest tests/ -v --driver hts221 --port /dev/ttyACM0
+```
+
+### Run interactive tests (with manual validation)
+
+```bash
+python -m pytest tests/ -v --port /dev/ttyACM0 -s
+```
+
+### Generate a test report
+
+Reports are saved as Markdown files in the `reports/` directory, with a summary and a detailed sub-report per driver.
+
+```bash
+# Timestamped report
+python -m pytest tests/ -v --port /dev/ttyACM0 --report auto
+
+# Named report (e.g. before a release)
+python -m pytest tests/ -v --port /dev/ttyACM0 --report v1.0-validation
+```
+
+### Add tests for a new driver
+
+Create a YAML scenario file in `tests/scenarios/<driver>.yaml`:
+
+```yaml
+driver: hts221
+driver_class: HTS221
+i2c_address: 0x5F
+
+i2c:
+  id: 1
+
+mock_registers:
+  0x0F: 0xBC
+
+tests:
+  - name: "Verify device ID"
+    action: read_register
+    register: 0x0F
+    expect: 0xBC
+    mode: [mock, hardware]
+
+  - name: "Temperature in plausible range"
+    action: call
+    method: temperature
+    expect_range: [10.0, 45.0]
+    mode: [hardware]
+```
+
+The test runner automatically discovers new YAML files.
+
 ## Contributing
 
-Contributions are welcome! Here's how you can contribute:
+Contributions are welcome! Please follow the guidelines below.
+
+### Driver structure
+
+Each driver must follow this structure:
+
+```
+lib/<component>/
+├── README.md
+├── manifest.py          # metadata() + package("<module_name>")
+├── <module_name>/
+│   ├── __init__.py      # exports main class
+│   ├── const.py         # register constants using micropython.const()
+│   └── device.py        # main driver class
+└── examples/
+    └── *.py
+```
+
+### Coding conventions
+
+- **Constants**: use `from micropython import const` in `const.py` files.
+- **Naming**: `snake_case` for new methods. Legacy `camelCase` is acceptable for I2C helpers to stay consistent with existing drivers.
+- **Class inheritance**: `class Foo(object):` is the existing convention.
+- **Time**: use `from time import sleep_ms` (not `utime`).
+- **No debug `print()`** in production driver code.
+
+### Linting
+
+The project uses [ruff](https://docs.astral.sh/ruff/) (config in `pyproject.toml`).
+
+```bash
+# Check for linting errors
+ruff check
+
+# Auto-format code
+ruff format
+```
+
+### Commit messages
+
+Commit messages are validated by CI with the following pattern:
+
+```
+<scope>: <Description starting with a capital letter ending with a period.>
+```
+
+- Max 78 characters.
+- Examples:
+  - `hts221: Fix missing self parameter in getAv method.`
+  - `docs: Fix typos in README files.`
+  - `bq27441: Remove debug print statements from driver.`
+
+### CI checks
+
+All pull requests must pass these checks:
+
+| Check | Workflow | Description |
+|-------|----------|-------------|
+| Commit messages | `check-commits.yml` | Validates commit message format |
+| Linting | `python-linter.yml` | Runs `ruff check` |
+| Mock tests | `tests.yml` | Runs mock driver tests |
+
+### Workflow
 
 1. Fork the repository
-2. Create a branch for your feature (`git checkout -b my-new-feature`)
-3. Commit your changes (`git commit -am 'Add a new feature'`)
-4. Push to the branch (`git push origin my-new-feature`)
-5. Create a new Pull Request
+2. Create a branch for your feature (`git checkout -b feat/my-new-feature`)
+3. Write your code and add tests in `tests/scenarios/<driver>.yaml`
+4. Run `ruff check` and `python -m pytest tests/ -v -k mock` locally
+5. Commit your changes following the commit message format
+6. Push to the branch and create a Pull Request
 
 ## License
 
