@@ -78,7 +78,7 @@ class HTS221(object):
         self.setReg(t | odr, HTS221_CTRL_REG1)
 
     # get/set Humidity and temperature average configuration
-    def getAv():
+    def getAv(self):
         return self.getReg(HTS221_AV_CONF)
 
     def setAv(self, av=0):
