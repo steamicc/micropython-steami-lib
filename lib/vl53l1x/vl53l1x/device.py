@@ -1,6 +1,6 @@
 import machine
 
-VL51L1X_DEFAULT_CONFIGURATION = bytes(
+VL53L1X_DEFAULT_CONFIGURATION = bytes(
     [
         0x00,  # 0x2d : set bit 2 and 5 to 1 for fast plus mode (1MHz I2C), else don't touch */
         0x00,  # 0x2e : bit 0 if I2C pulled up at 1.8V, else set bit 0 to 1 (pull up at AVDD) */
@@ -106,7 +106,7 @@ class VL53L1X:
         if self.read_model_id() != 0xEACC:
             raise RuntimeError("Failed to find expected ID register values. Check wiring!")
         # write default configuration
-        self.i2c.writeto_mem(self.address, 0x2D, VL51L1X_DEFAULT_CONFIGURATION, addrsize=16)
+        self.i2c.writeto_mem(self.address, 0x2D, VL53L1X_DEFAULT_CONFIGURATION, addrsize=16)
         # machine.lightsleep(100)
         # the API triggers this change in VL53L1_init_and_start_range() once a
         # measurement is started; assumes MM1 and MM2 are disabled
