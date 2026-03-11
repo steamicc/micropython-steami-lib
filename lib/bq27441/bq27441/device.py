@@ -4,7 +4,6 @@ from bq27441.exceptions import *
 from utime import sleep_ms, ticks_ms
 from machine import Pin, I2C
 
-import sys
 import struct
 
 
@@ -94,7 +93,6 @@ class BQ27441:
         self.gpout_pin = gpout_pin
         self.capacity_mAh = capacity_mAh
         self.configure_gpout_input()
-        print("call power_up after init to use")
         self.power_up()
 
     def configure_gpout_input(self):
@@ -111,9 +109,8 @@ class BQ27441:
         sleep_ms(10)
         try:
             self.set_capacity(self.capacity_mAh)
-        except Exception as e:
-            print("Failed to wake up fuel gauge: %s" % e)
-            sys.print_exception(e)
+        except Exception:
+            raise
 
     def power_down(self):
         """Put fuel gauge ic in shutdown mode by sending shutdown i2c cmd"""
@@ -129,7 +126,6 @@ class BQ27441:
         self.configure_gpout_input()
         self.enable_shutdown_mode()
         self.executeControlWord(BQ27441_CONTROL_SHUTDOWN)
-        print("WARNING: will need to power cycle board in order to use FuelGauge again")
 
     def disable_shutdown_mode(self):
         if self.gpout_pin:
@@ -162,55 +158,29 @@ class BQ27441:
         try:
             result = self.current(CurrentMeasureType.AVG)
             return result
-        except Exception as e:
-            print("Failed to get average current (mA): %s" % e)
-            sys.print_exception(e)
+        except Exception:
+            raise
 
     def capacity_full(self):
         """Return full capacity (mAh)"""
-        try:
-            result = self.capacity(CapacityMeasureType.FULL)
-            return result
-        except Exception as e:
-            print("Failed to get max capacity (mAh): %s" % e)
-            sys.print_exception(e)
+        return self.capacity(CapacityMeasureType.FULL)
 
     def capacity_remaining(self):
         """Return remaining capacity (mAh)"""
-        try:
-            result = self.capacity(CapacityMeasureType.REMAIN)
-            return result
-        except Exception as e:
-            print("Failed to get average current (mA): %s" % e)
-            sys.print_exception(e)
+        return self.capacity(CapacityMeasureType.REMAIN)
 
     def state_of_charge(self):
         """Return remaining charge %"""
-        try:
-            result = self.soc(SocMeasureType.FILTERED)
-            return result
-        except Exception as e:
-            print("Failed to get state of charge (soc): %s" % e)
-            sys.print_exception(e)
+        return self.soc(SocMeasureType.FILTERED)
 
     def state_of_health(self):
         """Return state of health %"""
-        try:
-            result = self.soh(SohMeasureType.PERCENT)
-            return result
-        except Exception as e:
-            print("Failed to get state of health (soh): %s" % e)
-            sys.print_exception(e)
+        return self.soh(SohMeasureType.PERCENT)
 
     # Reads and returns the battery voltage
     def voltage(self):
         """Return current voltage"""
-        try:
-            result = self.readWord(BQ27441_COMMAND_VOLTAGE)
-            return result
-        except Exception as e:
-            print("Failed to get voltage: %s" % e)
-            sys.print_exception(e)
+        return self.readWord(BQ27441_COMMAND_VOLTAGE)
 
     # Reads and returns the specified current measurement
     def current(self, current_measure_type):
@@ -396,7 +366,6 @@ class BQ27441:
     # Enter configuration mode - set userControl if calling from an Arduino sketch
     # and you want control over when to exitConfig
     def enterConfig(self, userControl):
-        print("enterConfig")
         if userControl:
             self._userConfigControl = True
 
@@ -427,7 +396,6 @@ class BQ27441:
         # measurement, and without resimulating to update unfiltered - SoC and SoC.
         #  If a new OCV measurement or resimulation is desired, SOFT_RESET or
         # EXIT_RESIM should be used to exit config mode.
-        print("exitConfig")
         if resim:
             if self.softReset():
                 start_ms = self.get_time_ms()
@@ -524,19 +492,16 @@ class BQ27441:
     # Extended Data Cmds
     # Issue a BlockDataControl() command to enable BlockData access
     def blockDataControl(self):
-        print("blockDataControl")
         enableByte = [0x00]
         return self.i2cWriteBytes(BQ27441_EXTENDED_CONTROL, enableByte, 1)
 
     # Issue a DataClass() command to set the data class to be accessed
 
     def blockDataClass(self, _id):
-        print("blockDataClass")
         return self.i2cWriteBytes(BQ27441_EXTENDED_DATACLASS, _id, 1)
 
     # Issue a DataBlock() command to set the data block to be accessed
     def blockDataOffset(self, offset):
-        print("blockDataOffset %s" % offset)
         offset = [offset]
         return self.i2cWriteBytes(BQ27441_EXTENDED_DATABLOCK, offset, 1)
 
@@ -560,7 +525,6 @@ class BQ27441:
     # Read all 32 bytes of the loaded extended data and compute a
     # checksum based on the values.
     def computeBlockChecksum(self):
-        print("computeBlockChecksum")
         data = self.i2cReadBytes(BQ27441_EXTENDED_BLOCKDATA, 32)
         csum = 0
         for i in range(32):
@@ -600,7 +564,6 @@ class BQ27441:
     # class ID, position offset.
 
     def writeExtendedData(self, class_id, offset, data, length):
-        print("writeExtendedData")
         if length > 32:
             return False
 
@@ -618,7 +581,6 @@ class BQ27441:
         self.blockDataChecksum()
 
         # Write data bytes:
-        print("write data bytes for length %d" % length)
         for i in range(length):
             # Write to offset, mod 32 if offset is greater than 32 The blockDataOffset above sets
             # the 32 - bit block
