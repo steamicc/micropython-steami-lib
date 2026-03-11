@@ -75,9 +75,8 @@ AVG_128 = 0x06
 AVG_256 = 0x07
 
 # Default averaging according to the manual:
-# temperature = 16 samples, humidity = 32 samples
+# temperature = 16 samples, humidity = 16 samples
 AVG_T_DEFAULT = AVG_16
-AVG_H_DEFAULT = AVG_16  # value 0x03 => 32 samples for humidity
+AVG_H_DEFAULT = AVG_16  # value 0x03 => 16 samples for humidity
 
-DEFAULT_ONE_SHOT_TIMEOUT_MS = 100
-DEFAULT_BOOT_TIME_MS = 10
+
