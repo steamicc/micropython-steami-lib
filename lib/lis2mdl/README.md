@@ -50,32 +50,9 @@ Example setup:
 
 ```python
 from machine import I2C, Pin
-from device import LIS2MDL
+from lis2mdl import LIS2MDL
 
-i2c = I2C(1, scl=Pin(22), sda=Pin(21))
-mag = LIS2MDL(i2c)
-```
-
----
-
-## 🧩 Installation
-
-### 1. Copy files to your board
-
-Upload both files using Thonny, mpremote, or ampy:
-
-```
-device.py
-lis2mdl/const.py
-```
-
-### 2. Import and initialize
-
-```python
-from machine import I2C, Pin
-from device import LIS2MDL
-
-i2c = I2C(1, scl=Pin(22), sda=Pin(21))
+i2c = I2C(1)
 mag = LIS2MDL(i2c)
 ```
 
@@ -242,7 +219,7 @@ print("Register dump:", regs)
 
 ```python
 from machine import I2C, Pin
-from device import LIS2MDL
+from lis2mdl import LIS2MDL
 import time
 
 i2c = I2C(1, scl=Pin(22), sda=Pin(21))
@@ -254,15 +231,6 @@ while True:
     print("Heading: {:.1f}° {}".format(heading, mag.direction_label(heading)))
     time.sleep(0.5)
 ```
-
----
-
-## 🧾 Notes
-
-* The LIS2MDL outputs magnetic data in **LSB**, with a conversion factor of **0.15 µT/LSB**.
-* Temperature readings are **relative only** (not absolute).
-* Calibration should be repeated if the sensor environment changes (metal nearby, relocation, etc.).
-* Tilt compensation requires an external **accelerometer** or IMU (e.g., LIS3DH, MPU6050, BNO055).
 
 ---
 

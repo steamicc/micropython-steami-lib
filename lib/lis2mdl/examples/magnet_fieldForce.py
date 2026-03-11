@@ -1,4 +1,4 @@
-# exemple of heading reading with direction label
+# Example of heading reading with direction label
 from time import sleep_ms
 from machine import I2C
 from lis2mdl.device import LIS2MDL

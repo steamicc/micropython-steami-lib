@@ -513,12 +513,6 @@ def run_heading_tests(dev):
     all_ok &= test_heading_filter_wrap(dev)
     print("\n=== HEADING summary:", "OK ✅" if all_ok else "Partial ⚠️ (see details)")
 
-
-def _bits(v, hi, lo):
-    m = (1 << (hi - lo + 1)) - 1
-    return (v >> lo) & m
-
-
 def test_power_modes(dev):
     print("\n=== TEST POWER MODES ===")
     ok = True
