@@ -107,10 +107,7 @@ class BQ27441:
         """Wake up fuel gauge ic if in shutdown mode"""
         self.disable_shutdown_mode()
         sleep_ms(10)
-        try:
-            self.set_capacity(self.capacity_mAh)
-        except Exception:
-            raise
+        self.set_capacity(self.capacity_mAh)
 
     def power_down(self):
         """Put fuel gauge ic in shutdown mode by sending shutdown i2c cmd"""
@@ -155,11 +152,7 @@ class BQ27441:
 
     def current_average(self):
         """Return average current"""
-        try:
-            result = self.current(CurrentMeasureType.AVG)
-            return result
-        except Exception:
-            raise
+        return self.current(CurrentMeasureType.AVG)
 
     def capacity_full(self):
         """Return full capacity (mAh)"""
