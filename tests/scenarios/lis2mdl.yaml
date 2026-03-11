@@ -1,0 +1,99 @@
+driver: lis2mdl
+driver_class: LIS2MDL
+i2c_address: 0x1E
+
+# I2C config for hardware tests (STeaMi board - STM32WB55)
+i2c:
+  id: 1
+
+# Register values for mock tests
+# These simulate a real LIS2MDL magnetometer
+mock_registers:
+  # WHO_AM_I (expected 0x40)
+  0x4F: 0x40
+  # CFG_REG_A (continuous mode, 10Hz, temp comp on)
+  0x60: 0x80
+  # CFG_REG_B (default)
+  0x61: 0x00
+  # CFG_REG_C (BDU enabled)
+  0x62: 0x10
+  # STATUS_REG (new data ready on all axes)
+  0x67: 0x0F
+  # OUTX_L..OUTZ_H (simulated magnetic field ~300, -150, 450 LSB)
+  # Multi-byte read at 0xE8 (0x68 | 0x80), 6 bytes block
+  0xE8: [0x2C, 0x01, 0x6A, 0xFF, 0xC2, 0x01]
+  # TEMP_OUT (simulated ~25°C: 25*8 = 200 = 0x00C8)
+  0x6E: 0xC8  # TEMP_OUT_L
+  0x6F: 0x00  # TEMP_OUT_H
+  # Offset registers (all zero)
+  0x45: 0x00
+  0x46: 0x00
+  0x47: 0x00
+  0x48: 0x00
+  0x49: 0x00
+  0x4A: 0x00
+
+tests:
+  - name: "Verify WHO_AM_I register"
+    action: read_register
+    register: 0x4F
+    expect: 0x40
+    mode: [mock, hardware]
+
+  - name: "Read WHO_AM_I via method"
+    action: call
+    method: read_who_am_i
+    expect: 0x40
+    mode: [mock, hardware]
+
+  - name: "Read status register"
+    action: call
+    method: read_status
+    expect_not_none: true
+    mode: [mock, hardware]
+
+  - name: "Read magnetic field returns tuple"
+    action: call
+    method: read_magnet
+    expect_not_none: true
+    mode: [mock]
+
+  - name: "Read magnetic field in uT returns tuple"
+    action: call
+    method: read_magnet_uT
+    expect_not_none: true
+    mode: [mock]
+
+  - name: "Read temperature returns float"
+    action: call
+    method: read_temperature_c
+    expect_not_none: true
+    mode: [mock]
+
+  - name: "Magnitude in plausible range"
+    action: call
+    method: magnitude_uT
+    expect_range: [10.0, 120.0]
+    mode: [hardware]
+
+  - name: "Temperature in plausible range"
+    action: call
+    method: read_temperature_c
+    expect_range: [-10.0, 60.0]
+    mode: [hardware]
+
+  - name: "Magnetic field values feel correct"
+    action: manual
+    display:
+      - method: magnitude_uT
+        label: "Magnitude"
+        unit: "µT"
+      - method: read_temperature_c
+        label: "Temperature"
+        unit: "°C"
+      - method: heading_flat_only
+        label: "Heading"
+        unit: "°"
+    prompt: "Ces valeurs sont-elles cohérentes (magnitude ~25-65µT, cap 0-360°) ?"
+    expect_true: true
+    mode: [hardware]

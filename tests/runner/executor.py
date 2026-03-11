@@ -24,6 +24,14 @@ def load_driver_mock(driver_name, fake_i2c):
     sys.modules["machine"] = fake_machine
     sys.modules["micropython"] = micropython_stub
 
+    # Patch time module to add MicroPython-specific functions
+    import time
+
+    if not hasattr(time, "sleep_ms"):
+        time.sleep_ms = lambda ms: time.sleep(ms / 1000)
+    if not hasattr(time, "sleep_us"):
+        time.sleep_us = lambda us: time.sleep(us / 1000000)
+
     # Add driver lib path to sys.path
     root = Path(__file__).parent.parent.parent
     driver_lib = root / "lib" / driver_name
