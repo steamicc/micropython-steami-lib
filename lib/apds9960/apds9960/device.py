@@ -39,7 +39,7 @@ class APDS9960:
         # check device id
         self.dev_id = self._read_byte_data(APDS9960_REG_ID)
         if self.dev_id not in valid_id:
-            raise ADPS9960InvalidDevId(self.dev_id, valid_id)
+            raise APDS9960InvalidDevId(self.dev_id, valid_id)
 
         # disable all features
         self.setMode(APDS9960_MODE_ALL, False)
@@ -87,7 +87,7 @@ class APDS9960:
         reg_val = self.getMode()
 
         if mode < 0 or mode > APDS9960_MODE_ALL:
-            raise ADPS9960InvalidMode(mode)
+            raise APDS9960InvalidMode(mode)
 
         # change bit(s) in ENABLE register */
         if mode == APDS9960_MODE_ALL:
