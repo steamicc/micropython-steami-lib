@@ -3,4 +3,4 @@ metadata(
     version="0.0.1",
 )
 
-package("mcp23999e")
+package("mcp23009e")
