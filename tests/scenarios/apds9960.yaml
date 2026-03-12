@@ -50,7 +50,7 @@ mock_registers:
 tests:
   - name: "Verify device ID register (mock)"
     action: call
-    method: _read_byte_data
+    method: _read_reg
     args: [0x92]
     expect: 0xAB
     mode: [mock]
