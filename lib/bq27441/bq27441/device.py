@@ -495,6 +495,7 @@ class BQ27441(object):
     # Issue a DataClass() command to set the data class to be accessed
 
     def blockDataClass(self, _id):
+        _id = [_id]
         return self._write_reg(BQ27441_EXTENDED_DATACLASS, _id, 1)
 
     # Issue a DataBlock() command to set the data block to be accessed
