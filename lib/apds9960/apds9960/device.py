@@ -37,7 +37,7 @@ class APDS9960(object):
         self.gesture_data_ = APDS9960.GestureData()
 
         # check device id
-        self.dev_id = self._read_byte_data(APDS9960_REG_ID)
+        self.dev_id = self._read_reg(APDS9960_REG_ID)
         if self.dev_id not in valid_id:
             raise APDS9960InvalidDevId(self.dev_id, valid_id)
 
@@ -45,12 +45,12 @@ class APDS9960(object):
         self.setMode(APDS9960_MODE_ALL, False)
 
         # set default values for ambient light and proximity registers
-        self._write_byte_data(APDS9960_REG_ATIME, APDS9960_DEFAULT_ATIME)
-        self._write_byte_data(APDS9960_REG_WTIME, APDS9960_DEFAULT_WTIME)
-        self._write_byte_data(APDS9960_REG_PPULSE, APDS9960_DEFAULT_PROX_PPULSE)
-        self._write_byte_data(APDS9960_REG_POFFSET_UR, APDS9960_DEFAULT_POFFSET_UR)
-        self._write_byte_data(APDS9960_REG_POFFSET_DL, APDS9960_DEFAULT_POFFSET_DL)
-        self._write_byte_data(APDS9960_REG_CONFIG1, APDS9960_DEFAULT_CONFIG1)
+        self._write_reg(APDS9960_REG_ATIME, APDS9960_DEFAULT_ATIME)
+        self._write_reg(APDS9960_REG_WTIME, APDS9960_DEFAULT_WTIME)
+        self._write_reg(APDS9960_REG_PPULSE, APDS9960_DEFAULT_PROX_PPULSE)
+        self._write_reg(APDS9960_REG_POFFSET_UR, APDS9960_DEFAULT_POFFSET_UR)
+        self._write_reg(APDS9960_REG_POFFSET_DL, APDS9960_DEFAULT_POFFSET_DL)
+        self._write_reg(APDS9960_REG_CONFIG1, APDS9960_DEFAULT_CONFIG1)
         self.setLEDDrive(APDS9960_DEFAULT_LDRIVE)
         self.setProximityGain(APDS9960_DEFAULT_PGAIN)
         self.setAmbientLightGain(APDS9960_DEFAULT_AGAIN)
@@ -59,28 +59,28 @@ class APDS9960(object):
         self.setLightIntLowThreshold(APDS9960_DEFAULT_AILT)
         self.setLightIntHighThreshold(APDS9960_DEFAULT_AIHT)
 
-        self._write_byte_data(APDS9960_REG_PERS, APDS9960_DEFAULT_PERS)
-        self._write_byte_data(APDS9960_REG_CONFIG2, APDS9960_DEFAULT_CONFIG2)
-        self._write_byte_data(APDS9960_REG_CONFIG3, APDS9960_DEFAULT_CONFIG3)
+        self._write_reg(APDS9960_REG_PERS, APDS9960_DEFAULT_PERS)
+        self._write_reg(APDS9960_REG_CONFIG2, APDS9960_DEFAULT_CONFIG2)
+        self._write_reg(APDS9960_REG_CONFIG3, APDS9960_DEFAULT_CONFIG3)
 
         # set default values for gesture sense registers
         self.setGestureEnterThresh(APDS9960_DEFAULT_GPENTH)
         self.setGestureExitThresh(APDS9960_DEFAULT_GEXTH)
-        self._write_byte_data(APDS9960_REG_GCONF1, APDS9960_DEFAULT_GCONF1)
+        self._write_reg(APDS9960_REG_GCONF1, APDS9960_DEFAULT_GCONF1)
 
         self.setGestureGain(APDS9960_DEFAULT_GGAIN)
         self.setGestureLEDDrive(APDS9960_DEFAULT_GLDRIVE)
         self.setGestureWaitTime(APDS9960_DEFAULT_GWTIME)
-        self._write_byte_data(APDS9960_REG_GOFFSET_U, APDS9960_DEFAULT_GOFFSET)
-        self._write_byte_data(APDS9960_REG_GOFFSET_D, APDS9960_DEFAULT_GOFFSET)
-        self._write_byte_data(APDS9960_REG_GOFFSET_L, APDS9960_DEFAULT_GOFFSET)
-        self._write_byte_data(APDS9960_REG_GOFFSET_R, APDS9960_DEFAULT_GOFFSET)
-        self._write_byte_data(APDS9960_REG_GPULSE, APDS9960_DEFAULT_GPULSE)
-        self._write_byte_data(APDS9960_REG_GCONF3, APDS9960_DEFAULT_GCONF3)
+        self._write_reg(APDS9960_REG_GOFFSET_U, APDS9960_DEFAULT_GOFFSET)
+        self._write_reg(APDS9960_REG_GOFFSET_D, APDS9960_DEFAULT_GOFFSET)
+        self._write_reg(APDS9960_REG_GOFFSET_L, APDS9960_DEFAULT_GOFFSET)
+        self._write_reg(APDS9960_REG_GOFFSET_R, APDS9960_DEFAULT_GOFFSET)
+        self._write_reg(APDS9960_REG_GPULSE, APDS9960_DEFAULT_GPULSE)
+        self._write_reg(APDS9960_REG_GCONF3, APDS9960_DEFAULT_GCONF3)
         self.setGestureIntEnable(APDS9960_DEFAULT_GIEN)
 
     def getMode(self):
-        return self._read_byte_data(APDS9960_REG_ENABLE)
+        return self._read_reg(APDS9960_REG_ENABLE)
 
     def setMode(self, mode, enable=True):
         # read ENABLE register
@@ -102,7 +102,7 @@ class APDS9960(object):
                 reg_val &= ~(1 << mode)
 
         # write value to ENABLE register
-        self._write_byte_data(APDS9960_REG_ENABLE, reg_val)
+        self._write_reg(APDS9960_REG_ENABLE, reg_val)
 
     # start the light (R/G/B/Ambient) sensor
     def enableLightSensor(self, interrupts=True):
@@ -132,8 +132,8 @@ class APDS9960(object):
     # start the gesture recognition engine
     def enableGestureSensor(self, interrupts=True):
         self.resetGestureParameters()
-        self._write_byte_data(APDS9960_REG_WTIME, 0xFF)
-        self._write_byte_data(APDS9960_REG_PPULSE, APDS9960_DEFAULT_GESTURE_PPULSE)
+        self._write_reg(APDS9960_REG_WTIME, 0xFF)
+        self._write_reg(APDS9960_REG_PPULSE, APDS9960_DEFAULT_GESTURE_PPULSE)
         self.setLEDBoost(APDS9960_LED_BOOST_300)
         self.setGestureIntEnable(interrupts)
         self.setGestureMode(True)
@@ -151,7 +151,7 @@ class APDS9960(object):
 
     # check if there is a gesture available
     def isGestureAvailable(self):
-        val = self._read_byte_data(APDS9960_REG_GSTATUS)
+        val = self._read_reg(APDS9960_REG_GSTATUS)
 
         # shift and mask out GVALID bit
         val &= APDS9960_BIT_GVALID
@@ -170,13 +170,13 @@ class APDS9960(object):
         # keep looping as long as gesture data is valid
         while self.isGestureAvailable():
             # read the current FIFO level
-            fifo_level = self._read_byte_data(APDS9960_REG_GFLVL)
+            fifo_level = self._read_reg(APDS9960_REG_GFLVL)
 
             # if there's stuff in the FIFO, read it into our data block
             if fifo_level > 0:
                 fifo_data = []
                 for _i in range(fifo_level):
-                    fifo_data += self._read_i2c_block_data(APDS9960_REG_GFIFO_U, 4)
+                    fifo_data += self._read_block(APDS9960_REG_GFIFO_U, 4)
 
                 # if at least 1 set of data, sort the data into U/D/L/R
                 if len(fifo_data) >= 4:
@@ -223,7 +223,7 @@ class APDS9960(object):
 
     # check if there is new light data available
     def isLightAvailable(self):
-        val = self._read_byte_data(APDS9960_REG_STATUS)
+        val = self._read_reg(APDS9960_REG_STATUS)
 
         # shift and mask out AVALID bit
         val &= APDS9960_BIT_AVALID
@@ -233,40 +233,40 @@ class APDS9960(object):
     # reads the ambient (clear) light level as a 16-bit value
     def readAmbientLight(self):
         # read value from clear channel, low byte register
-        low = self._read_byte_data(APDS9960_REG_CDATAL)
+        low = self._read_reg(APDS9960_REG_CDATAL)
 
         # read value from clear channel, high byte register
-        high = self._read_byte_data(APDS9960_REG_CDATAH)
+        high = self._read_reg(APDS9960_REG_CDATAH)
 
         return low + (high << 8)
 
     # reads the red light level as a 16-bit value
     def readRedLight(self):
         # read value from red channel, low byte register
-        low = self._read_byte_data(APDS9960_REG_RDATAL)
+        low = self._read_reg(APDS9960_REG_RDATAL)
 
         # read value from red channel, high byte register
-        high = self._read_byte_data(APDS9960_REG_RDATAH)
+        high = self._read_reg(APDS9960_REG_RDATAH)
 
         return low + (high << 8)
 
     # reads the green light level as a 16-bit value
     def readGreenLight(self):
         # read value from green channel, low byte register
-        low = self._read_byte_data(APDS9960_REG_GDATAL)
+        low = self._read_reg(APDS9960_REG_GDATAL)
 
         # read value from green channel, high byte register
-        high = self._read_byte_data(APDS9960_REG_GDATAH)
+        high = self._read_reg(APDS9960_REG_GDATAH)
 
         return low + (high << 8)
 
     # reads the blue light level as a 16-bit value
     def readBlueLight(self):
         # read value from blue channel, low byte register
-        low = self._read_byte_data(APDS9960_REG_BDATAL)
+        low = self._read_reg(APDS9960_REG_BDATAL)
 
         # read value from blue channel, high byte register
-        high = self._read_byte_data(APDS9960_REG_BDATAH)
+        high = self._read_reg(APDS9960_REG_BDATAH)
 
         return low + (high << 8)
 
@@ -276,7 +276,7 @@ class APDS9960(object):
 
     # reads the proximity level as an 8-bit value
     def readProximity(self):
-        return self._read_byte_data(APDS9960_REG_PDATA)
+        return self._read_reg(APDS9960_REG_PDATA)
 
     # *******************************************************************************
     # High-level gesture controls
@@ -467,19 +467,19 @@ class APDS9960(object):
 
     def getProxIntLowThresh(self):
         """Returns the lower threshold for proximity detection"""
-        return self._read_byte_data(APDS9960_REG_PILT)
+        return self._read_reg(APDS9960_REG_PILT)
 
     def setProxIntLowThresh(self, threshold):
         """Sets the lower threshold for proximity detection."""
-        self._write_byte_data(APDS9960_REG_PILT, threshold)
+        self._write_reg(APDS9960_REG_PILT, threshold)
 
     def getProxIntHighThresh(self):
         """Returns the high threshold for proximity detection."""
-        return self._read_byte_data(APDS9960_REG_PIHT)
+        return self._read_reg(APDS9960_REG_PIHT)
 
     def setProxIntHighThresh(self, threshold):
         """Sets the high threshold for proximity detection."""
-        self._write_byte_data(APDS9960_REG_PIHT, threshold)
+        self._write_reg(APDS9960_REG_PIHT, threshold)
 
     def getLEDDrive(self):
         """Returns LED drive strength for proximity and ALS.
@@ -493,7 +493,7 @@ class APDS9960(object):
         Returns:
             int: the value of the LED drive strength
         """
-        val = self._read_byte_data(APDS9960_REG_CONTROL)
+        val = self._read_reg(APDS9960_REG_CONTROL)
 
         # shift and mask out LED drive bits
         return (val >> 6) & 0b00000011
@@ -510,7 +510,7 @@ class APDS9960(object):
         Args:
             drive (int): value for the LED drive strength
         """
-        val = self._read_byte_data(APDS9960_REG_CONTROL)
+        val = self._read_reg(APDS9960_REG_CONTROL)
 
         # set bits in register to given value
         drive &= 0b00000011
@@ -518,7 +518,7 @@ class APDS9960(object):
         val &= 0b00111111
         val |= drive
 
-        self._write_byte_data(APDS9960_REG_CONTROL, val)
+        self._write_reg(APDS9960_REG_CONTROL, val)
 
     def getProximityGain(self):
         """Returns receiver gain for proximity detection.
@@ -532,7 +532,7 @@ class APDS9960(object):
         Returns:
             int: the value of the proximity gain
         """
-        val = self._read_byte_data(APDS9960_REG_CONTROL)
+        val = self._read_reg(APDS9960_REG_CONTROL)
 
         # shift and mask out PDRIVE bits
         return (val >> 2) & 0b00000011
@@ -549,7 +549,7 @@ class APDS9960(object):
         Args:
             drive (int): value for the proximity gain
         """
-        val = self._read_byte_data(APDS9960_REG_CONTROL)
+        val = self._read_reg(APDS9960_REG_CONTROL)
 
         # set bits in register to given value
         drive &= 0b00000011
@@ -557,7 +557,7 @@ class APDS9960(object):
         val &= 0b11110011
         val |= drive
 
-        self._write_byte_data(APDS9960_REG_CONTROL, val)
+        self._write_reg(APDS9960_REG_CONTROL, val)
 
     def getAmbientLightGain(self):
         """Returns receiver gain for the ambient light sensor (ALS).
@@ -571,7 +571,7 @@ class APDS9960(object):
         Returns:
             int: the value of the ALS gain
         """
-        val = self._read_byte_data(APDS9960_REG_CONTROL)
+        val = self._read_reg(APDS9960_REG_CONTROL)
 
         # shift and mask out ADRIVE bits
         return val & 0b00000011
@@ -588,14 +588,14 @@ class APDS9960(object):
         Args:
             drive (int): value for the ALS gain
         """
-        val = self._read_byte_data(APDS9960_REG_CONTROL)
+        val = self._read_reg(APDS9960_REG_CONTROL)
 
         # set bits in register to given value
         drive &= 0b00000011
         val &= 0b11111100
         val |= drive
 
-        self._write_byte_data(APDS9960_REG_CONTROL, val)
+        self._write_reg(APDS9960_REG_CONTROL, val)
 
     def getLEDBoost(self):
         """Get the current LED boost value.
@@ -609,7 +609,7 @@ class APDS9960(object):
         Returns:
             int: the LED boost value
         """
-        val = self._read_byte_data(APDS9960_REG_CONFIG2)
+        val = self._read_reg(APDS9960_REG_CONFIG2)
 
         # shift and mask out LED_BOOST bits
         return (val >> 4) & 0b00000011
@@ -626,7 +626,7 @@ class APDS9960(object):
         Args:
             boost (int): value for the LED boost
         """
-        val = self._read_byte_data(APDS9960_REG_CONFIG2)
+        val = self._read_reg(APDS9960_REG_CONFIG2)
 
         # set bits in register to given value
         boost &= 0b00000011
@@ -634,7 +634,7 @@ class APDS9960(object):
         val &= 0b11001111
         val |= boost
 
-        self._write_byte_data(APDS9960_REG_CONFIG2, val)
+        self._write_reg(APDS9960_REG_CONFIG2, val)
 
     def getProxGainCompEnable(self):
         """Gets proximity gain compensation enable.
@@ -642,7 +642,7 @@ class APDS9960(object):
         Returns:
             bool: True if compensation is enabled, False if not
         """
-        val = self._read_byte_data(APDS9960_REG_CONFIG3)
+        val = self._read_reg(APDS9960_REG_CONFIG3)
 
         # Shift and mask out PCMP bits
         val = (val >> 5) & 0b00000001
@@ -654,14 +654,14 @@ class APDS9960(object):
         Args:
             enable (bool): True to enable compensation, False to disable
         """
-        val = self._read_byte_data(APDS9960_REG_CONFIG3)
+        val = self._read_reg(APDS9960_REG_CONFIG3)
 
         # set bits in register to given value
         val &= 0b11011111
         if enable:
             val |= 0b00100000
 
-        self._write_byte_data(APDS9960_REG_CONFIG3, val)
+        self._write_reg(APDS9960_REG_CONFIG3, val)
 
     def getProxPhotoMask(self):
         """Gets the current mask for enabled/disabled proximity photodiodes.
@@ -677,7 +677,7 @@ class APDS9960(object):
         Returns:
             int: Current proximity mask for photodiodes.
         """
-        val = self._read_byte_data(APDS9960_REG_CONFIG3)
+        val = self._read_reg(APDS9960_REG_CONFIG3)
 
         # mask out photodiode enable mask bits
         return val & 0b00001111
@@ -696,14 +696,14 @@ class APDS9960(object):
         Args:
             mask (int): 4-bit mask value
         """
-        val = self._read_byte_data(APDS9960_REG_CONFIG3)
+        val = self._read_reg(APDS9960_REG_CONFIG3)
 
         # set bits in register to given value
         mask &= 0b00001111
         val &= 0b11110000
         val |= mask
 
-        self._write_byte_data(APDS9960_REG_CONFIG3, val)
+        self._write_reg(APDS9960_REG_CONFIG3, val)
 
     def getGestureEnterThresh(self):
         """Gets the entry proximity threshold for gesture sensing.
@@ -711,7 +711,7 @@ class APDS9960(object):
         Returns:
             int: current entry proximity threshold
         """
-        return self._read_byte_data(APDS9960_REG_GPENTH)
+        return self._read_reg(APDS9960_REG_GPENTH)
 
     def setGestureEnterThresh(self, threshold):
         """Sets the entry proximity threshold for gesture sensing.
@@ -719,7 +719,7 @@ class APDS9960(object):
         Args:
             threshold (int): threshold proximity value needed to start gesture mode
         """
-        self._write_byte_data(APDS9960_REG_GPENTH, threshold)
+        self._write_reg(APDS9960_REG_GPENTH, threshold)
 
     def getGestureExitThresh(self):
         """Gets the exit proximity threshold for gesture sensing.
@@ -727,7 +727,7 @@ class APDS9960(object):
         Returns:
             int: current exit proximity threshold
         """
-        return self._read_byte_data(APDS9960_REG_GEXTH)
+        return self._read_reg(APDS9960_REG_GEXTH)
 
     def setGestureExitThresh(self, threshold):
         """Sets the exit proximity threshold for gesture sensing.
@@ -735,7 +735,7 @@ class APDS9960(object):
         Args:
             threshold (int): threshold proximity value needed to end gesture mode
         """
-        self._write_byte_data(APDS9960_REG_GEXTH, threshold)
+        self._write_reg(APDS9960_REG_GEXTH, threshold)
 
     def getGestureGain(self):
         """Gets the gain of the photodiode during gesture mode.
@@ -749,7 +749,7 @@ class APDS9960(object):
         Returns:
             int: the current photodiode gain
         """
-        val = self._read_byte_data(APDS9960_REG_GCONF2)
+        val = self._read_reg(APDS9960_REG_GCONF2)
 
         # shift and mask out PDRIVE bits
         return (val >> 5) & 0b00000011
@@ -766,7 +766,7 @@ class APDS9960(object):
         Args:
             gain (int): the value for the photodiode gain
         """
-        val = self._read_byte_data(APDS9960_REG_GCONF2)
+        val = self._read_reg(APDS9960_REG_GCONF2)
 
         # set bits in register to given value
         gain &= 0b00000011
@@ -774,7 +774,7 @@ class APDS9960(object):
         val &= 0b10011111
         val |= gain
 
-        self._write_byte_data(APDS9960_REG_GCONF2, val)
+        self._write_reg(APDS9960_REG_GCONF2, val)
 
     def getGestureLEDDrive(self):
         """Gets the drive current of the LED during gesture mode.
@@ -788,7 +788,7 @@ class APDS9960(object):
         Returns:
             int: the LED drive current value
         """
-        val = self._read_byte_data(APDS9960_REG_GCONF2)
+        val = self._read_reg(APDS9960_REG_GCONF2)
 
         # shift and mask out LED drive bits
         return (val >> 3) & 0b00000011
@@ -805,7 +805,7 @@ class APDS9960(object):
         Args:
             drive (int): value for the LED drive current
         """
-        val = self._read_byte_data(APDS9960_REG_GCONF2)
+        val = self._read_reg(APDS9960_REG_GCONF2)
 
         # set bits in register to given value
         drive &= 0b00000011
@@ -813,7 +813,7 @@ class APDS9960(object):
         val &= 0b11100111
         val |= drive
 
-        self._write_byte_data(APDS9960_REG_GCONF2, val)
+        self._write_reg(APDS9960_REG_GCONF2, val)
 
     def getGestureWaitTime(self):
         """Gets the time in low power mode between gesture detections.
@@ -831,7 +831,7 @@ class APDS9960(object):
         Returns:
             int: the current wait time between gestures
         """
-        val = self._read_byte_data(APDS9960_REG_GCONF2)
+        val = self._read_reg(APDS9960_REG_GCONF2)
 
         # shift and mask out LED drive bits
         return val & 0b00000111
@@ -852,14 +852,14 @@ class APDS9960(object):
         Args:
             time (int): value for the wait time
         """
-        val = self._read_byte_data(APDS9960_REG_GCONF2)
+        val = self._read_reg(APDS9960_REG_GCONF2)
 
         # set bits in register to given value
         time &= 0b00000111
         val &= 0b11111000
         val |= time
 
-        self._write_byte_data(APDS9960_REG_GCONF2, val)
+        self._write_reg(APDS9960_REG_GCONF2, val)
 
     def getLightIntLowThreshold(self):
         """Gets the low threshold for ambient light interrupts.
@@ -867,8 +867,8 @@ class APDS9960(object):
         Returns:
             int: threshold current low threshold stored on the APDS9960
         """
-        return self._read_byte_data(APDS9960_REG_AILTL) | (
-            self._read_byte_data(APDS9960_REG_AILTH) << 8
+        return self._read_reg(APDS9960_REG_AILTL) | (
+            self._read_reg(APDS9960_REG_AILTH) << 8
         )
 
     def setLightIntLowThreshold(self, threshold):
@@ -878,8 +878,8 @@ class APDS9960(object):
             threshold (int): low threshold value for interrupt to trigger
         """
         # break 16-bit threshold into 2 8-bit values
-        self._write_byte_data(APDS9960_REG_AILTL, threshold & 0x00FF)
-        self._write_byte_data(APDS9960_REG_AILTH, (threshold & 0xFF00) >> 8)
+        self._write_reg(APDS9960_REG_AILTL, threshold & 0x00FF)
+        self._write_reg(APDS9960_REG_AILTH, (threshold & 0xFF00) >> 8)
 
     def getLightIntHighThreshold(self):
         """Gets the high threshold for ambient light interrupts.
@@ -887,8 +887,8 @@ class APDS9960(object):
         Returns:
             int: threshold current low threshold stored on the APDS9960
         """
-        return self._read_byte_data(APDS9960_REG_AIHTL) | (
-            self._read_byte_data(APDS9960_REG_AIHTH) << 8
+        return self._read_reg(APDS9960_REG_AIHTL) | (
+            self._read_reg(APDS9960_REG_AIHTH) << 8
         )
 
     def setLightIntHighThreshold(self, threshold):
@@ -898,8 +898,8 @@ class APDS9960(object):
             threshold (int): high threshold value for interrupt to trigger
         """
         # break 16-bit threshold into 2 8-bit values
-        self._write_byte_data(APDS9960_REG_AIHTL, threshold & 0x00FF)
-        self._write_byte_data(APDS9960_REG_AIHTH, (threshold & 0xFF00) >> 8)
+        self._write_reg(APDS9960_REG_AIHTL, threshold & 0x00FF)
+        self._write_reg(APDS9960_REG_AIHTH, (threshold & 0xFF00) >> 8)
 
     def getProximityIntLowThreshold(self):
         """Gets the low threshold for proximity interrupts.
@@ -907,7 +907,7 @@ class APDS9960(object):
         Returns:
             int: threshold current low threshold stored on the APDS9960
         """
-        return self._read_byte_data(APDS9960_REG_PILT)
+        return self._read_reg(APDS9960_REG_PILT)
 
     def setProximityIntLowThreshold(self, threshold):
         """Sets the low threshold for proximity interrupts.
@@ -915,7 +915,7 @@ class APDS9960(object):
         Args:
             threshold (int): low threshold value for interrupt to trigger
         """
-        self._write_byte_data(APDS9960_REG_PILT, threshold)
+        self._write_reg(APDS9960_REG_PILT, threshold)
 
     def getProximityIntHighThreshold(self):
         """Gets the high threshold for proximity interrupts.
@@ -923,7 +923,7 @@ class APDS9960(object):
         Returns:
             int: threshold current high threshold stored on the APDS9960
         """
-        return self._read_byte_data(APDS9960_REG_PIHT)
+        return self._read_reg(APDS9960_REG_PIHT)
 
     def setProximityIntHighThreshold(self, threshold):
         """Sets the high threshold for proximity interrupts.
@@ -931,7 +931,7 @@ class APDS9960(object):
         Args:
             threshold (int): high threshold value for interrupt to trigger
         """
-        self._write_byte_data(APDS9960_REG_PIHT, threshold)
+        self._write_reg(APDS9960_REG_PIHT, threshold)
 
     def getAmbientLightIntEnable(self):
         """Gets if ambient light interrupts are enabled or not.
@@ -939,7 +939,7 @@ class APDS9960(object):
         Returns:
             bool: True if interrupts are enabled, False if not
         """
-        val = self._read_byte_data(APDS9960_REG_ENABLE)
+        val = self._read_reg(APDS9960_REG_ENABLE)
         return (val >> 4) & 0b00000001 == 1
 
     def setAmbientLightIntEnable(self, enable):
@@ -948,14 +948,14 @@ class APDS9960(object):
         Args:
             enable (bool): True to enable interrupts, False to turn them off
         """
-        val = self._read_byte_data(APDS9960_REG_ENABLE)
+        val = self._read_reg(APDS9960_REG_ENABLE)
 
         # set bits in register to given value
         val &= 0b11101111
         if enable:
             val |= 0b00010000
 
-        self._write_byte_data(APDS9960_REG_ENABLE, val)
+        self._write_reg(APDS9960_REG_ENABLE, val)
 
     def getProximityIntEnable(self):
         """Gets if proximity interrupts are enabled or not.
@@ -963,7 +963,7 @@ class APDS9960(object):
         Returns:
             bool: True if interrupts are enabled, False if not
         """
-        val = self._read_byte_data(APDS9960_REG_ENABLE)
+        val = self._read_reg(APDS9960_REG_ENABLE)
         return (val >> 5) & 0b00000001 == 1
 
     def setProximityIntEnable(self, enable):
@@ -972,14 +972,14 @@ class APDS9960(object):
         Args:
             enable (bool): True to enable interrupts, False to turn them off
         """
-        val = self._read_byte_data(APDS9960_REG_ENABLE)
+        val = self._read_reg(APDS9960_REG_ENABLE)
 
         # set bits in register to given value
         val &= 0b11011111
         if enable:
             val |= 0b00100000
 
-        self._write_byte_data(APDS9960_REG_ENABLE, val)
+        self._write_reg(APDS9960_REG_ENABLE, val)
 
     def getGestureIntEnable(self):
         """Gets if gesture interrupts are enabled or not.
@@ -987,7 +987,7 @@ class APDS9960(object):
         Returns:
             bool: True if interrupts are enabled, False if not
         """
-        val = self._read_byte_data(APDS9960_REG_GCONF4)
+        val = self._read_reg(APDS9960_REG_GCONF4)
         return (val >> 1) & 0b00000001 == 1
 
     def setGestureIntEnable(self, enable):
@@ -996,22 +996,22 @@ class APDS9960(object):
         Args:
             enable (bool): True to enable interrupts, False to turn them off
         """
-        val = self._read_byte_data(APDS9960_REG_GCONF4)
+        val = self._read_reg(APDS9960_REG_GCONF4)
 
         # set bits in register to given value
         val &= 0b11111101
         if enable:
             val |= 0b00000010
 
-        self._write_byte_data(APDS9960_REG_GCONF4, val)
+        self._write_reg(APDS9960_REG_GCONF4, val)
 
     def clearAmbientLightInt(self):
         """Clears the ambient light interrupt."""
-        self._read_byte_data(APDS9960_REG_AICLEAR)
+        self._read_reg(APDS9960_REG_AICLEAR)
 
     def clearProximityInt(self):
         """Clears the proximity interrupt."""
-        self._read_byte_data(APDS9960_REG_PICLEAR)
+        self._read_reg(APDS9960_REG_PICLEAR)
 
     def getGestureMode(self):
         """Tells if the gesture state machine is currently running.
@@ -1019,7 +1019,7 @@ class APDS9960(object):
         Returns:
             bool: True if gesture state machine is running, False if not
         """
-        val = self._read_byte_data(APDS9960_REG_GCONF4)
+        val = self._read_reg(APDS9960_REG_GCONF4)
         return val & 0b00000001 == 1
 
     def setGestureMode(self, enable):
@@ -1028,26 +1028,26 @@ class APDS9960(object):
         Args:
             enable (bool): True to enter gesture state machine, False to turn them off
         """
-        val = self._read_byte_data(APDS9960_REG_GCONF4)
+        val = self._read_reg(APDS9960_REG_GCONF4)
 
         # set bits in register to given value
         val &= 0b11111110
         if enable:
             val |= 0b00000001
 
-        self._write_byte_data(APDS9960_REG_GCONF4, val)
+        self._write_reg(APDS9960_REG_GCONF4, val)
 
     # *******************************************************************************
     # Raw I2C Reads and Writes
     # *******************************************************************************
 
-    def _read_byte_data(self, cmd):
+    def _read_reg(self, cmd):
         return self.i2c.read_byte_data(self.address, cmd)
 
-    def _write_byte_data(self, cmd, val):
+    def _write_reg(self, cmd, val):
         return self.i2c.write_byte_data(self.address, cmd, val)
 
-    def _read_i2c_block_data(self, cmd, num):
+    def _read_block(self, cmd, num):
         return self.i2c.read_i2c_block_data(self.address, cmd, num)
 
 
@@ -1059,11 +1059,11 @@ class uAPDS9960(APDS9960):
                        address=APDS9960_I2C_ADDR, valid_id=APDS9960_DEV_ID)
     """
 
-    def _read_byte_data(self, cmd):
+    def _read_reg(self, cmd):
         return self.i2c.readfrom_mem(self.address, cmd, 1)[0]
 
-    def _write_byte_data(self, cmd, val):
+    def _write_reg(self, cmd, val):
         self.i2c.writeto_mem(self.address, cmd, bytes([val]))
 
-    def _read_i2c_block_data(self, cmd, num):
+    def _read_block(self, cmd, num):
         return self.i2c.readfrom_mem(self.address, cmd, num)
