@@ -42,12 +42,14 @@ def load_driver_mock(driver_name, fake_i2c, module_name=None):
 
     # Create utime module as alias for time (MicroPython compatibility)
     if "utime" not in sys.modules:
+        # Use a monotonic clock to emulate MicroPython's ticks_* semantics
+        monotonic = getattr(time, "monotonic", time.perf_counter)
         utime = types.ModuleType("utime")
         utime.sleep_ms = time.sleep_ms
         utime.sleep_us = time.sleep_us
         utime.sleep = time.sleep
-        utime.ticks_ms = lambda: int(time.time() * 1000)
-        utime.ticks_us = lambda: int(time.time() * 1000000)
+        utime.ticks_ms = lambda: int(monotonic() * 1000)
+        utime.ticks_us = lambda: int(monotonic() * 1000000)
         utime.ticks_diff = lambda a, b: a - b
         sys.modules["utime"] = utime
 
