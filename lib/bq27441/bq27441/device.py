@@ -1,8 +1,8 @@
 from bq27441.const import *
 from bq27441.exceptions import *
 
-from utime import sleep_ms, ticks_ms
-from machine import Pin, I2C
+from time import sleep_ms, ticks_ms
+from machine import Pin
 
 import struct
 
@@ -70,22 +70,19 @@ class GpoutFunctionType:
         self.value = value
 
 
-DEFAULT_I2C_BUS = I2C(1)
-
-
 class BQ27441:
     """BQ27441 class contains all major and minor functions use to read and control
     the fuel gauge ic"""
 
     def __init__(
         self,
-        bus=DEFAULT_I2C_BUS,
+        i2c,
         capacity_mAh=LIPO_BATTERY_CAPACITY,
         address=BQ27441_I2C_ADDRESS,
         gpout_pin=None,
     ):
         self.address = address
-        self.bus = bus
+        self.i2c = i2c
         self.gpout = None
         self._shutdown_en = False
         self._userConfigControl = False
@@ -597,12 +594,13 @@ class BQ27441:
 
     # I2C Read / Write Functions
     def i2cReadBytes(self, subAddress, count):
-        result = self.bus.readfrom_mem(self.address, subAddress, count)
+        result = self.i2c.readfrom_mem(self.address, subAddress, count)
         return list(result)
 
     # Write a specified number of bytes over I2C to a given subAddress
     def i2cWriteBytes(self, memAddress, buf, count):
-        self.bus.writeto_mem(self.address, memAddress, bytes(buf))
+        self.i2c.writeto_mem(self.address, memAddress, bytes(buf))
+        return True
 
 
 def constrain(x, a, b):
