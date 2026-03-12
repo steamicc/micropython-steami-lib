@@ -22,18 +22,18 @@ class FakeI2C:
                 else:
                     self._registers[reg] = bytes(value)
 
-    def readfrom_mem(self, addr, reg, nbytes):
+    def readfrom_mem(self, addr, reg, nbytes, **kwargs):
         self._check_address(addr)
         data = self._registers.get(reg, b"\x00" * nbytes)
         return data[:nbytes]
 
-    def readfrom_mem_into(self, addr, reg, buf):
+    def readfrom_mem_into(self, addr, reg, buf, **kwargs):
         self._check_address(addr)
         data = self._registers.get(reg, b"\x00" * len(buf))
         for i in range(len(buf)):
             buf[i] = data[i] if i < len(data) else 0
 
-    def writeto_mem(self, addr, reg, buf):
+    def writeto_mem(self, addr, reg, buf, **kwargs):
         self._check_address(addr)
         self._registers[reg] = bytes(buf)
         self._write_log.append((reg, bytes(buf)))

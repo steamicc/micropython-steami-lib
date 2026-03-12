@@ -28,6 +28,7 @@ def load_driver_mock(driver_name, fake_i2c, module_name=None):
     fake_machine = types.ModuleType("machine")
     fake_machine.I2C = FakeI2C
     fake_machine.Pin = FakePin
+    fake_machine.lightsleep = lambda ms=0: None
 
     sys.modules["machine"] = fake_machine
     sys.modules["micropython"] = micropython_stub
