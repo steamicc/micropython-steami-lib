@@ -39,7 +39,7 @@ class HTS221(object):
         self.H0_rH = self._read_reg(HTS221_H0_rH_x2) / 2
         self.H1_rH = self._read_reg(HTS221_H1_rH_x2) / 2
 
-    def _write_reg(self, dat, reg):
+    def _write_reg(self, reg, dat):
         self.writebuffer[0] = dat
         self.i2c.writeto_mem(self.address, reg, self.writebuffer)
 
@@ -63,11 +63,11 @@ class HTS221(object):
     # power control
     def poweroff(self):
         t = self._read_reg(HTS221_CTRL_REG1) & 0x7F
-        self._write_reg(t, HTS221_CTRL_REG1)
+        self._write_reg(HTS221_CTRL_REG1, t)
 
     def poweron(self):
         t = self._read_reg(HTS221_CTRL_REG1) | 0x80
-        self._write_reg(t, HTS221_CTRL_REG1)
+        self._write_reg(HTS221_CTRL_REG1, t)
 
     # get/set Output data rate
     def getODR(self):
@@ -75,14 +75,14 @@ class HTS221(object):
 
     def setODR(self, odr=0):
         t = self._read_reg(HTS221_CTRL_REG1) & 0xFC
-        self._write_reg(t | odr, HTS221_CTRL_REG1)
+        self._write_reg(HTS221_CTRL_REG1, t | odr)
 
     # get/set Humidity and temperature average configuration
     def getAv(self):
         return self._read_reg(HTS221_AV_CONF)
 
     def setAv(self, av=0):
-        self._write_reg(av, HTS221_AV_CONF)
+        self._write_reg(HTS221_AV_CONF, av)
 
     # calculate Temperature
     def temperature(self):
