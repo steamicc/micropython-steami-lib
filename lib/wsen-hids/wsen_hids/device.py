@@ -261,7 +261,25 @@ class WSEN_HIDS:
     # Public measurement API
     # -------------------------------------------------------------------------
 
+    def _is_power_down(self):
+        ctrl1 = self._read_reg(REG_CTRL_1)
+        return (ctrl1 & CTRL_1_PD) == 0
+    
+    def _ensure_data(self, timeout_ms=DEFAULT_ONE_SHOT_TIMEOUT_MS):
+        if not self._is_power_down():
+            return
+
+        self.trigger_one_shot()
+
+        start = ticks_ms()
+        while not self.data_ready():
+            if ticks_diff(ticks_ms(), start) >= timeout_ms:
+                raise WSENHIDSTimeoutError("One-shot measurement timeout")
+            sleep_ms(1)
+
     def read(self):
+        self._ensure_data()
+
         h_raw, t_raw = self._read_raw_humidity_temperature()
         humidity = self._convert_humidity(h_raw)
         temperature = self._convert_temperature(t_raw)
