@@ -169,6 +169,48 @@ class ISM330DL:
 
         return TEMP_OFFSET + raw / TEMP_SENSITIVITY
 
+    def orientation(self):
+        ax, ay, az = self.acceleration_g()
+        threshold = 0.75  # ~1 g when aligned with gravity
+
+        if az > threshold:
+            return "SCREEN_DOWN"
+        if az < -threshold:
+            return "SCREEN_UP"
+        if ax > threshold:
+            return "TOP_EDGE_DOWN"
+        if ax < -threshold:
+            return "BOTTOM_EDGE_DOWN"
+        if ay > threshold:
+            return "RIGHT_EDGE_DOWN"
+        if ay < -threshold:
+            return "LEFT_EDGE_DOWN"
+        return "MOVING"
+
+    def motion(self):
+        gx, gy, gz = self.gyroscope_dps()
+        threshold = 10  # minimum rotation speed in dps to be considered as motion
+
+        if abs(gz) > abs(gx) and abs(gz) > abs(gy): # Z rotation (board turning left/right)
+            if gz > threshold:
+                return "TURNING RIGHT", gz
+            if gz < -threshold:
+                return "TURNING LEFT", abs(gz)
+
+        if abs(gx) > abs(gy): # X rotation (console tilting left/right)
+            if gx > threshold:
+                return "TILTING LEFT", gx
+            if gx < -threshold:
+                return "TILTING RIGHT", abs(gx)
+
+        else: # Y rotation (console tilting up/down)
+            if gy > threshold:
+                return "TILTING DOWN", gy
+            if gy < -threshold:
+                return "TILTING UP", abs(gy)
+
+        return "STABLE", 0 # No significant motion detected
+
     # --------------------------------------------------
     # Status
     # --------------------------------------------------
