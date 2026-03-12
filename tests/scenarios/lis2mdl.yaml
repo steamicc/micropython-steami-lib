@@ -82,6 +82,22 @@ tests:
     expect_range: [-10.0, 60.0]
     mode: [hardware]
 
+  - name: "Soft reset then WHO_AM_I"
+    action: hardware_script
+    script: |
+      dev.soft_reset()
+      result = dev.read_who_am_i()
+    expect: 0x40
+    mode: [hardware]
+
+  - name: "Reboot then WHO_AM_I"
+    action: hardware_script
+    script: |
+      dev.reboot()
+      result = dev.read_who_am_i()
+    expect: 0x40
+    mode: [hardware]
+
   - name: "Magnetic field values feel correct"
     action: manual
     display:
