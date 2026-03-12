@@ -6,6 +6,14 @@ i2c_address: 0x39
 i2c:
   id: 1
 
+# Custom hardware init (enable light and proximity sensors before reading)
+hardware_init: |
+  from time import sleep
+  dev = uAPDS9960(i2c)
+  dev.enableLightSensor(False)
+  dev.enableProximitySensor(False)
+  sleep(0.3)
+
 # Register values for mock tests
 mock_registers:
   # ID register (0x92): expected 0xAB
@@ -74,7 +82,7 @@ tests:
   - name: "Ambient light in plausible range"
     action: call
     method: readAmbientLight
-    expect_range: [0, 65535]
+    expect_range: [1, 65535]
     mode: [hardware]
 
   - name: "Proximity in plausible range"
