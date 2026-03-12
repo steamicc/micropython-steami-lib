@@ -4,7 +4,7 @@ from apds9960.exceptions import *
 from time import sleep
 
 
-class APDS9960:
+class APDS9960(object):
     class GestureData:
         def __init__(self):
             self.u_data = [0] * 32

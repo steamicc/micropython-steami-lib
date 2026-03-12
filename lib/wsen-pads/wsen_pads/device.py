@@ -4,7 +4,7 @@ from wsen_pads.const import *
 from wsen_pads.exceptions import *
 
 
-class WSEN_PADS:
+class WSEN_PADS(object):
     """
     MicroPython driver for the Würth Elektronik WSEN-PADS pressure sensor.
 

@@ -9,7 +9,7 @@ from .exceptions import (
 )
 
 
-class WSEN_HIDS:
+class WSEN_HIDS(object):
     """
     MicroPython driver for the WSEN-HIDS 2525020210001.
 

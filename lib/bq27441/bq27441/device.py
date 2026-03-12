@@ -9,7 +9,7 @@ import struct
 
 # Parameters for the current() function, to specify which current to read
 # current_measure types
-class CurrentMeasureType:
+class CurrentMeasureType(object):
     AVG = 0  # Average Current (DEFAULT)
     STBY = 1  # Standby Current
     MAX = 2  # Max Current
@@ -19,7 +19,7 @@ class CurrentMeasureType:
 
 
 # Parameters for the capacity() function, to specify which capacity to read
-class CapacityMeasureType:
+class CapacityMeasureType(object):
     REMAIN = 0  # Remaining Capacity (DEFAULT)
     FULL = 1  # Full Capacity
     AVAIL = 2  # Available Capacity
@@ -35,7 +35,7 @@ class CapacityMeasureType:
 
 
 # Parameters for the soc() function
-class SocMeasureType:
+class SocMeasureType(object):
     FILTERED = 0  # State of Charge Filtered (DEFAULT)
     UNFILTERED = 1  # State of Charge Unfiltered
 
@@ -44,7 +44,7 @@ class SocMeasureType:
 
 
 # Parameters for the soh() function
-class SohMeasureType:
+class SohMeasureType(object):
     PERCENT = 0  # State of Health Percentage (DEFAULT)
     SOH_STAT = 1  # State of Health Status Bits
 
@@ -53,7 +53,7 @@ class SohMeasureType:
 
 
 # Parameters for the temperature() function
-class TempMeasureType:
+class TempMeasureType(object):
     BATTERY = 0  # Battery Temperature (DEFAULT)
     INTERNAL_TEMP = 1  # Internal IC Temperature
 
@@ -62,7 +62,7 @@ class TempMeasureType:
 
 
 # Parameters for the setGPOUTFunction() funciton
-class GpoutFunctionType:
+class GpoutFunctionType(object):
     SOC_INT = 0  # Set GPOUT to SOC_INT functionality
     BAT_LOW = 1  # Set GPOUT to BAT_LOW functionality
 
@@ -70,7 +70,7 @@ class GpoutFunctionType:
         self.value = value
 
 
-class BQ27441:
+class BQ27441(object):
     """BQ27441 class contains all major and minor functions use to read and control
     the fuel gauge ic"""
 
