@@ -1,5 +1,5 @@
 metadata(
-    description="Driver of WSEN-HIDS humidity and temperature sensor.",
+    description="Driver for the WSEN-HIDS humidity and temperature sensor.",
     version="0.0.1",
 )
 
