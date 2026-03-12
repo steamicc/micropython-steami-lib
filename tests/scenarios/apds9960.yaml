@@ -40,12 +40,18 @@ mock_registers:
   0x9C: 0x50
 
 tests:
-  - name: "Verify device ID register"
+  - name: "Verify device ID register (mock)"
     action: call
     method: _read_byte_data
     args: [0x92]
     expect: 0xAB
-    mode: [mock, hardware]
+    mode: [mock]
+
+  - name: "Verify device ID register (hardware)"
+    action: read_register
+    register: 0x92
+    expect: 0xAB
+    mode: [hardware]
 
   - name: "Read ambient light returns expected value"
     action: call
