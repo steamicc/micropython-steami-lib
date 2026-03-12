@@ -5,6 +5,30 @@ import sys
 from pathlib import Path
 
 
+def prompt_yes_no(prompt):
+    """Prompt user and wait for a single key: Enter=yes, Escape=no.
+
+    Returns True for yes, False for no.
+    """
+    print(f"  [MANUAL] {prompt} [Entree=oui / Echap=non] ", end="", flush=True)
+    try:
+        import tty
+        import termios
+        fd = sys.stdin.fileno()
+        old = termios.tcgetattr(fd)
+        try:
+            tty.setraw(fd)
+            ch = sys.stdin.read(1)
+        finally:
+            termios.tcsetattr(fd, termios.TCSADRAIN, old)
+        print()  # newline after keypress
+        return ch in ("\r", "\n")
+    except (ImportError, OSError):
+        # Fallback for non-Unix or piped stdin
+        response = input("")
+        return response.strip().lower() in ("", "y", "yes")
+
+
 def load_driver_mock(driver_name, fake_i2c, module_name=None):
     """Load a driver using FakeI2C on CPython.
 
@@ -86,6 +110,7 @@ def cleanup_driver(driver_name, module_name=None):
             del sys.modules[mod_name]
     sys.modules.pop("machine", None)
     sys.modules.pop("micropython", None)
+    sys.modules.pop("framebuf", None)
 
 
 def run_action(action, driver_instance):
@@ -109,8 +134,7 @@ def run_action(action, driver_instance):
 
     if action_type == "manual":
         prompt = action.get("prompt", "Manual check required")
-        from tests.test_scenarios import _prompt_yes_no
-        return _prompt_yes_no(prompt)
+        return prompt_yes_no(prompt)
 
     if action_type == "interactive":
         # Prompt first, then call method (used for hold-button-and-read tests)

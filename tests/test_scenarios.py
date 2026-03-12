@@ -11,35 +11,11 @@ from tests.runner.executor import (
     check_result,
     cleanup_driver,
     load_driver_mock,
+    prompt_yes_no,
     run_action,
 )
 
 SCENARIOS_DIR = Path(__file__).parent / "scenarios"
-
-
-def _prompt_yes_no(prompt):
-    """Prompt user and wait for a single key: Enter=yes, Escape=no.
-
-    Returns True for yes, False for no.
-    """
-    import sys
-    print(f"  [MANUAL] {prompt} [Entree=oui / Echap=non] ", end="", flush=True)
-    try:
-        import tty
-        import termios
-        fd = sys.stdin.fileno()
-        old = termios.tcgetattr(fd)
-        try:
-            tty.setraw(fd)
-            ch = sys.stdin.read(1)
-        finally:
-            termios.tcsetattr(fd, termios.TCSADRAIN, old)
-        print()  # newline after keypress
-        return ch in ("\r", "\n")
-    except (ImportError, OSError):
-        # Fallback for non-Unix or piped stdin
-        response = input("")
-        return response.strip().lower() != "n"
 
 
 def _print_result(result, test):
@@ -133,7 +109,7 @@ def test_scenario(scenario, test, mode, port):
                 else:
                     print(f"  {label}: {value} {unit}")
             prompt = test.get("prompt", "Manual check")
-            result = _prompt_yes_no(prompt)
+            result = prompt_yes_no(prompt)
         elif action == "call":
             result = bridge.call_method(
                 scenario["driver"],
