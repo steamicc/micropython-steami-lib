@@ -210,10 +210,23 @@ class WSEN_PADS:
     # Raw data reading
     # ---------------------------------------------------------------------
 
+    def _is_power_down(self):
+        """Return True if the sensor is in power-down mode (ODR = 000)."""
+        return (self._read_u8(REG_CTRL_1) & CTRL1_ODR_MASK) == 0
+
+    def _ensure_data(self):
+        """Trigger a one-shot conversion if the sensor is in power-down mode."""
+        if self._is_power_down():
+            self.trigger_one_shot()
+
     def pressure_raw(self):
         """
         Read and return raw pressure as a signed 24-bit integer.
+
+        If the sensor is in power-down mode, a one-shot conversion is
+        triggered automatically before reading.
         """
+        self._ensure_data()
         data = self._read(REG_DATA_P_XL, 3)
         raw = (data[2] << 16) | (data[1] << 8) | data[0]
         return self._to_signed24(raw)
@@ -221,7 +234,11 @@ class WSEN_PADS:
     def temperature_raw(self):
         """
         Read and return raw temperature as a signed 16-bit integer.
+
+        If the sensor is in power-down mode, a one-shot conversion is
+        triggered automatically before reading.
         """
+        self._ensure_data()
         data = self._read(REG_DATA_T_L, 2)
         raw = (data[1] << 8) | data[0]
         return self._to_signed16(raw)
@@ -258,11 +275,17 @@ class WSEN_PADS:
         """
         Read and return both pressure and temperature.
 
+        A one-shot conversion is triggered to ensure fresh data.
+
         Returns:
             tuple: (pressure_hpa, temperature_c)
         """
         self.trigger_one_shot()
-        return self.pressure(), self.temperature()
+        p_data = self._read(REG_DATA_P_XL, 3)
+        p_raw = self._to_signed24((p_data[2] << 16) | (p_data[1] << 8) | p_data[0])
+        t_data = self._read(REG_DATA_T_L, 2)
+        t_raw = self._to_signed16((t_data[1] << 8) | t_data[0])
+        return p_raw * PRESSURE_HPA_PER_DIGIT, t_raw * TEMPERATURE_C_PER_DIGIT
 
     # ---------------------------------------------------------------------
     # One-shot mode
