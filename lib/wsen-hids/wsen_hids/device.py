@@ -264,7 +264,7 @@ class WSEN_HIDS:
     def _is_power_down(self):
         ctrl1 = self._read_reg(REG_CTRL_1)
         return (ctrl1 & CTRL_1_PD) == 0
-    
+
     def _ensure_data(self, timeout_ms=DEFAULT_ONE_SHOT_TIMEOUT_MS):
         if not self._is_power_down():
             return
