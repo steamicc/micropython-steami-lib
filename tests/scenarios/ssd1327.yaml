@@ -1,0 +1,116 @@
+driver: ssd1327
+driver_class: WS_OLED_128X128_I2C
+i2c_address: 0x3C
+
+# I2C config for hardware tests (STeaMi board - STM32WB55)
+# The display uses SPI on hardware, but i2c config is required by the bridge.
+i2c:
+  id: 1
+
+# Custom hardware init (STeaMi display is on SPI, not I2C)
+hardware_init: |
+  from ssd1327.device import WS_OLED_128X128_SPI
+  from machine import SPI, Pin
+  spi = SPI(1)
+  dc = Pin("DATA_COMMAND_DISPLAY")
+  res = Pin("RST_DISPLAY")
+  cs = Pin("CS_DISPLAY")
+  dev = WS_OLED_128X128_SPI(spi, dc, res, cs)
+
+tests:
+  - name: "Fill black does not crash"
+    action: call
+    method: fill
+    args: [0]
+    mode: [mock]
+
+  - name: "Fill white does not crash"
+    action: call
+    method: fill
+    args: [15]
+    mode: [mock]
+
+  - name: "Text rendering does not crash"
+    action: call
+    method: text
+    args: ["Test", 0, 0, 15]
+    mode: [mock]
+
+  - name: "Show does not crash"
+    action: call
+    method: show
+    mode: [mock]
+
+  - name: "Display white screen"
+    action: hardware_script
+    script: |
+      dev.fill(15)
+      dev.show()
+      result = True
+    expect_true: true
+    mode: [hardware]
+
+  - name: "Screen is white"
+    action: manual
+    prompt: "L'écran affiche-t-il un fond blanc uniforme ?"
+    expect_true: true
+    mode: [hardware]
+
+  - name: "Display text"
+    action: hardware_script
+    script: |
+      dev.fill(0)
+      dev.text("STeaMi", 35, 56, 15)
+      dev.text("Test OK", 32, 68, 15)
+      dev.show()
+      result = True
+    expect_true: true
+    mode: [hardware]
+
+  - name: "Text is visible"
+    action: manual
+    prompt: "L'écran affiche-t-il 'STeaMi' et 'Test OK' sur fond noir ?"
+    expect_true: true
+    mode: [hardware]
+
+  - name: "Display grayscale gradient"
+    action: hardware_script
+    script: |
+      dev.fill(0)
+      w = 128 // 16
+      for level in range(16):
+        x = level * w
+        for row in range(128):
+          for col in range(x, x + w):
+            dev.pixel(col, row, level)
+      dev.show()
+      result = True
+    expect_true: true
+    mode: [hardware]
+
+  - name: "Grayscale gradient is visible"
+    action: manual
+    prompt: "L'écran affiche-t-il 16 bandes verticales du noir au blanc ?"
+    expect_true: true
+    mode: [hardware]
+
+  - name: "Scrolling animation"
+    action: hardware_script
+    script: |
+      from time import sleep_ms
+      dev.fill(0)
+      dev.text("STeaMi", 35, 60, 15)
+      dev.show()
+      for i in range(128):
+        dev.scroll(1, 0)
+        dev.show()
+        sleep_ms(20)
+      result = True
+    expect_true: true
+    mode: [hardware]
+
+  - name: "Animation was smooth"
+    action: manual
+    prompt: "Le texte 'STeaMi' a-t-il defile horizontalement de maniere fluide ?"
+    expect_true: true
+    mode: [hardware]

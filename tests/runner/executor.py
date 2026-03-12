@@ -21,6 +21,7 @@ def load_driver_mock(driver_name, fake_i2c, module_name=None):
         module_name = driver_name
     from tests.fake_machine import FakeI2C, FakePin
     from tests.fake_machine import micropython_stub
+    from tests.fake_machine import framebuf_stub
 
     # Patch modules before importing driver
     import types
@@ -32,6 +33,7 @@ def load_driver_mock(driver_name, fake_i2c, module_name=None):
 
     sys.modules["machine"] = fake_machine
     sys.modules["micropython"] = micropython_stub
+    sys.modules["framebuf"] = framebuf_stub
 
     # Patch time module to add MicroPython-specific functions
     import time
@@ -107,8 +109,8 @@ def run_action(action, driver_instance):
 
     if action_type == "manual":
         prompt = action.get("prompt", "Manual check required")
-        response = input(f"\n  [MANUAL] {prompt} [y/n] ")
-        return response.strip().lower() == "y"
+        from tests.test_scenarios import _prompt_yes_no
+        return _prompt_yes_no(prompt)
 
     if action_type == "interactive":
         # Prompt first, then call method (used for hold-button-and-read tests)

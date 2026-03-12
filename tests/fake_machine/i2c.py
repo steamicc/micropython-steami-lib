@@ -40,6 +40,15 @@ class FakeI2C:
         self._registers[reg] = bytes(buf)
         self._write_log.append((reg, bytes(buf)))
 
+    def writeto(self, addr, buf, stop=True):
+        self._check_address(addr)
+        self._write_log.append((None, bytes(buf)))
+
+    def writevto(self, addr, bufs, stop=True):
+        self._check_address(addr)
+        data = b"".join(bytes(b) for b in bufs)
+        self._write_log.append((None, data))
+
     def scan(self):
         if self._address is not None:
             return [self._address]
