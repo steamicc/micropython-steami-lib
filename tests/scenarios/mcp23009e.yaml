@@ -179,7 +179,7 @@ tests:
       from machine import Pin
       from time import sleep_ms, ticks_ms, ticks_diff
       led = Pin("LED_GREEN", Pin.OUT)
-      dev._send_enable_interrupt(7)
+      dev.interrupt_on_change(7, lambda l: None)
       dev.get_gpio()
       led.on()
       start = ticks_ms()
@@ -203,7 +203,7 @@ tests:
       from machine import Pin
       from time import sleep_ms, ticks_ms, ticks_diff
       led = Pin("LED_GREEN", Pin.OUT)
-      dev._send_enable_interrupt(5)
+      dev.interrupt_on_change(5, lambda l: None)
       dev.get_gpio()
       led.on()
       start = ticks_ms()
@@ -227,7 +227,7 @@ tests:
       from machine import Pin
       from time import sleep_ms, ticks_ms, ticks_diff
       led = Pin("LED_GREEN", Pin.OUT)
-      dev._send_enable_interrupt(6)
+      dev.interrupt_on_change(6, lambda l: None)
       dev.get_gpio()
       led.on()
       start = ticks_ms()
@@ -251,7 +251,7 @@ tests:
       from machine import Pin
       from time import sleep_ms, ticks_ms, ticks_diff
       led = Pin("LED_GREEN", Pin.OUT)
-      dev._send_enable_interrupt(4)
+      dev.interrupt_on_change(4, lambda l: None)
       dev.get_gpio()
       led.on()
       start = ticks_ms()
