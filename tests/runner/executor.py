@@ -35,22 +35,29 @@ def load_driver_mock(driver_name, fake_i2c, module_name=None):
     # Patch time module to add MicroPython-specific functions
     import time
 
+    # Use a monotonic clock to emulate MicroPython's ticks_* semantics
+    monotonic = getattr(time, "monotonic", time.perf_counter)
+
     if not hasattr(time, "sleep_ms"):
         time.sleep_ms = lambda ms: time.sleep(ms / 1000)
     if not hasattr(time, "sleep_us"):
         time.sleep_us = lambda us: time.sleep(us / 1000000)
+    if not hasattr(time, "ticks_ms"):
+        time.ticks_ms = lambda: int(monotonic() * 1000)
+    if not hasattr(time, "ticks_us"):
+        time.ticks_us = lambda: int(monotonic() * 1000000)
+    if not hasattr(time, "ticks_diff"):
+        time.ticks_diff = lambda a, b: a - b
 
     # Create utime module as alias for time (MicroPython compatibility)
     if "utime" not in sys.modules:
-        # Use a monotonic clock to emulate MicroPython's ticks_* semantics
-        monotonic = getattr(time, "monotonic", time.perf_counter)
         utime = types.ModuleType("utime")
         utime.sleep_ms = time.sleep_ms
         utime.sleep_us = time.sleep_us
         utime.sleep = time.sleep
-        utime.ticks_ms = lambda: int(monotonic() * 1000)
-        utime.ticks_us = lambda: int(monotonic() * 1000000)
-        utime.ticks_diff = lambda a, b: a - b
+        utime.ticks_ms = time.ticks_ms
+        utime.ticks_us = time.ticks_us
+        utime.ticks_diff = time.ticks_diff
         sys.modules["utime"] = utime
 
     # Add driver lib path to sys.path
