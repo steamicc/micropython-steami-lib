@@ -45,6 +45,7 @@ def iter_scenario_tests():
 def make_mock_instance(scenario):
     """Create a driver instance using FakeI2C from scenario data."""
     driver_name = scenario["driver"]
+    module_name = scenario.get("module_name", driver_name)
     driver_class = scenario["driver_class"]
     address = scenario.get("i2c_address", 0x00)
     mock_registers = scenario.get("mock_registers", {})
@@ -56,7 +57,7 @@ def make_mock_instance(scenario):
         registers[key] = v
 
     fake_i2c = FakeI2C(registers=registers, address=address)
-    driver_module, _ = load_driver_mock(driver_name, fake_i2c)
+    driver_module, _ = load_driver_mock(driver_name, fake_i2c, module_name=module_name)
 
     cls = getattr(driver_module, driver_class)
     instance = cls(fake_i2c, address=address)
@@ -90,6 +91,7 @@ def test_scenario(scenario, test, mode, port):
                     scenario["i2c"],
                     display["method"],
                     display.get("args"),
+                    module_name=scenario.get("module_name"),
                 )
                 label = display.get("label", display["method"])
                 unit = display.get("unit", "")
@@ -107,6 +109,7 @@ def test_scenario(scenario, test, mode, port):
                 scenario["i2c"],
                 test["method"],
                 test.get("args"),
+                module_name=scenario.get("module_name"),
             )
         elif action == "read_register":
             result = bridge.read_register(

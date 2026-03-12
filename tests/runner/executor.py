@@ -5,12 +5,20 @@ import sys
 from pathlib import Path
 
 
-def load_driver_mock(driver_name, fake_i2c):
+def load_driver_mock(driver_name, fake_i2c, module_name=None):
     """Load a driver using FakeI2C on CPython.
 
     Patches machine and micropython modules, imports the driver,
     and returns an instance configured with the fake I2C bus.
+
+    Args:
+        driver_name: directory name under lib/ (e.g. 'wsen-pads')
+        fake_i2c: FakeI2C instance with pre-loaded registers
+        module_name: Python module name if different from driver_name
+                     (e.g. 'wsen_pads' when dir is 'wsen-pads')
     """
+    if module_name is None:
+        module_name = driver_name
     from tests.fake_machine import FakeI2C, FakePin
     from tests.fake_machine import micropython_stub
 
@@ -32,6 +40,17 @@ def load_driver_mock(driver_name, fake_i2c):
     if not hasattr(time, "sleep_us"):
         time.sleep_us = lambda us: time.sleep(us / 1000000)
 
+    # Create utime module as alias for time (MicroPython compatibility)
+    if "utime" not in sys.modules:
+        utime = types.ModuleType("utime")
+        utime.sleep_ms = time.sleep_ms
+        utime.sleep_us = time.sleep_us
+        utime.sleep = time.sleep
+        utime.ticks_ms = lambda: int(time.time() * 1000)
+        utime.ticks_us = lambda: int(time.time() * 1000000)
+        utime.ticks_diff = lambda a, b: a - b
+        sys.modules["utime"] = utime
+
     # Add driver lib path to sys.path
     root = Path(__file__).parent.parent.parent
     driver_lib = root / "lib" / driver_name
@@ -40,17 +59,18 @@ def load_driver_mock(driver_name, fake_i2c):
 
     # Force reimport of the driver module
     for mod_name in list(sys.modules):
-        if mod_name.startswith(driver_name):
+        if mod_name.startswith(module_name):
             del sys.modules[mod_name]
 
-    driver_module = importlib.import_module(f"{driver_name}.device")
+    driver_module = importlib.import_module(f"{module_name}.device")
     return driver_module, fake_i2c
 
 
-def cleanup_driver(driver_name):
+def cleanup_driver(driver_name, module_name=None):
     """Remove patched modules after test."""
+    mod_prefix = module_name or driver_name
     for mod_name in list(sys.modules):
-        if mod_name.startswith(driver_name):
+        if mod_name.startswith(mod_prefix):
             del sys.modules[mod_name]
     sys.modules.pop("machine", None)
     sys.modules.pop("micropython", None)

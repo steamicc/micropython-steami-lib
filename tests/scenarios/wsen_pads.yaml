@@ -1,0 +1,84 @@
+driver: wsen-pads
+module_name: wsen_pads
+driver_class: WSEN_PADS
+i2c_address: 0x5D
+
+# I2C config for hardware tests (STeaMi board - STM32WB55)
+i2c:
+  id: 1
+
+# Register values for mock tests
+# These simulate a real WSEN-PADS sensor
+mock_registers:
+  # DEVICE_ID (expected 0xB3)
+  0x0F: 0xB3
+  # INT_SOURCE (BOOT_ON=0, no interrupts)
+  0x24: 0x00
+  # CTRL_1 (power down, BDU enabled)
+  0x10: 0x02
+  # CTRL_2 (auto-increment enabled)
+  0x11: 0x10
+  # STATUS (pressure and temperature data available)
+  0x27: 0x03
+  # INT_CFG (default)
+  0x0B: 0x00
+  # DATA_P_XL..DATA_P_H (simulated ~1013.25 hPa: 1013.25 * 4096 = 4150272 = 0x3F5400)
+  0x28: [0x00, 0x54, 0x3F]
+  # DATA_T_L..DATA_T_H (simulated ~25.00°C: 25.00 / 0.01 = 2500 = 0x09C4)
+  0x2B: [0xC4, 0x09]
+
+tests:
+  - name: "Verify device ID register"
+    action: read_register
+    register: 0x0F
+    expect: 0xB3
+    mode: [mock, hardware]
+
+  - name: "Read device ID via method"
+    action: call
+    method: device_id
+    expect: 0xB3
+    mode: [mock, hardware]
+
+  - name: "Read status register"
+    action: call
+    method: status
+    expect_not_none: true
+    mode: [mock, hardware]
+
+  - name: "Read pressure returns float"
+    action: call
+    method: pressure
+    expect_not_none: true
+    mode: [mock]
+
+  - name: "Read temperature returns float"
+    action: call
+    method: temperature
+    expect_not_none: true
+    mode: [mock]
+
+  - name: "Pressure in plausible range"
+    action: call
+    method: pressure
+    expect_range: [900.0, 1100.0]
+    mode: [hardware]
+
+  - name: "Temperature in plausible range"
+    action: call
+    method: temperature
+    expect_range: [-10.0, 60.0]
+    mode: [hardware]
+
+  - name: "Pressure and temperature feel correct"
+    action: manual
+    display:
+      - method: pressure
+        label: "Pressure"
+        unit: "hPa"
+      - method: temperature
+        label: "Temperature"
+        unit: "°C"
+    prompt: "Ces valeurs sont-elles cohérentes (pression ~1013 hPa, température ambiante) ?"
+    expect_true: true
+    mode: [hardware]
