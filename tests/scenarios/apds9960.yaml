@@ -1,0 +1,91 @@
+driver: apds9960
+driver_class: uAPDS9960
+i2c_address: 0x39
+
+# I2C config for hardware tests (STeaMi board - STM32WB55)
+i2c:
+  id: 1
+
+# Register values for mock tests
+mock_registers:
+  # ID register (0x92): expected 0xAB
+  0x92: 0xAB
+  # ENABLE (0x80): power off at start
+  0x80: 0x00
+  # CONTROL (0x8F): used by read-modify-write in init
+  0x8F: 0x00
+  # CONFIG2 (0x90): default
+  0x90: 0x01
+  # CONFIG3 (0x9F): default
+  0x9F: 0x00
+  # GCONF2 (0xA3): used by gesture config
+  0xA3: 0x00
+  # GCONF4 (0xAB): used by gesture config
+  0xAB: 0x00
+  # STATUS (0x93): AVALID + PVALID
+  0x93: 0x03
+  # Ambient light: clear channel = 256 (0x0100)
+  0x94: 0x00  # CDATAL
+  0x95: 0x01  # CDATAH
+  # Red = 128
+  0x96: 0x80  # RDATAL
+  0x97: 0x00  # RDATAH
+  # Green = 64
+  0x98: 0x40  # GDATAL
+  0x99: 0x00  # GDATAH
+  # Blue = 32
+  0x9A: 0x20  # BDATAL
+  0x9B: 0x00  # BDATAH
+  # Proximity = 80
+  0x9C: 0x50
+
+tests:
+  - name: "Verify device ID register"
+    action: call
+    method: _read_byte_data
+    args: [0x92]
+    expect: 0xAB
+    mode: [mock, hardware]
+
+  - name: "Read ambient light returns expected value"
+    action: call
+    method: readAmbientLight
+    expect: 256
+    mode: [mock]
+
+  - name: "Read proximity returns expected value"
+    action: call
+    method: readProximity
+    expect: 80
+    mode: [mock]
+
+  - name: "Read red light returns expected value"
+    action: call
+    method: readRedLight
+    expect: 128
+    mode: [mock]
+
+  - name: "Ambient light in plausible range"
+    action: call
+    method: readAmbientLight
+    expect_range: [0, 65535]
+    mode: [hardware]
+
+  - name: "Proximity in plausible range"
+    action: call
+    method: readProximity
+    expect_range: [0, 255]
+    mode: [hardware]
+
+  - name: "Light and proximity values feel correct"
+    action: manual
+    display:
+      - method: readAmbientLight
+        label: "Ambient light"
+        unit: ""
+      - method: readProximity
+        label: "Proximity"
+        unit: ""
+    prompt: "Les valeurs de lumière ambiante et de proximité sont-elles cohérentes ?"
+    expect_true: true
+    mode: [hardware]
