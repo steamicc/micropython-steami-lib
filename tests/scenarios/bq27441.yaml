@@ -1,0 +1,153 @@
+driver: bq27441
+driver_class: BQ27441
+i2c_address: 0x55
+
+# I2C config for hardware tests (STeaMi board - STM32WB55)
+i2c:
+  id: 1
+
+# Register values for mock tests
+# BQ27441 uses 2-byte little-endian registers read via struct.unpack("<h")
+# The constructor calls power_up() -> set_capacity() -> writeExtendedData()
+# which enters config mode (needs CFGUPMODE flag in FLAGS register).
+mock_registers:
+  # CONTROL (0x00): status word (unsealed, INITCOMP set)
+  0x00: [0x80, 0x00]
+  # FLAGS (0x06): CFGUPMODE | BAT_DET | DSG — needed for enterConfig/exitConfig
+  0x06: [0x19, 0x00]
+  # VOLTAGE (0x04): 3700 mV
+  0x04: [0x74, 0x0E]
+  # REM_CAPACITY (0x0C): 600 mAh
+  0x0C: [0x58, 0x02]
+  # FULL_CAPACITY (0x0E): 650 mAh
+  0x0E: [0x8A, 0x02]
+  # AVG_CURRENT (0x10): 50 mA
+  0x10: [0x32, 0x00]
+  # AVG_POWER (0x18): 185 mW
+  0x18: [0xB9, 0x00]
+  # SOC (0x1C): 92%
+  0x1C: [0x5C, 0x00]
+  # SOH (0x20): 99% (low byte = percent, high byte = status)
+  0x20: [0x63, 0x00]
+
+tests:
+  - name: "Read voltage"
+    action: call
+    method: voltage
+    expect: 3700
+    mode: [mock]
+
+  - name: "Read state of charge"
+    action: call
+    method: state_of_charge
+    expect: 92
+    mode: [mock]
+
+  - name: "Read remaining capacity"
+    action: call
+    method: capacity_remaining
+    expect: 600
+    mode: [mock]
+
+  - name: "Read full capacity"
+    action: call
+    method: capacity_full
+    expect: 650
+    mode: [mock]
+
+  - name: "Read average current"
+    action: call
+    method: current_average
+    expect: 50
+    mode: [mock]
+
+  - name: "Read average power"
+    action: call
+    method: power
+    expect: 185
+    mode: [mock]
+
+  - name: "Read state of health"
+    action: call
+    method: state_of_health
+    expect: 99
+    mode: [mock]
+
+  - name: "Battery connected check"
+    action: manual
+    prompt: "Une batterie est-elle connectée à la carte ?"
+    expect_true: true
+    mode: [hardware]
+
+  - name: "Device type is BQ27441"
+    action: call
+    method: is_valid_device
+    expect: true
+    mode: [hardware]
+
+  - name: "Voltage in plausible range"
+    action: call
+    method: voltage
+    expect_range: [3000, 4300]
+    mode: [hardware]
+
+  - name: "State of charge in valid range"
+    action: call
+    method: state_of_charge
+    expect_range: [0, 100]
+    mode: [hardware]
+
+  - name: "Remaining capacity positive"
+    action: call
+    method: capacity_remaining
+    expect_range: [0, 1000]
+    mode: [hardware]
+
+  - name: "Full capacity positive"
+    action: call
+    method: capacity_full
+    expect_range: [100, 1000]
+    mode: [hardware]
+
+  - name: "Average current readable"
+    action: call
+    method: current_average
+    expect_not_none: true
+    mode: [hardware]
+
+  - name: "Average power readable"
+    action: call
+    method: power
+    expect_not_none: true
+    mode: [hardware]
+
+  - name: "State of health in valid range"
+    action: call
+    method: state_of_health
+    expect_range: [0, 100]
+    mode: [hardware]
+
+  - name: "Battery info summary"
+    action: manual
+    display:
+      - method: voltage
+        label: "Tension"
+        unit: "mV"
+      - method: state_of_charge
+        label: "Charge"
+        unit: "%"
+      - method: capacity_remaining
+        label: "Capacité restante"
+        unit: "mAh"
+      - method: capacity_full
+        label: "Capacité totale"
+        unit: "mAh"
+      - method: current_average
+        label: "Courant moyen"
+        unit: "mA"
+      - method: state_of_health
+        label: "Santé batterie"
+        unit: "%"
+    prompt: "Ces valeurs sont-elles cohérentes avec l'état de la batterie ?"
+    expect_true: true
+    mode: [hardware]

@@ -10,7 +10,7 @@ class FakeI2C:
         address: expected I2C device address for validation.
     """
 
-    def __init__(self, registers=None, address=None):
+    def __init__(self, bus_id=None, *, registers=None, address=None, **kwargs):
         self._registers = {}
         self._address = address
         self._write_log = []
