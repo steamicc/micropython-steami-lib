@@ -16,10 +16,10 @@ class APDS9960(object):
             self.in_threshold = 0
             self.out_threshold = 0
 
-    def __init__(self, bus, address=APDS9960_I2C_ADDR, valid_id=APDS9960_DEV_ID):
+    def __init__(self, i2c, address=APDS9960_I2C_ADDR, valid_id=APDS9960_DEV_ID):
         # I2C stuff
         self.address = address
-        self.bus = bus
+        self.i2c = i2c
 
         # instance variables for gesture detection
         self.gesture_ud_delta_ = 0
@@ -1042,28 +1042,28 @@ class APDS9960(object):
     # *******************************************************************************
 
     def _read_byte_data(self, cmd):
-        return self.bus.read_byte_data(self.address, cmd)
+        return self.i2c.read_byte_data(self.address, cmd)
 
     def _write_byte_data(self, cmd, val):
-        return self.bus.write_byte_data(self.address, cmd, val)
+        return self.i2c.write_byte_data(self.address, cmd, val)
 
     def _read_i2c_block_data(self, cmd, num):
-        return self.bus.read_i2c_block_data(self.address, cmd, num)
+        return self.i2c.read_i2c_block_data(self.address, cmd, num)
 
 
 class uAPDS9960(APDS9960):
     """
     APDS9960 for MicroPython
 
-    sensor = uAPDS9960(bus=I2C_instance,
+    sensor = uAPDS9960(i2c=I2C_instance,
                        address=APDS9960_I2C_ADDR, valid_id=APDS9960_DEV_ID)
     """
 
     def _read_byte_data(self, cmd):
-        return self.bus.readfrom_mem(self.address, cmd, 1)[0]
+        return self.i2c.readfrom_mem(self.address, cmd, 1)[0]
 
     def _write_byte_data(self, cmd, val):
-        self.bus.writeto_mem(self.address, cmd, bytes([val]))
+        self.i2c.writeto_mem(self.address, cmd, bytes([val]))
 
     def _read_i2c_block_data(self, cmd, num):
-        return self.bus.readfrom_mem(self.address, cmd, num)
+        return self.i2c.readfrom_mem(self.address, cmd, num)

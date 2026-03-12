@@ -4,9 +4,9 @@ from machine import I2C
 
 from apds9960 import uAPDS9960 as APDS9960
 
-bus = I2C(1)
+i2c = I2C(1)
 
-apds = APDS9960(bus)
+apds = APDS9960(i2c)
 
 print("Light Sensor Test")
 print("=================")
