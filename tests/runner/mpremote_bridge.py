@@ -105,6 +105,35 @@ class MpremoteBridge:
             return result[0]
         return result
 
+    def run_script(
+        self, driver_name, driver_class, i2c_config, script,
+        module_name=None, hardware_init=None, i2c_address=None,
+    ):
+        """Run a custom MicroPython script with driver context.
+
+        The script has access to ``i2c`` and ``dev`` variables and must
+        set a ``result`` variable.  The method returns the JSON-decoded
+        value of ``result``.
+        """
+        mod = module_name or driver_name
+        i2c_init = _i2c_init_code(i2c_config)
+        if hardware_init is not None:
+            dev_init = hardware_init + "\n"
+        elif i2c_address is not None:
+            dev_init = f"dev = {driver_class}(i2c, address={i2c_address!r})\n"
+        else:
+            dev_init = f"dev = {driver_class}(i2c)\n"
+        code = (
+            f"import json\n"
+            f"{i2c_init}\n"
+            f"from {mod}.device import {driver_class}\n"
+            f"{dev_init}"
+            f"{script}\n"
+            f"print(json.dumps(result))"
+        )
+        output = self._run(code, mount_dir=self._driver_dir(driver_name))
+        return json.loads(output)
+
     def scan_bus(self, i2c_config):
         """Scan I2C bus and return list of addresses."""
         i2c_init = _i2c_init_code(i2c_config)

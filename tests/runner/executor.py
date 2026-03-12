@@ -110,6 +110,19 @@ def run_action(action, driver_instance):
         response = input(f"\n  [MANUAL] {prompt} [y/n] ")
         return response.strip().lower() == "y"
 
+    if action_type == "interactive":
+        # Prompt first, then call method (used for hold-button-and-read tests)
+        prompt = action.get("pre_prompt", "Perform action then press Enter")
+        input(f"\n  [INTERACTIVE] {prompt} ")
+        method_name = action["method"]
+        args = action.get("args", [])
+        method = getattr(driver_instance, method_name)
+        return method(*args)
+
+    if action_type == "hardware_script":
+        # hardware_script is hardware-only; skip in mock mode
+        return None
+
     raise ValueError(f"Unknown action type: {action_type}")
 
 

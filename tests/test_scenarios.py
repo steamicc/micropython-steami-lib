@@ -127,6 +127,42 @@ def test_scenario(scenario, test, mode, port):
                 scenario["i2c_address"],
                 test["register"],
             )
+        elif action == "interactive":
+            # Prompt user first, then call method
+            import sys
+            if not sys.stdin.isatty():
+                pytest.skip("interactive test requires interactive mode (-s)")
+            pre_prompt = test.get("pre_prompt", "Perform action then press Enter")
+            input(f"  [INTERACTIVE] {pre_prompt} ")
+            result = bridge.call_method(
+                scenario["driver"],
+                scenario["driver_class"],
+                scenario["i2c"],
+                test["method"],
+                test.get("args"),
+                module_name=scenario.get("module_name"),
+                hardware_init=scenario.get("hardware_init"),
+                i2c_address=scenario.get("i2c_address"),
+            )
+        elif action == "hardware_script":
+            import sys
+            if not sys.stdin.isatty():
+                pytest.skip("hardware_script test requires interactive mode (-s)")
+            pre_prompt = test.get("pre_prompt")
+            if pre_prompt:
+                if test.get("wait", True):
+                    input(f"  [INTERACTIVE] {pre_prompt} ")
+                else:
+                    print(f"  [INTERACTIVE] {pre_prompt}")
+            result = bridge.run_script(
+                scenario["driver"],
+                scenario["driver_class"],
+                scenario["i2c"],
+                test["script"],
+                module_name=scenario.get("module_name"),
+                hardware_init=scenario.get("hardware_init"),
+                i2c_address=scenario.get("i2c_address"),
+            )
         else:
             pytest.fail(f"Unknown action: {action}")
 
