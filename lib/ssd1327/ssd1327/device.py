@@ -144,20 +144,20 @@ class SSD1327:
 
 
 class SSD1327_I2C(SSD1327):
-    def __init__(self, width, height, i2c, addr=0x3C):
+    def __init__(self, width, height, i2c, address=0x3C):
         self.i2c = i2c
-        self.addr = addr
+        self.address = address
         self.cmd_arr = bytearray([REG_CMD, 0])  # Co=1, D/C#=0
         self.data_list = [bytes((REG_DATA,)), None]
         super().__init__(width, height)
 
     def write_cmd(self, cmd):
         self.cmd_arr[1] = cmd
-        self.i2c.writeto(self.addr, self.cmd_arr)
+        self.i2c.writeto(self.address, self.cmd_arr)
 
     def write_data(self, data_buf):
         self.data_list[1] = data_buf
-        self.i2c.writevto(self.addr, self.data_list)
+        self.i2c.writevto(self.address, self.data_list)
 
 
 class SSD1327_SPI(SSD1327):
@@ -166,7 +166,6 @@ class SSD1327_SPI(SSD1327):
         dc.init(dc.OUT, value=0)
         res.init(res.OUT, value=1)
         cs.init(cs.OUT, value=1)
-        print(dc, res, cs)
         self.spi = spi
         self.dc = dc
         self.res = res
@@ -202,5 +201,5 @@ class WS_OLED_128X128_SPI(SSD1327_SPI):
 
 
 class WS_OLED_128X128_I2C(SSD1327_I2C):
-    def __init__(self, i2c, addr=0x3C):
-        super().__init__(128, 128, i2c, addr)
+    def __init__(self, i2c, address=0x3C):
+        super().__init__(128, 128, i2c, address)
