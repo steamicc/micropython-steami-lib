@@ -99,6 +99,7 @@ def test_scenario(scenario, test, mode, port):
                     display.get("args"),
                     module_name=scenario.get("module_name"),
                     hardware_init=scenario.get("hardware_init"),
+                    i2c_address=scenario.get("i2c_address"),
                 )
                 label = display.get("label", display["method"])
                 unit = display.get("unit", "")
@@ -118,6 +119,7 @@ def test_scenario(scenario, test, mode, port):
                 test.get("args"),
                 module_name=scenario.get("module_name"),
                 hardware_init=scenario.get("hardware_init"),
+                i2c_address=scenario.get("i2c_address"),
             )
         elif action == "read_register":
             result = bridge.read_register(
