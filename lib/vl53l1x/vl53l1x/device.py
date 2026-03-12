@@ -110,31 +110,31 @@ class VL53L1X(object):
         # machine.lightsleep(100)
         # the API triggers this change in VL53L1_init_and_start_range() once a
         # measurement is started; assumes MM1 and MM2 are disabled
-        self.writeReg16Bit(0x001E, self.readReg16Bit(0x0022) * 4)
+        self._write_reg16(0x001E, self._read_reg16(0x0022) * 4)
         machine.lightsleep(200)
 
-    def writeReg(self, reg, value):
+    def _write_reg(self, reg, value):
         return self.i2c.writeto_mem(self.address, reg, bytes([value]), addrsize=16)
 
-    def writeReg16Bit(self, reg, value):
+    def _write_reg16(self, reg, value):
         return self.i2c.writeto_mem(
             self.address, reg, bytes([(value >> 8) & 0xFF, value & 0xFF]), addrsize=16
         )
 
-    def readReg(self, reg):
+    def _read_reg(self, reg):
         return self.i2c.readfrom_mem(self.address, reg, 1, addrsize=16)[0]
 
-    def readReg16Bit(self, reg):
+    def _read_reg16(self, reg):
         data = self.i2c.readfrom_mem(self.address, reg, 2, addrsize=16)
         return (data[0] << 8) + data[1]
 
     def read_model_id(self):
-        return self.readReg16Bit(0x010F)
+        return self._read_reg16(0x010F)
 
     def reset(self):
-        self.writeReg(0x0000, 0x00)
+        self._write_reg(0x0000, 0x00)
         machine.lightsleep(100)
-        self.writeReg(0x0000, 0x01)
+        self._write_reg(0x0000, 0x01)
 
     def read(self):
         data = self.i2c.readfrom_mem(self.address, 0x0089, 17, addrsize=16)  # RESULT__RANGE_STATUS
