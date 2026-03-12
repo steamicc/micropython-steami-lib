@@ -4,7 +4,7 @@ from time import sleep_us
 import framebuf
 
 
-class SSD1327:
+class SSD1327(object):
     def __init__(self, width=128, height=128):
         self.width = width
         self.height = height

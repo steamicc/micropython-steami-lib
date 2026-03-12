@@ -97,7 +97,7 @@ VL53L1X_DEFAULT_CONFIGURATION = bytes(
 )
 
 
-class VL53L1X:
+class VL53L1X(object):
     def __init__(self, i2c, address=0x29):
         self.i2c = i2c
         self.address = address
