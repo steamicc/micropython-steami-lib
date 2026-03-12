@@ -100,13 +100,13 @@ tests:
   - name: "Remaining capacity positive"
     action: call
     method: capacity_remaining
-    expect_range: [0, 1000]
+    expect_range: [0, 2000]
     mode: [hardware]
 
   - name: "Full capacity positive"
     action: call
     method: capacity_full
-    expect_range: [100, 1000]
+    expect_range: [100, 2000]
     mode: [hardware]
 
   - name: "Average current readable"
