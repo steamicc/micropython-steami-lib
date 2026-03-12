@@ -4,9 +4,9 @@ from machine import I2C
 
 from bq27441 import BQ27441
 
-bus = I2C(1)
+i2c = I2C(1)
 
-fg = BQ27441(bus)
+fg = BQ27441(i2c)
 
 print("Fuel Gauge Test")
 print("=====================")
