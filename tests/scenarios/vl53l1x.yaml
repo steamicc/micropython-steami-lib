@@ -1,0 +1,56 @@
+driver: vl53l1x
+driver_class: VL53L1X
+i2c_address: 0x29
+
+# I2C config for hardware tests (STeaMi board - STM32WB55)
+i2c:
+  id: 1
+
+# Register values for mock tests
+# VL53L1X uses 16-bit register addresses
+mock_registers:
+  # MODEL_ID (0x010F-0x0110): expected 0xEACC
+  0x010F: [0xEA, 0xCC]
+  # SOFT_RESET (0x0000): sensor active
+  0x0000: 0x01
+  # MM_CONFIG__OUTER_OFFSET_MM (0x0022): used during init
+  0x0022: [0x00, 0x00]
+  # RESULT__RANGE_STATUS (0x0089): 17-byte result block
+  # Bytes: range_status, report_status, stream_count,
+  #         dss_spads(2), peak_rate(2), ambient_rate(2),
+  #         sigma(2), phase(2), distance_mm(2), peak_corrected(2)
+  # Simulated distance: 250 mm (0x00FA)
+  0x0089: [0x09, 0x00, 0x01,
+           0x00, 0x80, 0x01, 0x00,
+           0x00, 0x10, 0x00, 0x20,
+           0x00, 0x00, 0x00, 0xFA,
+           0x01, 0x00]
+
+tests:
+  - name: "Verify model ID register"
+    action: call
+    method: read_model_id
+    expect: 0xEACC
+    mode: [mock, hardware]
+
+  - name: "Read distance returns integer"
+    action: call
+    method: read
+    expect_not_none: true
+    mode: [mock]
+
+  - name: "Distance in plausible range"
+    action: call
+    method: read
+    expect_range: [0, 4000]
+    mode: [hardware]
+
+  - name: "Distance measurement feels correct"
+    action: manual
+    display:
+      - method: read
+        label: "Distance"
+        unit: "mm"
+    prompt: "La distance mesurée est-elle cohérente (objet devant le capteur) ?"
+    expect_true: true
+    mode: [hardware]
