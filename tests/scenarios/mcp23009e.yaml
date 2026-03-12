@@ -63,9 +63,206 @@ tests:
   - name: "D-PAD buttons state"
     action: manual
     display:
-      - method: get_gpio
-        label: "GPIO register"
-        unit: ""
-    prompt: "La valeur du registre GPIO est-elle cohérente (boutons D-PAD non pressés) ?"
+      - method: get_level
+        args: [7]
+        label: "UP (GP7)"
+        unit: "(1=relâché, 0=appuyé)"
+      - method: get_level
+        args: [5]
+        label: "DOWN (GP5)"
+        unit: "(1=relâché, 0=appuyé)"
+      - method: get_level
+        args: [6]
+        label: "LEFT (GP6)"
+        unit: "(1=relâché, 0=appuyé)"
+      - method: get_level
+        args: [4]
+        label: "RIGHT (GP4)"
+        unit: "(1=relâché, 0=appuyé)"
+    prompt: "Tous les boutons sont-ils relâchés (valeur 1) ?"
+    expect_true: true
+    mode: [hardware]
+
+  # --- Polling tests (one per D-PAD button) ---
+  # LED_GREEN signals when the board is ready to read the button.
+
+  - name: "D-PAD UP button (polling)"
+    action: hardware_script
+    pre_prompt: "Test polling D-PAD : appuyez sur chaque bouton quand la LED verte s'allume (5s). Commençons par UP."
+    script: |
+      from machine import Pin
+      from time import sleep_ms, ticks_ms, ticks_diff
+      led = Pin("LED_GREEN", Pin.OUT)
+      led.on()
+      start = ticks_ms()
+      detected = False
+      while ticks_diff(ticks_ms(), start) < 5000:
+        if dev.get_level(7) == 0:
+          detected = True
+          break
+        sleep_ms(50)
+      led.off()
+      result = detected
+    expect_true: true
+    mode: [hardware]
+
+  - name: "D-PAD DOWN button (polling)"
+    action: hardware_script
+    pre_prompt: "Bouton DOWN"
+    wait: false
+    script: |
+      from machine import Pin
+      from time import sleep_ms, ticks_ms, ticks_diff
+      led = Pin("LED_GREEN", Pin.OUT)
+      led.on()
+      start = ticks_ms()
+      detected = False
+      while ticks_diff(ticks_ms(), start) < 5000:
+        if dev.get_level(5) == 0:
+          detected = True
+          break
+        sleep_ms(50)
+      led.off()
+      result = detected
+    expect_true: true
+    mode: [hardware]
+
+  - name: "D-PAD LEFT button (polling)"
+    action: hardware_script
+    pre_prompt: "Bouton LEFT"
+    wait: false
+    script: |
+      from machine import Pin
+      from time import sleep_ms, ticks_ms, ticks_diff
+      led = Pin("LED_GREEN", Pin.OUT)
+      led.on()
+      start = ticks_ms()
+      detected = False
+      while ticks_diff(ticks_ms(), start) < 5000:
+        if dev.get_level(6) == 0:
+          detected = True
+          break
+        sleep_ms(50)
+      led.off()
+      result = detected
+    expect_true: true
+    mode: [hardware]
+
+  - name: "D-PAD RIGHT button (polling)"
+    action: hardware_script
+    pre_prompt: "Bouton RIGHT"
+    wait: false
+    script: |
+      from machine import Pin
+      from time import sleep_ms, ticks_ms, ticks_diff
+      led = Pin("LED_GREEN", Pin.OUT)
+      led.on()
+      start = ticks_ms()
+      detected = False
+      while ticks_diff(ticks_ms(), start) < 5000:
+        if dev.get_level(4) == 0:
+          detected = True
+          break
+        sleep_ms(50)
+      led.off()
+      result = detected
+    expect_true: true
+    mode: [hardware]
+
+  # --- Interrupt tests (one per D-PAD button) ---
+  # LED_GREEN signals when the board is ready; polls INTF register.
+
+  - name: "D-PAD UP button (interrupt)"
+    action: hardware_script
+    pre_prompt: "Test interrupt D-PAD : appuyez brièvement sur chaque bouton quand la LED verte s'allume (5s). Commençons par UP."
+    script: |
+      from machine import Pin
+      from time import sleep_ms, ticks_ms, ticks_diff
+      led = Pin("LED_GREEN", Pin.OUT)
+      dev._send_enable_interrupt(7)
+      dev.get_gpio()
+      led.on()
+      start = ticks_ms()
+      detected = False
+      while ticks_diff(ticks_ms(), start) < 5000:
+        if dev.get_intf() & (1 << 7):
+          detected = True
+          dev.get_intcap()
+          break
+        sleep_ms(50)
+      led.off()
+      result = detected
+    expect_true: true
+    mode: [hardware]
+
+  - name: "D-PAD DOWN button (interrupt)"
+    action: hardware_script
+    pre_prompt: "Bouton DOWN"
+    wait: false
+    script: |
+      from machine import Pin
+      from time import sleep_ms, ticks_ms, ticks_diff
+      led = Pin("LED_GREEN", Pin.OUT)
+      dev._send_enable_interrupt(5)
+      dev.get_gpio()
+      led.on()
+      start = ticks_ms()
+      detected = False
+      while ticks_diff(ticks_ms(), start) < 5000:
+        if dev.get_intf() & (1 << 5):
+          detected = True
+          dev.get_intcap()
+          break
+        sleep_ms(50)
+      led.off()
+      result = detected
+    expect_true: true
+    mode: [hardware]
+
+  - name: "D-PAD LEFT button (interrupt)"
+    action: hardware_script
+    pre_prompt: "Bouton LEFT"
+    wait: false
+    script: |
+      from machine import Pin
+      from time import sleep_ms, ticks_ms, ticks_diff
+      led = Pin("LED_GREEN", Pin.OUT)
+      dev._send_enable_interrupt(6)
+      dev.get_gpio()
+      led.on()
+      start = ticks_ms()
+      detected = False
+      while ticks_diff(ticks_ms(), start) < 5000:
+        if dev.get_intf() & (1 << 6):
+          detected = True
+          dev.get_intcap()
+          break
+        sleep_ms(50)
+      led.off()
+      result = detected
+    expect_true: true
+    mode: [hardware]
+
+  - name: "D-PAD RIGHT button (interrupt)"
+    action: hardware_script
+    pre_prompt: "Bouton RIGHT"
+    wait: false
+    script: |
+      from machine import Pin
+      from time import sleep_ms, ticks_ms, ticks_diff
+      led = Pin("LED_GREEN", Pin.OUT)
+      dev._send_enable_interrupt(4)
+      dev.get_gpio()
+      led.on()
+      start = ticks_ms()
+      detected = False
+      while ticks_diff(ticks_ms(), start) < 5000:
+        if dev.get_intf() & (1 << 4):
+          detected = True
+          dev.get_intcap()
+          break
+        sleep_ms(50)
+      led.off()
+      result = detected
     expect_true: true
     mode: [hardware]
