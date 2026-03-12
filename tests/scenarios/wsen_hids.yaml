@@ -1,0 +1,103 @@
+driver: wsen-hids
+module_name: wsen_hids
+driver_class: WSEN_HIDS
+i2c_address: 0x5F
+
+# I2C config for hardware tests (STeaMi board - STM32WB55)
+i2c:
+  id: 1
+
+# Register values for mock tests
+# These simulate a real WSEN-HIDS sensor with calibration data
+mock_registers:
+  # DEVICE_ID (expected 0xBC)
+  0x0F: 0xBC
+  # AV_CONF (AVG_T=16, AVG_H=16 -> (3 << 3) | 3 = 0x1B)
+  0x10: 0x1B
+  # CTRL_1 (power-down, BDU enabled)
+  0x20: 0x04
+  # CTRL_2 (default)
+  0x21: 0x00
+  # STATUS (humidity and temperature data available)
+  0x27: 0x03
+
+  # Calibration registers
+  # H0_RH_X2 = 60 -> H0_rH = 30.0 %
+  0x30: 0x3C
+  # H1_RH_X2 = 120 -> H1_rH = 60.0 %
+  0x31: 0x78
+  # T0_DEGC_X8 low byte = 0xA0 (T0_degC_x8 = 160 -> T0 = 20.0 C)
+  0x32: 0xA0
+  # T1_DEGC_X8 low byte = 0x18 (T1_degC_x8 = 280 -> T1 = 35.0 C)
+  0x33: 0x18
+  # T1_T0_MSB: bits[1:0]=T0 msb=0, bits[3:2]=T1 msb=1 -> 0x04
+  0x35: 0x04
+  # H0_T0_OUT (signed16 = 3000 = 0x0BB8)
+  0x36: [0xB8, 0x0B]
+  # H1_T0_OUT (signed16 = 9000 = 0x2328)
+  0x3A: [0x28, 0x23]
+  # T0_OUT (signed16 = 2000 = 0x07D0)
+  0x3C: [0xD0, 0x07]
+  # T1_OUT (signed16 = 5000 = 0x1388)
+  0x3E: [0x88, 0x13]
+
+  # Raw data via auto-increment read at 0xA8 (0x28 | 0x80)
+  # H_OUT_L, H_OUT_H, T_OUT_L, T_OUT_H
+  # h_raw = 7000 (-> 50.0 %RH), t_raw = 3000 (-> 25.0 C)
+  0xA8: [0x58, 0x1B, 0xB8, 0x0B]
+
+tests:
+  - name: "Verify device ID register"
+    action: read_register
+    register: 0x0F
+    expect: 0xBC
+    mode: [mock, hardware]
+
+  - name: "Read device ID via method"
+    action: call
+    method: device_id
+    expect: 0xBC
+    mode: [mock, hardware]
+
+  - name: "Read status register"
+    action: call
+    method: status
+    expect_not_none: true
+    mode: [mock, hardware]
+
+  - name: "Read humidity returns float"
+    action: call
+    method: humidity
+    expect_range: [49.0, 51.0]
+    mode: [mock]
+
+  - name: "Read temperature returns float"
+    action: call
+    method: temperature
+    expect_range: [24.0, 26.0]
+    mode: [mock]
+
+  - name: "Humidity in plausible range"
+    action: call
+    method: humidity
+    expect_range: [5.0, 100.0]
+    mode: [hardware]
+
+  - name: "Temperature in plausible range"
+    action: call
+    method: temperature
+    expect_range: [-10.0, 60.0]
+    mode: [hardware]
+
+  - name: "Humidity and temperature feel correct"
+    action: manual
+    display:
+      - method: humidity
+        label: "Humidity"
+        unit: "%RH"
+      - method: temperature
+        label: "Temperature"
+        unit: "°C"
+    prompt: "Ces valeurs sont-elles cohérentes (humidité ambiante, température ambiante) ?"
+    expect_true: true
+    mode: [hardware]
