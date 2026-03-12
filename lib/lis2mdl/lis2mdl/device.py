@@ -554,10 +554,7 @@ class LIS2MDL(object):
         r = self.read_reg(LIS2MDL_CFG_REG_A)
         r |= 1 << 5  # SOFT_RST
         self.setReg(r, LIS2MDL_CFG_REG_A)
-        try:
-            sleep_ms(wait_ms)
-        except:
-            pass
+        sleep_ms(wait_ms)
 
     def reboot(self, wait_ms: int = 10):
         """
@@ -567,10 +564,7 @@ class LIS2MDL(object):
         r = self.read_reg(LIS2MDL_CFG_REG_A)
         r |= 1 << 6  # REBOOT
         self.setReg(r, LIS2MDL_CFG_REG_A)
-        try:
-            sleep_ms(wait_ms)
-        except Exception:
-            pass
+        sleep_ms(wait_ms)
 
     def is_idle(self) -> bool:
         """True if the sensor is in IDLE mode (MD1..0 == 11)."""
