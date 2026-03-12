@@ -64,8 +64,12 @@ class MpremoteBridge:
         """Return the local lib path for a driver."""
         return PROJECT_ROOT / "lib" / driver_name
 
-    def call_method(self, driver_name, driver_class, i2c_config, method, args=None, i2c_address=None):
+    def call_method(
+        self, driver_name, driver_class, i2c_config, method,
+        args=None, i2c_address=None, module_name=None,
+    ):
         """Call a method on a driver instance and return the result."""
+        mod = module_name or driver_name
         args_str = ", ".join(repr(a) for a in (args or []))
         i2c_init = _i2c_init_code(i2c_config)
         if i2c_address is not None:
@@ -75,7 +79,7 @@ class MpremoteBridge:
         code = (
             f"import json\n"
             f"{i2c_init}\n"
-            f"from {driver_name}.device import {driver_class}\n"
+            f"from {mod}.device import {driver_class}\n"
             f"{dev_init}"
             f"result = dev.{method}({args_str})\n"
             f"print(json.dumps(result))"
