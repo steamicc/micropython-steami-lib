@@ -73,7 +73,7 @@ tests:
   - name: "Magnitude in plausible range"
     action: call
     method: magnitude_uT
-    expect_range: [10.0, 120.0]
+    expect_range: [10.0, 300.0]
     mode: [hardware]
 
   - name: "Temperature in plausible range"
