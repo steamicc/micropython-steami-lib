@@ -1,0 +1,71 @@
+driver: mcp23009e
+driver_class: MCP23009E
+i2c_address: 0x20
+
+# I2C config for hardware tests (STeaMi board - STM32WB55)
+i2c:
+  id: 1
+
+# Extra constructor pins (FakePin instances for mock tests)
+mock_pins:
+  reset_pin: 0
+
+# Custom hardware init (MCP23009E requires a reset pin)
+hardware_init: |
+  from machine import Pin
+  dev = MCP23009E(i2c, address=0x20, reset_pin=Pin("RST_EXPANDER", Pin.OUT))
+
+# Register values for mock tests
+mock_registers:
+  # IODIR (0x00): all inputs by default (0xFF)
+  0x00: 0xFF
+  # IPOL (0x01): no inversion
+  0x01: 0x00
+  # GPINTEN (0x02): interrupts disabled
+  0x02: 0x00
+  # DEFVAL (0x03): default
+  0x03: 0x00
+  # INTCON (0x04): default
+  0x04: 0x00
+  # IOCON (0x05): default config
+  0x05: 0x00
+  # GPPU (0x06): no pull-ups
+  0x06: 0x00
+  # INTF (0x07): no interrupt flags
+  0x07: 0x00
+  # INTCAP (0x08): default
+  0x08: 0x00
+  # GPIO (0x09): D-PAD buttons (bits 4-7 as inputs with pull-ups)
+  0x09: 0xF0
+  # OLAT (0x0A): default
+  0x0A: 0x00
+
+tests:
+  - name: "Read IODIR default value"
+    action: call
+    method: get_iodir
+    expect: 0xFF
+    mode: [mock, hardware]
+
+  - name: "Read GPIO register"
+    action: call
+    method: get_gpio
+    expect_not_none: true
+    mode: [mock, hardware]
+
+  - name: "Read individual GPIO level"
+    action: call
+    method: get_level
+    args: [0]
+    expect_not_none: true
+    mode: [mock]
+
+  - name: "D-PAD buttons state"
+    action: manual
+    display:
+      - method: get_gpio
+        label: "GPIO register"
+        unit: ""
+    prompt: "La valeur du registre GPIO est-elle cohérente (boutons D-PAD non pressés) ?"
+    expect_true: true
+    mode: [hardware]
