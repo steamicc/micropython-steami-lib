@@ -58,15 +58,15 @@ class WSEN_PADS(object):
         except Exception:
             return False
 
-    def _read_u8(self, reg):
+    def _read_reg(self, reg):
         """Read and return one unsigned byte from a register."""
         return self.i2c.readfrom_mem(self.address, reg, 1)[0]
 
-    def _read(self, reg, length):
+    def _read_block(self, reg, length):
         """Read and return multiple bytes starting at a register."""
         return self.i2c.readfrom_mem(self.address, reg, length)
 
-    def _write_u8(self, reg, value):
+    def _write_reg(self, reg, value):
         """Write one unsigned byte to a register."""
         self.i2c.writeto_mem(self.address, reg, bytes((value & 0xFF,)))
 
@@ -76,9 +76,9 @@ class WSEN_PADS(object):
 
         Only the bits set in 'mask' are modified. Other bits are preserved.
         """
-        current = self._read_u8(reg)
+        current = self._read_reg(reg)
         current = (current & ~mask) | (value & mask)
-        self._write_u8(reg, current)
+        self._write_reg(reg, current)
 
     # ---------------------------------------------------------------------
     # Internal conversion helpers
@@ -109,7 +109,7 @@ class WSEN_PADS(object):
         The sensor sets BOOT_ON while internal trimming parameters are loaded.
         """
         start = ticks_ms()
-        while self._read_u8(REG_INT_SOURCE) & INT_SOURCE_BOOT_ON:
+        while self._read_reg(REG_INT_SOURCE) & INT_SOURCE_BOOT_ON:
             if ticks_diff(ticks_ms(), start) > timeout_ms:
                 raise WSENPADSTimeout("WSEN-PADS boot timeout")
             sleep_ms(1)
@@ -151,11 +151,11 @@ class WSEN_PADS(object):
 
     def device_id(self):
         """Return the value of the DEVICE_ID register."""
-        return self._read_u8(REG_DEVICE_ID)
+        return self._read_reg(REG_DEVICE_ID)
 
     def status(self):
         """Return the raw STATUS register value."""
-        return self._read_u8(REG_STATUS)
+        return self._read_reg(REG_STATUS)
 
     def pressure_available(self):
         """Return True when new pressure data is available."""
@@ -212,7 +212,7 @@ class WSEN_PADS(object):
 
     def _is_power_down(self):
         """Return True if the sensor is in power-down mode (ODR = 000)."""
-        return (self._read_u8(REG_CTRL_1) & CTRL1_ODR_MASK) == 0
+        return (self._read_reg(REG_CTRL_1) & CTRL1_ODR_MASK) == 0
 
     def _ensure_data(self):
         """Trigger a one-shot conversion if the sensor is in power-down mode."""
@@ -227,7 +227,7 @@ class WSEN_PADS(object):
         triggered automatically before reading.
         """
         self._ensure_data()
-        data = self._read(REG_DATA_P_XL, 3)
+        data = self._read_block(REG_DATA_P_XL, 3)
         raw = (data[2] << 16) | (data[1] << 8) | data[0]
         return self._to_signed24(raw)
 
@@ -239,7 +239,7 @@ class WSEN_PADS(object):
         triggered automatically before reading.
         """
         self._ensure_data()
-        data = self._read(REG_DATA_T_L, 2)
+        data = self._read_block(REG_DATA_T_L, 2)
         raw = (data[1] << 8) | data[0]
         return self._to_signed16(raw)
 
@@ -281,9 +281,9 @@ class WSEN_PADS(object):
             tuple: (pressure_hpa, temperature_c)
         """
         self.trigger_one_shot()
-        p_data = self._read(REG_DATA_P_XL, 3)
+        p_data = self._read_block(REG_DATA_P_XL, 3)
         p_raw = self._to_signed24((p_data[2] << 16) | (p_data[1] << 8) | p_data[0])
-        t_data = self._read(REG_DATA_T_L, 2)
+        t_data = self._read_block(REG_DATA_T_L, 2)
         t_raw = self._to_signed16((t_data[1] << 8) | t_data[0])
         return p_raw * PRESSURE_HPA_PER_DIGIT, t_raw * TEMPERATURE_C_PER_DIGIT
 
@@ -385,7 +385,7 @@ class WSEN_PADS(object):
             if low_pass_strong:
                 ctrl1_value |= CTRL1_LPFP_CFG
 
-        self._write_u8(REG_CTRL_1, ctrl1_value)
+        self._write_reg(REG_CTRL_1, ctrl1_value)
 
     # ---------------------------------------------------------------------
     # Optional helper methods
@@ -397,16 +397,16 @@ class WSEN_PADS(object):
 
         This helper preserves the current ODR and only updates filter bits.
         """
-        current = self._read_u8(REG_CTRL_1)
+        current = self._read_reg(REG_CTRL_1)
         current |= CTRL1_EN_LPFP
         if strong:
             current |= CTRL1_LPFP_CFG
         else:
             current &= ~CTRL1_LPFP_CFG
-        self._write_u8(REG_CTRL_1, current)
+        self._write_reg(REG_CTRL_1, current)
 
     def disable_low_pass(self):
         """Disable the optional LPF2 pressure filter."""
-        current = self._read_u8(REG_CTRL_1)
+        current = self._read_reg(REG_CTRL_1)
         current &= ~(CTRL1_EN_LPFP | CTRL1_LPFP_CFG)
-        self._write_u8(REG_CTRL_1, current)
+        self._write_reg(REG_CTRL_1, current)
