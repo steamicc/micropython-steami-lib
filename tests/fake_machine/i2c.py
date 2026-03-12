@@ -5,6 +5,8 @@ class FakeI2C:
     """Simulates a MicroPython I2C bus with pre-loaded register values.
 
     Args:
+        bus_id: optional I2C bus identifier (ignored, accepted for
+                MicroPython I2C constructor compatibility).
         registers: dict mapping register addresses to bytes values.
                    Single-byte registers can use int values.
         address: expected I2C device address for validation.
