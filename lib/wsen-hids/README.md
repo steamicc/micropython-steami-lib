@@ -111,6 +111,18 @@ temperature = sensor.temperature()
 
 ---
 
+### Measurement behavior
+
+After initialization, the sensor operates in **one-shot mode** (ODR = 00).  
+If `read()`, `humidity()`, or `temperature()` are called while the sensor is not in continuous mode, the driver **automatically triggers a one-shot conversion** to ensure fresh data is returned.
+
+This allows simple usage:
+
+```python
+humidity, temperature = sensor.read()
+
+Continuous measurements can be enabled with sensor.set_continuous_mode().
+
 # One-Shot Measurement
 
 Trigger a single conversion:
