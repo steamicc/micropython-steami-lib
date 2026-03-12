@@ -33,10 +33,10 @@ tests:
     expect: 0xEACC
     mode: [mock, hardware]
 
-  - name: "Read distance returns integer"
+  - name: "Read distance returns expected value"
     action: call
     method: read
-    expect_not_none: true
+    expect: 250
     mode: [mock]
 
   - name: "Distance in plausible range"
