@@ -461,7 +461,7 @@ class BQ27441(object):
 
     # Read a 16 - bit command word from the BQ27441-G1A, def format = little endian int16
     def readWord(self, subAddress, format="<h"):
-        data = bytes(self.i2cReadBytes(subAddress, 2))
+        data = bytes(self._read_reg(subAddress, 2))
         return struct.unpack(format, data)[0]
 
     # Read a 16 - bit subcommand() from the BQ27441-G1A's control()
@@ -469,8 +469,8 @@ class BQ27441(object):
         subCommandMSB = function >> 8
         subCommandLSB = function & 0x00FF
         command = [subCommandLSB, subCommandMSB]
-        self.i2cWriteBytes(0, command, 2)
-        data = self.i2cReadBytes(0, 2)
+        self._write_reg(0, command, 2)
+        data = self._read_reg(0, 2)
         if data:
             return (data[1] << 8) | data[0]
 
@@ -481,7 +481,7 @@ class BQ27441(object):
         subCommandMSB = function >> 8
         subCommandLSB = function & 0x00FF
         command = [subCommandLSB, subCommandMSB]
-        if self.i2cWriteBytes(0, command, 2):
+        if self._write_reg(0, command, 2):
             return True
 
         return False
@@ -490,39 +490,39 @@ class BQ27441(object):
     # Issue a BlockDataControl() command to enable BlockData access
     def blockDataControl(self):
         enableByte = [0x00]
-        return self.i2cWriteBytes(BQ27441_EXTENDED_CONTROL, enableByte, 1)
+        return self._write_reg(BQ27441_EXTENDED_CONTROL, enableByte, 1)
 
     # Issue a DataClass() command to set the data class to be accessed
 
     def blockDataClass(self, _id):
-        return self.i2cWriteBytes(BQ27441_EXTENDED_DATACLASS, _id, 1)
+        return self._write_reg(BQ27441_EXTENDED_DATACLASS, _id, 1)
 
     # Issue a DataBlock() command to set the data block to be accessed
     def blockDataOffset(self, offset):
         offset = [offset]
-        return self.i2cWriteBytes(BQ27441_EXTENDED_DATABLOCK, offset, 1)
+        return self._write_reg(BQ27441_EXTENDED_DATABLOCK, offset, 1)
 
     # Read the current checksum using BlockDataCheckSum()
     def blockDataChecksum(self):
-        csum = self.i2cReadBytes(BQ27441_EXTENDED_CHECKSUM, 1)
+        csum = self._read_reg(BQ27441_EXTENDED_CHECKSUM, 1)
         return csum
 
     # Use BlockData() to read a byte from the loaded extended data
     def readBlockData(self, offset):
         address = offset + BQ27441_EXTENDED_BLOCKDATA
-        ret = self.i2cReadBytes(address, 1)
+        ret = self._read_reg(address, 1)
         return ret
 
     # Use BlockData() to write a byte to an offset of the loaded data
     def writeBlockData(self, offset, data):
         address = offset + BQ27441_EXTENDED_BLOCKDATA
         data = [data]
-        return self.i2cWriteBytes(address, data, 1)
+        return self._write_reg(address, data, 1)
 
     # Read all 32 bytes of the loaded extended data and compute a
     # checksum based on the values.
     def computeBlockChecksum(self):
-        data = self.i2cReadBytes(BQ27441_EXTENDED_BLOCKDATA, 32)
+        data = self._read_reg(BQ27441_EXTENDED_BLOCKDATA, 32)
         csum = 0
         for i in range(32):
             csum += data[i]
@@ -533,7 +533,7 @@ class BQ27441(object):
     # Use the BlockDataCheckSum() command to write a checksum value
     def writeBlockChecksum(self, csum):
         csum = [csum]
-        return self.i2cWriteBytes(BQ27441_EXTENDED_CHECKSUM, csum, 1)
+        return self._write_reg(BQ27441_EXTENDED_CHECKSUM, csum, 1)
 
     # Read a byte from extended data specifying a class ID and position offset
     def readExtendedData(self, classID, offset):
@@ -593,12 +593,12 @@ class BQ27441(object):
         return True
 
     # I2C Read / Write Functions
-    def i2cReadBytes(self, subAddress, count):
+    def _read_reg(self, subAddress, count):
         result = self.i2c.readfrom_mem(self.address, subAddress, count)
         return list(result)
 
     # Write a specified number of bytes over I2C to a given subAddress
-    def i2cWriteBytes(self, memAddress, buf, count):
+    def _write_reg(self, memAddress, buf, count):
         self.i2c.writeto_mem(self.address, memAddress, bytes(buf))
         return True
 
