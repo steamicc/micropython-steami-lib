@@ -112,6 +112,9 @@ def run_action(action, driver_instance):
 
     if action_type == "interactive":
         # Prompt first, then call method (used for hold-button-and-read tests)
+        import sys
+        if not sys.stdin.isatty():
+            return None  # skip in non-interactive mode
         prompt = action.get("pre_prompt", "Perform action then press Enter")
         input(f"\n  [INTERACTIVE] {prompt} ")
         method_name = action["method"]

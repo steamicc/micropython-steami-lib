@@ -114,6 +114,12 @@ class MpremoteBridge:
         The script has access to ``i2c`` and ``dev`` variables and must
         set a ``result`` variable.  The method returns the JSON-decoded
         value of ``result``.
+
+        The script must not print anything: any additional output on
+        stdout will cause JSON parsing to fail.
+
+        When ``hardware_init`` is provided it takes precedence over
+        ``i2c_address`` for device construction.
         """
         mod = module_name or driver_name
         i2c_init = _i2c_init_code(i2c_config)
@@ -132,7 +138,9 @@ class MpremoteBridge:
             f"print(json.dumps(result))"
         )
         output = self._run(code, mount_dir=self._driver_dir(driver_name))
-        return json.loads(output)
+        # Parse only the last non-empty line as JSON to ignore stray output
+        last_line = output.strip().rsplit("\n", 1)[-1]
+        return json.loads(last_line)
 
     def scan_bus(self, i2c_config):
         """Scan I2C bus and return list of addresses."""
