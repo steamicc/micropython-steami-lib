@@ -61,13 +61,13 @@ class MCP23009E(object):
     def _soft_reset(self):
         """Réinitialise le composant avec les valeurs par défaut"""
         # Configuration par défaut : toutes les pins en entrée
-        self._write_register(MCP23009_IODIR, 0xFF)
+        self._write_reg(MCP23009_IODIR, 0xFF)
         # Désactiver les pull-ups
-        self._write_register(MCP23009_GPPU, 0x00)
+        self._write_reg(MCP23009_GPPU, 0x00)
         # Configuration IOCON par défaut
-        self._write_register(MCP23009_IOCON, 0x00)
+        self._write_reg(MCP23009_IOCON, 0x00)
         # Désactiver les interruptions
-        self._write_register(MCP23009_GPINTEN, 0x00)
+        self._write_reg(MCP23009_GPINTEN, 0x00)
 
     def setup(self, gpx, direction, pullup=MCP23009_NO_PULLUP, polarity=MCP23009_POL_SAME):
         """
@@ -83,9 +83,9 @@ class MCP23009E(object):
             return
 
         # Lire les registres actuels
-        iodir = self._read_register(MCP23009_IODIR)
-        gppu = self._read_register(MCP23009_GPPU)
-        ipol = self._read_register(MCP23009_IPOL)
+        iodir = self._read_reg(MCP23009_IODIR)
+        gppu = self._read_reg(MCP23009_GPPU)
+        ipol = self._read_reg(MCP23009_IPOL)
 
         # Modifier les bits appropriés
         iodir = _set_bit(iodir, gpx, direction)
@@ -93,9 +93,9 @@ class MCP23009E(object):
         ipol = _set_bit(ipol, gpx, polarity)
 
         # Écrire les registres modifiés
-        self._write_register(MCP23009_IODIR, iodir)
-        self._write_register(MCP23009_GPPU, gppu)
-        self._write_register(MCP23009_IPOL, ipol)
+        self._write_reg(MCP23009_IODIR, iodir)
+        self._write_reg(MCP23009_GPPU, gppu)
+        self._write_reg(MCP23009_IPOL, ipol)
 
     def set_level(self, gpx, level):
         """
@@ -109,14 +109,14 @@ class MCP23009E(object):
             return
 
         # Vérifier que le pin est configuré en sortie
-        iodir = self._read_register(MCP23009_IODIR)
+        iodir = self._read_reg(MCP23009_IODIR)
         if _get_bit(iodir, gpx) == MCP23009_DIR_INPUT:
             return  # Le pin est en entrée, on ne peut pas modifier son niveau
 
         # Modifier le registre GPIO
-        gpio = self._read_register(MCP23009_GPIO)
+        gpio = self._read_reg(MCP23009_GPIO)
         gpio = _set_bit(gpio, gpx, level)
-        self._write_register(MCP23009_GPIO, gpio)
+        self._write_reg(MCP23009_GPIO, gpio)
 
     def get_level(self, gpx):
         """
@@ -131,14 +131,14 @@ class MCP23009E(object):
         if gpx > 7:
             return MCP23009_LOGIC_LOW
 
-        gpio = self._read_register(MCP23009_GPIO)
+        gpio = self._read_reg(MCP23009_GPIO)
         return _get_bit(gpio, gpx)
 
-    def _write_register(self, register, value):
+    def _write_reg(self, register, value):
         """Écrit une valeur dans un registre"""
         self.i2c.writeto_mem(self.address, register, bytes([value]))
 
-    def _read_register(self, register):
+    def _read_reg(self, register):
         """Lit une valeur depuis un registre"""
         return self.i2c.readfrom_mem(self.address, register, 1)[0]
 
@@ -146,43 +146,43 @@ class MCP23009E(object):
 
     def set_iodir(self, value):
         """Définit le registre IODIR (Input/Output Direction)"""
-        self._write_register(MCP23009_IODIR, value)
+        self._write_reg(MCP23009_IODIR, value)
 
     def get_iodir(self):
         """Lit le registre IODIR (Input/Output Direction)"""
-        return self._read_register(MCP23009_IODIR)
+        return self._read_reg(MCP23009_IODIR)
 
     def set_ipol(self, value):
         """Définit le registre IPOL (Input Polarity)"""
-        self._write_register(MCP23009_IPOL, value)
+        self._write_reg(MCP23009_IPOL, value)
 
     def get_ipol(self):
         """Lit le registre IPOL (Input Polarity)"""
-        return self._read_register(MCP23009_IPOL)
+        return self._read_reg(MCP23009_IPOL)
 
     def set_gpinten(self, value):
         """Définit le registre GPINTEN (GPIO Interrupt Enable)"""
-        self._write_register(MCP23009_GPINTEN, value)
+        self._write_reg(MCP23009_GPINTEN, value)
 
     def get_gpinten(self):
         """Lit le registre GPINTEN (GPIO Interrupt Enable)"""
-        return self._read_register(MCP23009_GPINTEN)
+        return self._read_reg(MCP23009_GPINTEN)
 
     def set_defval(self, value):
         """Définit le registre DEFVAL (Default Value)"""
-        self._write_register(MCP23009_DEFVAL, value)
+        self._write_reg(MCP23009_DEFVAL, value)
 
     def get_defval(self):
         """Lit le registre DEFVAL (Default Value)"""
-        return self._read_register(MCP23009_DEFVAL)
+        return self._read_reg(MCP23009_DEFVAL)
 
     def set_intcon(self, value):
         """Définit le registre INTCON (Interrupt Control)"""
-        self._write_register(MCP23009_INTCON, value)
+        self._write_reg(MCP23009_INTCON, value)
 
     def get_intcon(self):
         """Lit le registre INTCON (Interrupt Control)"""
-        return self._read_register(MCP23009_INTCON)
+        return self._read_reg(MCP23009_INTCON)
 
     def set_iocon(self, config):
         """
@@ -192,9 +192,9 @@ class MCP23009E(object):
             config: Instance de MCP23009Config ou valeur entière
         """
         if isinstance(config, MCP23009Config):
-            self._write_register(MCP23009_IOCON, config.get_register_value())
+            self._write_reg(MCP23009_IOCON, config.get_register_value())
         else:
-            self._write_register(MCP23009_IOCON, config)
+            self._write_reg(MCP23009_IOCON, config)
 
     def get_iocon(self):
         """
@@ -203,39 +203,39 @@ class MCP23009E(object):
         Returns:
             Instance de MCP23009Config
         """
-        return MCP23009Config(self._read_register(MCP23009_IOCON))
+        return MCP23009Config(self._read_reg(MCP23009_IOCON))
 
     def set_gppu(self, value):
         """Définit le registre GPPU (GPIO Pull-Up)"""
-        self._write_register(MCP23009_GPPU, value)
+        self._write_reg(MCP23009_GPPU, value)
 
     def get_gppu(self):
         """Lit le registre GPPU (GPIO Pull-Up)"""
-        return self._read_register(MCP23009_GPPU)
+        return self._read_reg(MCP23009_GPPU)
 
     def get_intf(self):
         """Lit le registre INTF (Interrupt Flag)"""
-        return self._read_register(MCP23009_INTF)
+        return self._read_reg(MCP23009_INTF)
 
     def get_intcap(self):
         """Lit le registre INTCAP (Interrupt Captured value)"""
-        return self._read_register(MCP23009_INTCAP)
+        return self._read_reg(MCP23009_INTCAP)
 
     def set_gpio(self, value):
         """Définit le registre GPIO"""
-        self._write_register(MCP23009_GPIO, value)
+        self._write_reg(MCP23009_GPIO, value)
 
     def get_gpio(self):
         """Lit le registre GPIO"""
-        return self._read_register(MCP23009_GPIO)
+        return self._read_reg(MCP23009_GPIO)
 
     def set_olat(self, value):
         """Définit le registre OLAT (Output Latch)"""
-        self._write_register(MCP23009_OLAT, value)
+        self._write_reg(MCP23009_OLAT, value)
 
     def get_olat(self):
         """Lit le registre OLAT (Output Latch)"""
-        return self._read_register(MCP23009_OLAT)
+        return self._read_reg(MCP23009_OLAT)
 
     # ===== Méthodes d'interruption =====
 
@@ -247,8 +247,8 @@ class MCP23009E(object):
             gpx: Numéro de GPIO (0 à 7)
         """
         # Lire les registres actuels
-        gpinten = self._read_register(MCP23009_GPINTEN)
-        intcon = self._read_register(MCP23009_INTCON)
+        gpinten = self._read_reg(MCP23009_GPINTEN)
+        intcon = self._read_reg(MCP23009_INTCON)
 
         # Activer l'interruption sur changement pour ce GPIO
         gpinten = _set_bit(gpinten, gpx, MCP23009_INTEN_ENABLE)
@@ -256,8 +256,8 @@ class MCP23009E(object):
         intcon = _set_bit(intcon, gpx, MCP23009_INTCON_PREVIOUS_STATE)
 
         # Écrire les registres
-        self._write_register(MCP23009_GPINTEN, gpinten)
-        self._write_register(MCP23009_INTCON, intcon)
+        self._write_reg(MCP23009_GPINTEN, gpinten)
+        self._write_reg(MCP23009_INTCON, intcon)
 
     def _send_disable_interrupt(self, gpx):
         """
@@ -267,9 +267,9 @@ class MCP23009E(object):
             gpx: Numéro de GPIO (0 à 7)
         """
         # Lire les registres actuels
-        gpinten = self._read_register(MCP23009_GPINTEN)
-        intcon = self._read_register(MCP23009_INTCON)
-        defval = self._read_register(MCP23009_DEFVAL)
+        gpinten = self._read_reg(MCP23009_GPINTEN)
+        intcon = self._read_reg(MCP23009_INTCON)
+        defval = self._read_reg(MCP23009_DEFVAL)
 
         # Désactiver l'interruption pour ce GPIO
         gpinten = _set_bit(gpinten, gpx, MCP23009_INTEN_DISABLE)
@@ -277,9 +277,9 @@ class MCP23009E(object):
         defval = _set_bit(defval, gpx, MCP23009_LOGIC_LOW)
 
         # Écrire les registres
-        self._write_register(MCP23009_GPINTEN, gpinten)
-        self._write_register(MCP23009_INTCON, intcon)
-        self._write_register(MCP23009_DEFVAL, defval)
+        self._write_reg(MCP23009_GPINTEN, gpinten)
+        self._write_reg(MCP23009_INTCON, intcon)
+        self._write_reg(MCP23009_DEFVAL, defval)
 
     def interrupt_on_change(self, gpx, callback):
         """
@@ -356,15 +356,15 @@ class MCP23009E(object):
         iocon = self.get_iocon()
 
         # Lire les flags d'interruption
-        intf = self._read_register(MCP23009_INTF)
+        intf = self._read_reg(MCP23009_INTF)
 
         # Lire l'état des GPIO
         if iocon.has_intcc():
             # Si INTCC est activé, lire INTCAP efface l'interruption
-            state = self._read_register(MCP23009_INTCAP)
+            state = self._read_reg(MCP23009_INTCAP)
         else:
             # Sinon, lire GPIO efface l'interruption
-            state = self._read_register(MCP23009_GPIO)
+            state = self._read_reg(MCP23009_GPIO)
 
         # Traiter chaque GPIO ayant généré une interruption
         for i in range(8):
