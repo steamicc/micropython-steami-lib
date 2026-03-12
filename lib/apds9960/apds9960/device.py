@@ -1,7 +1,7 @@
 from apds9960.const import *
 from apds9960.exceptions import *
 
-from time import sleep
+from time import sleep_ms
 
 
 class APDS9960(object):
@@ -199,10 +199,10 @@ class APDS9960(object):
                     self.gesture_data_.total_gestures = 0
 
             # wait some time to collect next batch of FIFO data
-            sleep(APDS9960_TIME_FIFO_PAUSE)
+            sleep_ms(APDS9960_TIME_FIFO_PAUSE)
 
         # determine best guessed gesture and clean up
-        sleep(APDS9960_TIME_FIFO_PAUSE)
+        sleep_ms(APDS9960_TIME_FIFO_PAUSE)
         self.decodeGesture()
         motion = self.gesture_motion_
 
