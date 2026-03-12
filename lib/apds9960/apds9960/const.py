@@ -9,7 +9,7 @@ APDS9960_GESTURE_SENSITIVITY_2 = 20
 # APDS9960 device IDs
 APDS9960_DEV_ID = [0xAB, 0x9C, 0xA8, -0x55]
 
-# APDS9960 times
+# APDS9960 times (FIFO pause in milliseconds)
 APDS9960_TIME_FIFO_PAUSE = 30
 
 # APDS9960 register addresses
