@@ -33,7 +33,7 @@ class LIS2MDL(object):
         self.readbuffer = bytearray(1)
 
         # Perform a soft reset to ensure the sensor starts in a known state.
-        self._write_reg(0x20, LIS2MDL_CFG_REG_A)  # SOFT_RST=1 (not 0x10)
+        self._write_reg(LIS2MDL_CFG_REG_A, 0x20)  # SOFT_RST=1 (not 0x10)
         try:
             sleep_ms(10)  # Small delay for reset to complete
         except Exception:
@@ -44,14 +44,14 @@ class LIS2MDL(object):
         comp = 1 if temp_comp else 0
         lp = 1 if low_power else 0
         cfg_a = (comp << 7) | (lp << 4) | (odr_bits << 2) | 0b00
-        self._write_reg(cfg_a, LIS2MDL_CFG_REG_A)  # Essential to exit IDLE mode
+        self._write_reg(LIS2MDL_CFG_REG_A, cfg_a)  # Essential to exit IDLE mode
 
         # Configure low-pass filter and other optional settings.
-        self._write_reg(0x00, LIS2MDL_CFG_REG_B)  # Default: LPF and offset cancellation off
+        self._write_reg(LIS2MDL_CFG_REG_B, 0x00)  # Default: LPF and offset cancellation off
 
         # Enable block data update and optionally configure the DRDY pin.
         cfg_c = 0x10 | (0x01 if drdy_enable else 0x00)
-        self._write_reg(cfg_c, LIS2MDL_CFG_REG_C)
+        self._write_reg(LIS2MDL_CFG_REG_C, cfg_c)
 
     ##
     # --- SET functions ---
@@ -63,14 +63,14 @@ class LIS2MDL(object):
         md = {"continuous": 0b00, "single": 0b01, "idle": 0b11}.get(mode, 0b00)
         reg = self._read_reg(LIS2MDL_CFG_REG_A)
         reg = (reg & ~0b11) | md
-        self._write_reg(reg, LIS2MDL_CFG_REG_A)
+        self._write_reg(LIS2MDL_CFG_REG_A, reg)
 
     def set_odr(self, hz: int):
         # ODR1..0: 00=10Hz, 01=20Hz, 10=50Hz, 11=100Hz
         odr_bits = {10: 0b00, 20: 0b01, 50: 0b10, 100: 0b11}.get(hz, 0b00)
         reg = self._read_reg(LIS2MDL_CFG_REG_A)
         reg = (reg & ~(0b11 << 2)) | (odr_bits << 2)
-        self._write_reg(reg, LIS2MDL_CFG_REG_A)
+        self._write_reg(LIS2MDL_CFG_REG_A, reg)
 
     def set_low_power(self, enabled: bool):
         # LP bit (bit4) : 0=High-Res, 1=Low-Power
@@ -79,7 +79,7 @@ class LIS2MDL(object):
             reg |= 1 << 4
         else:
             reg &= ~(1 << 4)
-        self._write_reg(reg, LIS2MDL_CFG_REG_A)
+        self._write_reg(LIS2MDL_CFG_REG_A, reg)
 
     # --- Filters / offset cancellation (CFG_REG_B: 0x61) ---
     def set_low_pass(self, enabled: bool):
@@ -89,7 +89,7 @@ class LIS2MDL(object):
             reg |= 1 << 0
         else:
             reg &= ~(1 << 0)
-        self._write_reg(reg, LIS2MDL_CFG_REG_B)
+        self._write_reg(LIS2MDL_CFG_REG_B, reg)
 
     def set_offset_cancellation(self, enabled: bool, oneshot: bool = False):
         # OFF_CANC (bit1), OFF_CANC_ONE_SHOT (bit4)
@@ -102,7 +102,7 @@ class LIS2MDL(object):
             reg |= 1 << 4
         else:
             reg &= ~(1 << 4)
-        self._write_reg(reg, LIS2MDL_CFG_REG_B)
+        self._write_reg(LIS2MDL_CFG_REG_B, reg)
 
     # --- Interface options / BDU (CFG_REG_C: 0x62) ---
     def set_bdu(self, enable=True):
@@ -112,7 +112,7 @@ class LIS2MDL(object):
             reg |= 1 << 4
         else:
             reg &= ~(1 << 4)
-        self._write_reg(reg, LIS2MDL_CFG_REG_C)
+        self._write_reg(LIS2MDL_CFG_REG_C, reg)
 
     def set_endianness(self, big_endian: bool):
         # BLE (bit3)
@@ -121,7 +121,7 @@ class LIS2MDL(object):
             reg |= 1 << 3
         else:
             reg &= ~(1 << 3)
-        self._write_reg(reg, LIS2MDL_CFG_REG_C)
+        self._write_reg(LIS2MDL_CFG_REG_C, reg)
 
     def use_spi_4wire(self, enable: bool):
         # 4WSPI (bit2)
@@ -130,7 +130,7 @@ class LIS2MDL(object):
             reg |= 1 << 2
         else:
             reg &= ~(1 << 2)
-        self._write_reg(reg, LIS2MDL_CFG_REG_C)
+        self._write_reg(LIS2MDL_CFG_REG_C, reg)
 
     # --- Compass: heading offset & declination (software) ---
     _heading_offset_deg = 0.0  # user setting: align your physical 0°
@@ -144,15 +144,15 @@ class LIS2MDL(object):
 
     # (remember to correct your heading_flat_only with atan2(y, x) then + offsets)
 
-    def _write_reg(self, data, reg):
+    def _write_reg(self, reg, data):
         # Write a byte to a specific register.
         self.writebuffer[0] = data
         self.i2c.writeto_mem(self.address, reg, self.writebuffer)
 
     def _write_16(self, reg_l, value):
         value &= 0xFFFF
-        self._write_reg(value & 0xFF, reg_l)
-        self._write_reg((value >> 8) & 0xFF, reg_l + 1)
+        self._write_reg(reg_l, value & 0xFF)
+        self._write_reg(reg_l + 1, (value >> 8) & 0xFF)
 
     def set_hw_offsets(self, x: int, y: int, z: int):
         # writes to OFFSET_X/Y/Z_REG_L/H
@@ -537,14 +537,14 @@ class LIS2MDL(object):
         """Switches to IDLE mode (low power)."""
         r = self._read_reg(LIS2MDL_CFG_REG_A)
         r = (r & ~0b11) | 0b11  # MD1..0 = 11
-        self._write_reg(r, LIS2MDL_CFG_REG_A)
+        self._write_reg(LIS2MDL_CFG_REG_A, r)
 
     def wake(self, mode: str = "continuous"):
         """Wakes the sensor: 'continuous' (default) or 'single'."""
         md = {"continuous": 0b00, "single": 0b01}.get(mode, 0b00)
         r = self._read_reg(LIS2MDL_CFG_REG_A)
         r = (r & ~0b11) | md
-        self._write_reg(r, LIS2MDL_CFG_REG_A)
+        self._write_reg(LIS2MDL_CFG_REG_A, r)
 
     def soft_reset(self, wait_ms: int = 10):
         """
@@ -553,7 +553,7 @@ class LIS2MDL(object):
         """
         r = self._read_reg(LIS2MDL_CFG_REG_A)
         r |= 1 << 5  # SOFT_RST
-        self._write_reg(r, LIS2MDL_CFG_REG_A)
+        self._write_reg(LIS2MDL_CFG_REG_A, r)
         sleep_ms(wait_ms)
 
     def reboot(self, wait_ms: int = 10):
@@ -563,7 +563,7 @@ class LIS2MDL(object):
         """
         r = self._read_reg(LIS2MDL_CFG_REG_A)
         r |= 1 << 6  # REBOOT
-        self._write_reg(r, LIS2MDL_CFG_REG_A)
+        self._write_reg(LIS2MDL_CFG_REG_A, r)
         sleep_ms(wait_ms)
 
     def is_idle(self) -> bool:
