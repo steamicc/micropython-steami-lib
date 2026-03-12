@@ -67,12 +67,15 @@ class MpremoteBridge:
     def call_method(
         self, driver_name, driver_class, i2c_config, method,
         args=None, i2c_address=None, module_name=None,
+        hardware_init=None,
     ):
         """Call a method on a driver instance and return the result."""
         mod = module_name or driver_name
         args_str = ", ".join(repr(a) for a in (args or []))
         i2c_init = _i2c_init_code(i2c_config)
-        if i2c_address is not None:
+        if hardware_init is not None:
+            dev_init = hardware_init + "\n"
+        elif i2c_address is not None:
             dev_init = f"dev = {driver_class}(i2c, address={i2c_address!r})\n"
         else:
             dev_init = f"dev = {driver_class}(i2c)\n"

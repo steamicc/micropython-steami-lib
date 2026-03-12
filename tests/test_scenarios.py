@@ -6,6 +6,7 @@ from pathlib import Path
 import pytest
 
 from tests.fake_machine.i2c import FakeI2C
+from tests.fake_machine.pin import FakePin
 from tests.runner.executor import (
     check_result,
     cleanup_driver,
@@ -59,8 +60,13 @@ def make_mock_instance(scenario):
     fake_i2c = FakeI2C(registers=registers, address=address)
     driver_module, _ = load_driver_mock(driver_name, fake_i2c, module_name=module_name)
 
+    # Build extra constructor kwargs from mock_pins
+    extra_kwargs = {}
+    for pin_name, pin_id in scenario.get("mock_pins", {}).items():
+        extra_kwargs[pin_name] = FakePin(pin_id)
+
     cls = getattr(driver_module, driver_class)
-    instance = cls(fake_i2c, address=address)
+    instance = cls(fake_i2c, address=address, **extra_kwargs)
     return instance, driver_name
 
 
@@ -92,6 +98,7 @@ def test_scenario(scenario, test, mode, port):
                     display["method"],
                     display.get("args"),
                     module_name=scenario.get("module_name"),
+                    hardware_init=scenario.get("hardware_init"),
                 )
                 label = display.get("label", display["method"])
                 unit = display.get("unit", "")
@@ -110,6 +117,7 @@ def test_scenario(scenario, test, mode, port):
                 test["method"],
                 test.get("args"),
                 module_name=scenario.get("module_name"),
+                hardware_init=scenario.get("hardware_init"),
             )
         elif action == "read_register":
             result = bridge.read_register(
