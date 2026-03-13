@@ -4,7 +4,7 @@ name: "board_leds"
 tests:
   - name: "LED RED on/off"
     action: hardware_script
-    pre_prompt: "Observez la LED RGB sur la carte, puis appuyez sur Entrée."
+    pre_prompt: "Appuyez sur Entrée pour lancer le test LED RGB, puis observez la carte."
     script: |
       from machine import Pin
       from time import sleep_ms
@@ -88,7 +88,7 @@ tests:
 
   - name: "LED BLE on/off"
     action: hardware_script
-    pre_prompt: "Observez la LED BLE, puis appuyez sur Entrée."
+    pre_prompt: "Appuyez sur Entrée pour lancer le test LED BLE, puis observez la carte."
     script: |
       from machine import Pin
       from time import sleep_ms
