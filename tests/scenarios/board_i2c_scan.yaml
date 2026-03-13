@@ -5,13 +5,18 @@ tests:
   - name: "I2C bus scan finds expected devices"
     action: hardware_script
     script: |
-      from machine import I2C
+      from machine import I2C, Pin
+      # Release MCP23009E from reset so it responds to scan
+      rst = Pin("RST_EXPANDER", Pin.OUT)
+      rst.on()
+      from time import sleep_ms
+      sleep_ms(10)
       i2c = I2C(1)
       found = i2c.scan()
-      # Expected I2C addresses on STeaMi board:
-      # 0x20=MCP23009E, 0x29=VL53L1X, 0x39=APDS9960
-      # 0x55=BQ27441, 0x5C=WSEN-HIDS, 0x5D=WSEN-PADS, 0x5F=HTS221
-      expected = [0x20, 0x29, 0x39, 0x55, 0x5C, 0x5D, 0x5F]
+      # Expected I2C addresses on STeaMi board (7-bit):
+      # 0x20=MCP23009E, 0x29=VL53L1X, 0x39=APDS9960, 0x3B=STM32F103CB
+      # 0x55=BQ27441, 0x5D=WSEN-PADS, 0x5F=HTS221/WSEN-HIDS, 0x6B=ISM330DL
+      expected = [0x20, 0x29, 0x39, 0x3B, 0x55, 0x5D, 0x5F, 0x6B]
       missing = sorted([hex(a) for a in expected if a not in found])
       result = missing
     expect: []
@@ -20,11 +25,87 @@ tests:
   - name: "No unexpected I2C devices"
     action: hardware_script
     script: |
-      from machine import I2C
+      from machine import I2C, Pin
+      rst = Pin("RST_EXPANDER", Pin.OUT)
+      rst.on()
+      from time import sleep_ms
+      sleep_ms(10)
       i2c = I2C(1)
       found = i2c.scan()
-      known = [0x1E, 0x20, 0x29, 0x39, 0x55, 0x5C, 0x5D, 0x5F]
+      known = [0x1E, 0x20, 0x29, 0x39, 0x3B, 0x55, 0x5D, 0x5F, 0x6B]
       unexpected = sorted([hex(a) for a in found if a not in known])
       result = unexpected
     expect: []
+    mode: [hardware]
+
+  # --- WHO_AM_I / Device ID checks ---
+  # Each test reads the identification register of one component.
+
+  - name: "LIS2MDL WHO_AM_I (0x1E)"
+    action: hardware_script
+    script: |
+      from machine import I2C
+      i2c = I2C(1)
+      result = i2c.readfrom_mem(0x1E, 0x4F, 1)[0]
+    expect: 0x40
+    mode: [hardware]
+
+  - name: "MCP23009E IODIR default (0x20)"
+    action: hardware_script
+    script: |
+      from machine import I2C, Pin
+      rst = Pin("RST_EXPANDER", Pin.OUT)
+      rst.on()
+      from time import sleep_ms
+      sleep_ms(10)
+      i2c = I2C(1)
+      # IODIR register default value after reset = 0xFF (all inputs)
+      result = i2c.readfrom_mem(0x20, 0x00, 1)[0]
+    expect: 0xFF
+    mode: [hardware]
+
+  - name: "VL53L1X model ID (0x29)"
+    action: hardware_script
+    script: |
+      from machine import I2C
+      i2c = I2C(1)
+      data = i2c.readfrom_mem(0x29, 0x010F, 2, addrsize=16)
+      result = (data[0] << 8) | data[1]
+    expect: 0xEACC
+    mode: [hardware]
+
+  - name: "APDS9960 device ID (0x39)"
+    action: hardware_script
+    script: |
+      from machine import I2C
+      i2c = I2C(1)
+      result = i2c.readfrom_mem(0x39, 0x92, 1)[0]
+    expect: 0xAB
+    mode: [hardware]
+
+  - name: "WSEN-PADS device ID (0x5D)"
+    action: hardware_script
+    script: |
+      from machine import I2C
+      i2c = I2C(1)
+      result = i2c.readfrom_mem(0x5D, 0x0F, 1)[0]
+    expect: 0xB3
+    mode: [hardware]
+
+  - name: "HTS221/WSEN-HIDS device ID (0x5F)"
+    action: hardware_script
+    script: |
+      from machine import I2C
+      i2c = I2C(1)
+      result = i2c.readfrom_mem(0x5F, 0x0F, 1)[0]
+    expect: 0xBC
+    mode: [hardware]
+
+  - name: "ISM330DL WHO_AM_I (0x6B)"
+    action: hardware_script
+    script: |
+      from machine import I2C
+      i2c = I2C(1)
+      result = i2c.readfrom_mem(0x6B, 0x0F, 1)[0]
+    expect: 0x6A
     mode: [hardware]
