@@ -5,11 +5,14 @@ tests:
   - name: "Buzzer tone 440Hz"
     action: hardware_script
     script: |
-      from machine import Pin, PWM
+      import pyb
       from time import sleep_ms
-      pwm = PWM(Pin("SPEAKER"), freq=440, duty_u16=32768)
+      timer = pyb.Timer(1, freq=440)
+      ch = timer.channel(4, pyb.Timer.PWM, pin=pyb.Pin("SPEAKER"))
+      ch.pulse_width_percent(50)
       sleep_ms(500)
-      pwm.deinit()
+      ch.pulse_width_percent(0)
+      timer.deinit()
       result = True
     expect_true: true
     mode: [hardware]
@@ -23,13 +26,16 @@ tests:
   - name: "Buzzer frequency sweep"
     action: hardware_script
     script: |
-      from machine import Pin, PWM
+      import pyb
       from time import sleep_ms
-      pwm = PWM(Pin("SPEAKER"), freq=200, duty_u16=32768)
+      timer = pyb.Timer(1, freq=200)
+      ch = timer.channel(4, pyb.Timer.PWM, pin=pyb.Pin("SPEAKER"))
+      ch.pulse_width_percent(50)
       for f in range(200, 2001, 100):
-        pwm.freq(f)
+        timer.freq(f)
         sleep_ms(50)
-      pwm.deinit()
+      ch.pulse_width_percent(0)
+      timer.deinit()
       result = True
     expect_true: true
     mode: [hardware]
