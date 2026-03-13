@@ -1,0 +1,90 @@
+driver: ism330dl
+driver_class: ISM330DL
+i2c_address: 0x6B
+
+i2c:
+  id: 1
+
+mock_registers:
+  0x0F: 0x6A
+  0x1E: 0x07
+  0x20: [0x00, 0x00]
+  0x22: [0x00, 0x00, 0x00, 0x00, 0x00, 0x00]
+  0x28: [0x00, 0x00, 0x00, 0x00, 0x00, 0x40]
+
+tests:
+  - name: "Verify WHO_AM_I register"
+    action: read_register
+    register: 0x0F
+    expect: 0x6A
+    mode: [mock, hardware]
+
+  - name: "Read WHO_AM_I via method"
+    action: call
+    method: who_am_i
+    expect: 0x6A
+    mode: [mock, hardware]
+
+  - name: "Status returns dictionary"
+    action: call
+    method: status
+    expect_not_none: true
+    mode: [mock, hardware]
+
+  - name: "Acceleration returns tuple"
+    action: call
+    method: acceleration_g
+    expect_not_none: true
+    mode: [mock]
+
+  - name: "Gyroscope returns tuple"
+    action: call
+    method: gyroscope_dps
+    expect_not_none: true
+    mode: [mock]
+
+  - name: "Temperature returns plausible value"
+    action: call
+    method: temperature_c
+    expect_range: [24.0, 26.0]
+    mode: [mock]
+
+  - name: "Orientation detection works"
+    action: call
+    method: orientation
+    expect: "SCREEN_DOWN"
+    mode: [mock]
+
+  - name: "Acceleration magnitude plausible"
+    action: call
+    method: acceleration_g
+    expect_not_none: true
+    mode: [hardware]
+
+  - name: "Gyroscope magnitude plausible"
+    action: call
+    method: gyroscope_dps
+    expect_not_none: true
+    mode: [hardware]
+
+  - name: "Temperature in plausible range"
+    action: call
+    method: temperature_c
+    expect_range: [-20.0, 80.0]
+    mode: [hardware]
+
+  - name: "Orientation feels correct"
+    action: manual
+    display:
+      - method: acceleration_g
+        label: "Acceleration (g)"
+        unit: ""
+      - method: gyroscope_dps
+        label: "Gyroscope (dps)"
+        unit: ""
+      - method: temperature_c
+        label: "Temperature"
+        unit: "°C"
+    prompt: "Les valeurs d'accélération, rotation et température sont-elles cohérentes ?"
+    expect_true: true
+    mode: [hardware]
