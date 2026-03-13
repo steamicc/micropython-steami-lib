@@ -1,0 +1,105 @@
+type: board
+name: "board_leds"
+
+tests:
+  - name: "LED RED on/off"
+    action: hardware_script
+    script: |
+      from machine import Pin
+      from time import sleep_ms
+      led = Pin("LED_RED", Pin.OUT)
+      led.on()
+      sleep_ms(1000)
+      led.off()
+      result = True
+    expect_true: true
+    mode: [hardware]
+
+  - name: "LED RED visible"
+    action: manual
+    prompt: "La LED rouge s'est-elle allumée puis éteinte ?"
+    expect_true: true
+    mode: [hardware]
+
+  - name: "LED GREEN on/off"
+    action: hardware_script
+    script: |
+      from machine import Pin
+      from time import sleep_ms
+      led = Pin("LED_GREEN", Pin.OUT)
+      led.on()
+      sleep_ms(1000)
+      led.off()
+      result = True
+    expect_true: true
+    mode: [hardware]
+
+  - name: "LED GREEN visible"
+    action: manual
+    prompt: "La LED verte s'est-elle allumée puis éteinte ?"
+    expect_true: true
+    mode: [hardware]
+
+  - name: "LED BLUE on/off"
+    action: hardware_script
+    script: |
+      from machine import Pin
+      from time import sleep_ms
+      led = Pin("LED_BLUE", Pin.OUT)
+      led.on()
+      sleep_ms(1000)
+      led.off()
+      result = True
+    expect_true: true
+    mode: [hardware]
+
+  - name: "LED BLUE visible"
+    action: manual
+    prompt: "La LED bleue s'est-elle allumée puis éteinte ?"
+    expect_true: true
+    mode: [hardware]
+
+  - name: "RGB LED full cycle"
+    action: hardware_script
+    script: |
+      from machine import Pin
+      from time import sleep_ms
+      r = Pin("LED_RED", Pin.OUT)
+      g = Pin("LED_GREEN", Pin.OUT)
+      b = Pin("LED_BLUE", Pin.OUT)
+      for led in [r, g, b]:
+        led.on()
+        sleep_ms(500)
+        led.off()
+      # White = all on
+      r.on(); g.on(); b.on()
+      sleep_ms(1000)
+      r.off(); g.off(); b.off()
+      result = True
+    expect_true: true
+    mode: [hardware]
+
+  - name: "RGB LED full cycle visible"
+    action: manual
+    prompt: "La LED a-t-elle affiché rouge, vert, bleu, puis blanc ?"
+    expect_true: true
+    mode: [hardware]
+
+  - name: "LED BLE on/off"
+    action: hardware_script
+    script: |
+      from machine import Pin
+      from time import sleep_ms
+      led = Pin("LED_BLE", Pin.OUT)
+      led.on()
+      sleep_ms(1000)
+      led.off()
+      result = True
+    expect_true: true
+    mode: [hardware]
+
+  - name: "LED BLE visible"
+    action: manual
+    prompt: "La LED BLE (bleue) s'est-elle allumée puis éteinte ?"
+    expect_true: true
+    mode: [hardware]
