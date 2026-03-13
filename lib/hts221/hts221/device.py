@@ -1,4 +1,5 @@
 from machine import I2C
+from time import sleep_ms
 
 from hts221.const import *
 
@@ -84,8 +85,32 @@ class HTS221(object):
     def setAv(self, av=0):
         self._write_reg(HTS221_AV_CONF, av)
 
+    # one-shot / auto-trigger helpers
+    def _is_power_down(self):
+        return (self._read_reg(HTS221_CTRL_REG1) & HTS221_CTRL1_PD) == 0
+
+    def _is_one_shot_mode(self):
+        ctrl1 = self._read_reg(HTS221_CTRL_REG1)
+        is_active = bool(ctrl1 & HTS221_CTRL1_PD)
+        odr = ctrl1 & HTS221_CTRL1_ODR_MASK
+        return is_active and odr == 0
+
+    def trigger_one_shot(self):
+        ctrl1 = self._read_reg(HTS221_CTRL_REG1)
+        ctrl1 |= HTS221_CTRL1_PD | HTS221_CTRL1_BDU
+        ctrl1 &= ~HTS221_CTRL1_ODR_MASK
+        self._write_reg(HTS221_CTRL_REG1, ctrl1)
+        ctrl2 = self._read_reg(HTS221_CTRL_REG2)
+        self._write_reg(HTS221_CTRL_REG2, ctrl2 | HTS221_CTRL2_ONE_SHOT)
+        sleep_ms(15)
+
+    def _ensure_data(self):
+        if self._is_power_down() or self._is_one_shot_mode():
+            self.trigger_one_shot()
+
     # calculate Temperature
     def temperature(self):
+        self._ensure_data()
         t = self._read_reg16(HTS221_TEMP_OUT_L)
         return self.T0_degC + (self.T1_degC - self.T0_degC) * (t - self.T0_OUT) / (
             self.T1_OUT - self.T0_OUT
@@ -93,11 +118,25 @@ class HTS221(object):
 
     # calculate Humidity
     def humidity(self):
+        self._ensure_data()
         t = self._read_reg16(HTS221_HUMIDITY_OUT_L)
         return self.H0_rH + (self.H1_rH - self.H0_rH) * (t - self.H0_OUT) / (
             self.H1_OUT - self.H0_OUT
         )
 
     # get Humidity and Temperature
+    def read(self):
+        self._ensure_data()
+        h = self._read_reg16(HTS221_HUMIDITY_OUT_L)
+        t = self._read_reg16(HTS221_TEMP_OUT_L)
+        humidity = self.H0_rH + (self.H1_rH - self.H0_rH) * (h - self.H0_OUT) / (
+            self.H1_OUT - self.H0_OUT
+        )
+        temperature = self.T0_degC + (self.T1_degC - self.T0_degC) * (t - self.T0_OUT) / (
+            self.T1_OUT - self.T0_OUT
+        )
+        return humidity, temperature
+
     def get(self):
-        return [self.humidity(), self.temperature()]
+        h, t = self.read()
+        return [h, t]
