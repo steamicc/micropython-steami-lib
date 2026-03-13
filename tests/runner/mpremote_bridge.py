@@ -49,9 +49,8 @@ class MpremoteBridge:
 
         result = subprocess.run(cmd, capture_output=True, text=True, timeout=30, check=False)
         if result.returncode != 0:
-            raise RuntimeError(
-                f"mpremote failed: {result.stderr.strip()}"
-            )
+            detail = result.stderr.strip() or result.stdout.strip()
+            raise RuntimeError(f"mpremote failed: {detail}")
         # mpremote mount adds "Local directory ... is mounted at /remote"
         # to stdout; filter it out and keep only the script output
         lines = [
@@ -157,7 +156,11 @@ class MpremoteBridge:
             f"print(json.dumps(result))"
         )
         output = self._run(code, mount_dir=mount_dir)
-        last_line = output.strip().rsplit("\n", 1)[-1]
+        lines = output.strip().splitlines()
+        # Print non-JSON lines (diagnostic output from the script)
+        for line in lines[:-1]:
+            print(line)
+        last_line = lines[-1] if lines else ""
         return json.loads(last_line)
 
     def scan_bus(self, i2c_config):
