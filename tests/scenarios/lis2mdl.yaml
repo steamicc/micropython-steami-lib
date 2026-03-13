@@ -22,8 +22,8 @@ mock_registers:
   # OUTX_L..OUTZ_H (simulated magnetic field ~300, -150, 450 LSB)
   # Multi-byte read at 0xE8 (0x68 | 0x80), 6 bytes block
   0xE8: [0x2C, 0x01, 0x6A, 0xFF, 0xC2, 0x01]
-  # TEMP_OUT (simulated ~25°C: 25*8 = 200 = 0x00C8)
-  0x6E: 0xC8  # TEMP_OUT_L
+  # TEMP_OUT (simulated ~25°C: offset=25, raw=0 → 25+0/8=25°C)
+  0x6E: 0x00  # TEMP_OUT_L
   0x6F: 0x00  # TEMP_OUT_H
   # Offset registers (all zero)
   0x45: 0x00
@@ -79,7 +79,7 @@ tests:
   - name: "Temperature in plausible range"
     action: call
     method: read_temperature_c
-    expect_range: [-10.0, 60.0]
+    expect_range: [10.0, 45.0]
     mode: [hardware]
 
   - name: "Soft reset then WHO_AM_I"
