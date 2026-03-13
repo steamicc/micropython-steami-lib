@@ -20,6 +20,9 @@ SCENARIOS_DIR = Path(__file__).parent / "scenarios"
 
 def _print_result(result, test):
     """Print the measured value for report capture."""
+    if isinstance(result, bool):
+        # Boolean smoke tests (True/False) — nothing useful to print
+        return
     if isinstance(result, float):
         print(f"{result:.2f}")
     elif isinstance(result, int) and "expect" in test and isinstance(test["expect"], int) and test["expect"] > 0xFF:
