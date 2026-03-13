@@ -1,0 +1,106 @@
+type: board
+name: "Temperature comparison (all sensors)"
+
+i2c:
+  id: 1
+
+tests:
+  - name: "Read all temperature sensors"
+    action: hardware_script
+    script: |
+      import sys
+      sys.path.insert(0, '/flash/lib/hts221')
+      sys.path.insert(0, '/flash/lib/wsen-hids')
+      sys.path.insert(0, '/flash/lib/wsen-pads')
+      sys.path.insert(0, '/flash/lib/lis2mdl')
+      sys.path.insert(0, '/flash/lib/bq27441')
+
+      from machine import I2C
+      from time import sleep_ms
+
+      i2c = I2C(1)
+
+      temps = {}
+
+      # HTS221
+      from hts221.device import HTS221
+      hts = HTS221(i2c)
+      hts.poweroff()
+      sleep_ms(20)
+      hts.poweron()
+      sleep_ms(50)
+      temps['HTS221'] = hts.temperature()
+
+      # WSEN-HIDS
+      from wsen_hids.device import WSEN_HIDS
+      hids = WSEN_HIDS(i2c)
+      temps['WSEN-HIDS'] = hids.temperature()
+
+      # WSEN-PADS
+      from wsen_pads.device import WSEN_PADS
+      pads = WSEN_PADS(i2c)
+      temps['WSEN-PADS'] = pads.temperature()
+
+      # LIS2MDL
+      from lis2mdl.device import LIS2MDL
+      mag = LIS2MDL(i2c)
+      temps['LIS2MDL'] = mag.read_temperature_c()
+
+      # BQ27441
+      from bq27441.device import BQ27441, TempMeasureType
+      bq = BQ27441(i2c)
+      raw = bq.temperature(TempMeasureType(1))
+      temps['BQ27441'] = raw / 10.0 - 273.15
+
+      # Print comparison table
+      print('--- Temperature Comparison ---')
+      for name, t in temps.items():
+        print(f'  {name:12s}: {t:6.2f} C')
+
+      # Check all in plausible range
+      all_ok = all(5.0 <= t <= 50.0 for t in temps.values())
+
+      # Check spread between dedicated thermometers
+      dedicated = [temps['HTS221'], temps['WSEN-HIDS']]
+      spread = max(dedicated) - min(dedicated)
+      print(f'  Spread (HTS221 vs WSEN-HIDS): {spread:.2f} C')
+
+      result = all_ok and spread < 3.0
+    expect_true: true
+    mode: [hardware]
+
+  - name: "Temperature spread with barometer"
+    action: hardware_script
+    script: |
+      import sys
+      sys.path.insert(0, '/flash/lib/hts221')
+      sys.path.insert(0, '/flash/lib/wsen-pads')
+
+      from machine import I2C
+      from time import sleep_ms
+
+      i2c = I2C(1)
+
+      from hts221.device import HTS221
+      hts = HTS221(i2c)
+      hts.poweroff()
+      sleep_ms(20)
+      hts.poweron()
+      sleep_ms(50)
+      t_hts = hts.temperature()
+
+      from wsen_pads.device import WSEN_PADS
+      pads = WSEN_PADS(i2c)
+      t_pads = pads.temperature()
+
+      spread = abs(t_hts - t_pads)
+      print(f'  HTS221: {t_hts:.2f} C  |  WSEN-PADS: {t_pads:.2f} C  |  Spread: {spread:.2f} C')
+      result = spread < 5.0
+    expect_true: true
+    mode: [hardware]
+
+  - name: "Temperature values feel correct"
+    action: manual
+    prompt: "Les temperatures lues sont-elles coherentes entre elles et avec l'ambiance ?"
+    expect_true: true
+    mode: [hardware]
