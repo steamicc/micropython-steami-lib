@@ -1,0 +1,66 @@
+type: board
+name: "board_buttons"
+
+tests:
+  - name: "Button A press detection"
+    action: hardware_script
+    pre_prompt: "Appuyez sur le bouton A quand la LED verte s'allume (5s)."
+    script: |
+      from machine import Pin
+      from time import sleep_ms, ticks_ms, ticks_diff
+      led = Pin("LED_GREEN", Pin.OUT)
+      btn = Pin("A_BUTTON", Pin.IN, Pin.PULL_UP)
+      led.on()
+      detected = False
+      t0 = ticks_ms()
+      while ticks_diff(ticks_ms(), t0) < 5000:
+        if btn.value() == 0:
+          detected = True
+          break
+        sleep_ms(20)
+      led.off()
+      result = detected
+    expect_true: true
+    mode: [hardware]
+
+  - name: "Button B press detection"
+    action: hardware_script
+    pre_prompt: "Appuyez sur le bouton B quand la LED verte s'allume (5s)."
+    script: |
+      from machine import Pin
+      from time import sleep_ms, ticks_ms, ticks_diff
+      led = Pin("LED_GREEN", Pin.OUT)
+      btn = Pin("B_BUTTON", Pin.IN, Pin.PULL_UP)
+      led.on()
+      detected = False
+      t0 = ticks_ms()
+      while ticks_diff(ticks_ms(), t0) < 5000:
+        if btn.value() == 0:
+          detected = True
+          break
+        sleep_ms(20)
+      led.off()
+      result = detected
+    expect_true: true
+    mode: [hardware]
+
+  - name: "Button MENU press detection"
+    action: hardware_script
+    pre_prompt: "Appuyez sur le bouton MENU quand la LED verte s'allume (5s)."
+    script: |
+      from machine import Pin
+      from time import sleep_ms, ticks_ms, ticks_diff
+      led = Pin("LED_GREEN", Pin.OUT)
+      btn = Pin("MENU_BUTTON", Pin.IN, Pin.PULL_UP)
+      led.on()
+      detected = False
+      t0 = ticks_ms()
+      while ticks_diff(ticks_ms(), t0) < 5000:
+        if btn.value() == 0:
+          detected = True
+          break
+        sleep_ms(20)
+      led.off()
+      result = detected
+    expect_true: true
+    mode: [hardware]
