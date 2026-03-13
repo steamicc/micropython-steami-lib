@@ -97,6 +97,10 @@ tests:
     script: |
       from machine import Pin, I2C
       from time import sleep_ms, ticks_ms, ticks_diff
+      # Release MCP23009E from reset
+      rst = Pin("RST_EXPANDER", Pin.OUT)
+      rst.on()
+      sleep_ms(10)
       led = Pin("LED_GREEN", Pin.OUT)
       i2c = I2C(1)
       bit = 7
