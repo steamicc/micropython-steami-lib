@@ -142,6 +142,21 @@ class MpremoteBridge:
         last_line = output.strip().rsplit("\n", 1)[-1]
         return json.loads(last_line)
 
+    def run_raw_script(self, script):
+        """Run a raw MicroPython script on the board without driver context.
+
+        The script must set a ``result`` variable.  Returns the
+        JSON-decoded value of ``result``.
+        """
+        code = (
+            f"import json\n"
+            f"{script}\n"
+            f"print(json.dumps(result))"
+        )
+        output = self._run(code)
+        last_line = output.strip().rsplit("\n", 1)[-1]
+        return json.loads(last_line)
+
     def scan_bus(self, i2c_config):
         """Scan I2C bus and return list of addresses."""
         i2c_init = _i2c_init_code(i2c_config)
