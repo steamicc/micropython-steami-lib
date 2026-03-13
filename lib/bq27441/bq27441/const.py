@@ -1,7 +1,7 @@
 from micropython import const
 
 # Lipo Battery Capacity
-LIPO_BATTERY_CAPACITY = const(650)  # 850 mAh
+LIPO_BATTERY_CAPACITY = const(650)  # 650 mAh
 
 
 BQ27441_I2C_ADDRESS = const(0x55)  # Default I2C address of the BQ27441-G1A
