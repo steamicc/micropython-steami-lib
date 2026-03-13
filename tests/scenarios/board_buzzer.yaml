@@ -45,3 +45,39 @@ tests:
     prompt: "Avez-vous entendu un balayage de fréquence (grave vers aigu) ?"
     expect_true: true
     mode: [hardware]
+
+  - name: "Buzzer Ode to Joy"
+    action: hardware_script
+    script: |
+      import pyb
+      from time import sleep_ms
+      timer = pyb.Timer(1, freq=440)
+      ch = timer.channel(4, pyb.Timer.PWM, pin=pyb.Pin("SPEAKER"))
+      # Ode to Joy (Beethoven) - first phrase
+      # (frequency Hz, duration ms)
+      melody = [
+        (330, 300), (330, 300), (349, 300), (392, 300),
+        (392, 300), (349, 300), (330, 300), (294, 300),
+        (262, 300), (262, 300), (294, 300), (330, 300),
+        (330, 450), (294, 150), (294, 600),
+        (330, 300), (330, 300), (349, 300), (392, 300),
+        (392, 300), (349, 300), (330, 300), (294, 300),
+        (262, 300), (262, 300), (294, 300), (330, 300),
+        (294, 450), (262, 150), (262, 600),
+      ]
+      for freq, dur in melody:
+        timer.freq(freq)
+        ch.pulse_width_percent(50)
+        sleep_ms(dur)
+        ch.pulse_width_percent(0)
+        sleep_ms(30)
+      timer.deinit()
+      result = True
+    expect_true: true
+    mode: [hardware]
+
+  - name: "Buzzer Ode to Joy audible"
+    action: manual
+    prompt: "Avez-vous reconnu l'Hymne à la joie (Beethoven) ?"
+    expect_true: true
+    mode: [hardware]
