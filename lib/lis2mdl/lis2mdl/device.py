@@ -32,6 +32,8 @@ class LIS2MDL(object):
         self.writebuffer = bytearray(1)
         self.readbuffer = bytearray(1)
 
+        self._temp_offset = LIS2MDL_TEMP_OFFSET
+
         # Perform a soft reset to ensure the sensor starts in a known state.
         self._write_reg(LIS2MDL_CFG_REG_A, 0x20)  # SOFT_RST=1 (not 0x10)
         try:
@@ -234,8 +236,12 @@ class LIS2MDL(object):
         return v - 0x10000 if (v & 0x8000) else v
 
     def read_temperature_c(self) -> float:
-        """Relative temperature in °C (8 LSB/°C). Warning: absolute offset not specified."""
-        return self.read_temperature_raw() / 8.0
+        """Temperature in °C (8 LSB/°C + offset)."""
+        return self._temp_offset + self.read_temperature_raw() / LIS2MDL_TEMP_SENSITIVITY
+
+    def set_temp_offset(self, offset):
+        """Set the temperature offset in °C for calibration."""
+        self._temp_offset = offset
 
     # --- IDENTITY & HARDWARE OFFSETS ---
 

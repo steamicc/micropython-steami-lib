@@ -30,6 +30,10 @@ LIS2MDL_OFFSET_Z_REG_H = const(0x4A)  # Z-axis offset high byte
 LIS2MDL_TEMP_OUT_L_REG = const(0x6E)  # Temperature output low byte
 LIS2MDL_TEMP_OUT_H_REG = const(0x6F)  # Temperature output high byte
 
+# Temperature conversion
+LIS2MDL_TEMP_SENSITIVITY = 8  # LSB/°C
+LIS2MDL_TEMP_OFFSET = 25  # °C (not guaranteed by datasheet, empirical default)
+
 # Interrupt control and source registers
 LIS2MDL_INT_CTRL_REG = const(0x63)  # Interrupt control register
 LIS2MDL_INT_SOURCE_REG = const(0x64)  # Interrupt source register
