@@ -118,6 +118,11 @@ def run_action(action, driver_instance):
 
     Returns the result value from the action.
     """
+    # Run optional setup steps before the main action
+    for step in action.get("setup", []):
+        method = getattr(driver_instance, step["method"])
+        method(*step.get("args", []))
+
     action_type = action["action"]
 
     if action_type == "call":
