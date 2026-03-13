@@ -1,17 +1,19 @@
 type: board
 name: "board_buttons"
 
+# --- Polling tests (one per button) ---
+# LED_GREEN signals when the board is ready to read the button.
+
 tests:
-  - name: "Button A press detection"
+  - name: "Button A press (polling)"
     action: hardware_script
-    pre_prompt: "Test bouton A : appuyez sur le bouton A quand la LED verte s'allume (5s)."
+    pre_prompt: "Test polling boutons : appuyez sur chaque bouton quand la LED verte s'allume (5s). Commençons par A."
     wait: false
     script: |
       from machine import Pin
       from time import sleep_ms, ticks_ms, ticks_diff
       led = Pin("LED_GREEN", Pin.OUT)
       btn = Pin("A_BUTTON", Pin.IN, Pin.PULL_UP)
-      # Wait for button to be released before starting
       while btn.value() == 0:
         sleep_ms(20)
       led.on()
@@ -27,7 +29,7 @@ tests:
     expect_true: true
     mode: [hardware]
 
-  - name: "Button B press detection"
+  - name: "Button B press (polling)"
     action: hardware_script
     pre_prompt: "Bouton B"
     wait: false
@@ -51,7 +53,7 @@ tests:
     expect_true: true
     mode: [hardware]
 
-  - name: "Button MENU press detection"
+  - name: "Button MENU press (polling)"
     action: hardware_script
     pre_prompt: "Bouton MENU"
     wait: false
@@ -70,6 +72,93 @@ tests:
           detected = True
           break
         sleep_ms(20)
+      led.off()
+      result = detected
+    expect_true: true
+    mode: [hardware]
+
+  # --- Interrupt tests (one per button) ---
+  # LED_GREEN signals when the board is ready; uses Pin.irq() to detect press.
+
+  - name: "Button A press (interrupt)"
+    action: hardware_script
+    pre_prompt: "Test interrupt boutons : appuyez brièvement sur chaque bouton quand la LED verte s'allume (5s). Commençons par A."
+    wait: false
+    script: |
+      from machine import Pin
+      from time import sleep_ms, ticks_ms, ticks_diff
+      led = Pin("LED_GREEN", Pin.OUT)
+      btn = Pin("A_BUTTON", Pin.IN, Pin.PULL_UP)
+      while btn.value() == 0:
+        sleep_ms(20)
+      detected = False
+      def on_press(pin):
+        global detected
+        detected = True
+      btn.irq(trigger=Pin.IRQ_FALLING, handler=on_press)
+      led.on()
+      t0 = ticks_ms()
+      while ticks_diff(ticks_ms(), t0) < 5000:
+        if detected:
+          break
+        sleep_ms(20)
+      btn.irq(handler=None)
+      led.off()
+      result = detected
+    expect_true: true
+    mode: [hardware]
+
+  - name: "Button B press (interrupt)"
+    action: hardware_script
+    pre_prompt: "Bouton B"
+    wait: false
+    script: |
+      from machine import Pin
+      from time import sleep_ms, ticks_ms, ticks_diff
+      led = Pin("LED_GREEN", Pin.OUT)
+      btn = Pin("B_BUTTON", Pin.IN, Pin.PULL_UP)
+      while btn.value() == 0:
+        sleep_ms(20)
+      detected = False
+      def on_press(pin):
+        global detected
+        detected = True
+      btn.irq(trigger=Pin.IRQ_FALLING, handler=on_press)
+      led.on()
+      t0 = ticks_ms()
+      while ticks_diff(ticks_ms(), t0) < 5000:
+        if detected:
+          break
+        sleep_ms(20)
+      btn.irq(handler=None)
+      led.off()
+      result = detected
+    expect_true: true
+    mode: [hardware]
+
+  - name: "Button MENU press (interrupt)"
+    action: hardware_script
+    pre_prompt: "Bouton MENU"
+    wait: false
+    script: |
+      from machine import Pin
+      from time import sleep_ms, ticks_ms, ticks_diff
+      led = Pin("LED_GREEN", Pin.OUT)
+      btn = Pin("MENU_BUTTON", Pin.IN, Pin.PULL_UP)
+      while btn.value() == 0:
+        sleep_ms(20)
+      detected = False
+      def on_press(pin):
+        global detected
+        detected = True
+      btn.irq(trigger=Pin.IRQ_FALLING, handler=on_press)
+      led.on()
+      t0 = ticks_ms()
+      while ticks_diff(ticks_ms(), t0) < 5000:
+        if detected:
+          break
+        sleep_ms(20)
+      btn.irq(handler=None)
       led.off()
       result = detected
     expect_true: true
