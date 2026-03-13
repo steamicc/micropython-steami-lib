@@ -1,14 +1,13 @@
 type: board
 name: "board_pins"
 
-# User pin tests for board qualification via test bench.
-# These tests verify electrical continuity and GPIO/ADC functionality
-# of each user-accessible pin on the edge connector and croc pads.
+# Smoke tests for user-accessible pins on the edge connector and croc pads.
+# ADC tests verify that the pin can be configured and read without error.
+# Digital tests verify the internal pull-up reads high when the pin is floating.
 #
-# Note: Full pin testing requires a physical test bench (jig) that
-# connects each pin to a verification circuit. Tests below cover
-# basic GPIO read-back; more comprehensive tests will be added
-# once the test bench hardware is designed.
+# Note: These are basic configuration/readback smoke tests. Full electrical
+# continuity testing requires a physical test bench (jig) with known voltages
+# and will be added once the test bench hardware is designed.
 
 tests:
   - name: "Pin P0 (PC4) analog read"
@@ -16,8 +15,8 @@ tests:
     script: |
       from machine import ADC, Pin
       adc = ADC(Pin("P0"))
-      raw = adc.read_u16()
-      result = 0 <= raw <= 65535
+      adc.read_u16()
+      result = True
     expect_true: true
     mode: [hardware]
 
@@ -26,8 +25,8 @@ tests:
     script: |
       from machine import ADC, Pin
       adc = ADC(Pin("P1"))
-      raw = adc.read_u16()
-      result = 0 <= raw <= 65535
+      adc.read_u16()
+      result = True
     expect_true: true
     mode: [hardware]
 
@@ -36,8 +35,8 @@ tests:
     script: |
       from machine import ADC, Pin
       adc = ADC(Pin("P2"))
-      raw = adc.read_u16()
-      result = 0 <= raw <= 65535
+      adc.read_u16()
+      result = True
     expect_true: true
     mode: [hardware]
 
@@ -46,8 +45,8 @@ tests:
     script: |
       from machine import ADC, Pin
       adc = ADC(Pin("P3"))
-      raw = adc.read_u16()
-      result = 0 <= raw <= 65535
+      adc.read_u16()
+      result = True
     expect_true: true
     mode: [hardware]
 
@@ -56,8 +55,8 @@ tests:
     script: |
       from machine import ADC, Pin
       adc = ADC(Pin("P4"))
-      raw = adc.read_u16()
-      result = 0 <= raw <= 65535
+      adc.read_u16()
+      result = True
     expect_true: true
     mode: [hardware]
 
@@ -66,8 +65,8 @@ tests:
     script: |
       from machine import ADC, Pin
       adc = ADC(Pin("P10"))
-      raw = adc.read_u16()
-      result = 0 <= raw <= 65535
+      adc.read_u16()
+      result = True
     expect_true: true
     mode: [hardware]
 
