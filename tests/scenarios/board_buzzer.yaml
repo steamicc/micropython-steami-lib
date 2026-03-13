@@ -30,10 +30,10 @@ tests:
       from time import sleep_ms
       timer = pyb.Timer(1, freq=200)
       ch = timer.channel(4, pyb.Timer.PWM, pin=pyb.Pin("SPEAKER"))
-      ch.pulse_width_percent(50)
       for f in range(200, 2001, 100):
         timer.freq(f)
-        sleep_ms(50)
+        ch.pulse_width_percent(50)
+        sleep_ms(200)
       ch.pulse_width_percent(0)
       timer.deinit()
       result = True
