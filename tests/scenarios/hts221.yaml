@@ -85,6 +85,19 @@ tests:
     expect_not_none: true
     mode: [mock, hardware]
 
+  - name: "Auto-trigger after poweroff"
+    action: hardware_script
+    script: |
+      from machine import I2C
+      from hts221.device import HTS221
+      i2c = I2C(1)
+      sensor = HTS221(i2c)
+      sensor.poweroff()
+      t = sensor.temperature()
+      result = 10.0 <= t <= 45.0
+    expect_true: true
+    mode: [hardware]
+
   - name: "Temperature feels correct"
     action: manual
     display:
