@@ -36,12 +36,17 @@ def iter_scenario_tests():
         with open(yaml_file, encoding="utf-8") as f:
             scenario = yaml.safe_load(f)
 
-        driver = scenario["driver"]
+        is_board = scenario.get("type") == "board"
+        name = scenario.get("name", scenario.get("driver", yaml_file.stem))
         for test in scenario.get("tests", []):
             modes = test.get("mode", ["mock", "hardware"])
+            if is_board:
+                # Board scenarios are hardware-only
+                modes = [m for m in modes if m == "hardware"]
             for mode in modes:
-                test_id = f"{driver}/{test['name']}/{mode}"
-                yield pytest.param(scenario, test, mode, id=test_id)
+                test_id = f"{name}/{test['name']}/{mode}"
+                marks = [pytest.mark.board] if is_board else []
+                yield pytest.param(scenario, test, mode, id=test_id, marks=marks)
 
 
 def make_mock_instance(scenario):
@@ -154,15 +159,18 @@ def test_scenario(scenario, test, mode, port):
                     input(f"  [INTERACTIVE] {pre_prompt} ")
                 else:
                     print(f"  [INTERACTIVE] {pre_prompt}")
-            result = bridge.run_script(
-                scenario["driver"],
-                scenario["driver_class"],
-                scenario["i2c"],
-                test["script"],
-                module_name=scenario.get("module_name"),
-                hardware_init=scenario.get("hardware_init"),
-                i2c_address=scenario.get("i2c_address"),
-            )
+            if scenario.get("type") == "board":
+                result = bridge.run_raw_script(test["script"])
+            else:
+                result = bridge.run_script(
+                    scenario["driver"],
+                    scenario["driver_class"],
+                    scenario["i2c"],
+                    test["script"],
+                    module_name=scenario.get("module_name"),
+                    hardware_init=scenario.get("hardware_init"),
+                    i2c_address=scenario.get("i2c_address"),
+                )
         else:
             pytest.fail(f"Unknown action: {action}")
 
