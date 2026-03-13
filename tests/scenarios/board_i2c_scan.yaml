@@ -1,0 +1,30 @@
+type: board
+name: "board_i2c_scan"
+
+tests:
+  - name: "I2C bus scan finds expected devices"
+    action: hardware_script
+    script: |
+      from machine import I2C
+      i2c = I2C(1)
+      found = i2c.scan()
+      # Expected I2C addresses on STeaMi board:
+      # 0x20=MCP23009E, 0x29=VL53L1X, 0x39=APDS9960
+      # 0x55=BQ27441, 0x5C=WSEN-HIDS, 0x5D=WSEN-PADS, 0x5F=HTS221
+      expected = [0x20, 0x29, 0x39, 0x55, 0x5C, 0x5D, 0x5F]
+      missing = [hex(a) for a in expected if a not in found]
+      result = len(missing) == 0
+    expect_true: true
+    mode: [hardware]
+
+  - name: "No unexpected I2C devices"
+    action: hardware_script
+    script: |
+      from machine import I2C
+      i2c = I2C(1)
+      found = i2c.scan()
+      known = [0x1E, 0x20, 0x29, 0x39, 0x55, 0x5C, 0x5D, 0x5F]
+      unexpected = [hex(a) for a in found if a not in known]
+      result = len(unexpected) == 0
+    expect_true: true
+    mode: [hardware]
