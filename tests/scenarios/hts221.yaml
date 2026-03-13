@@ -85,6 +85,30 @@ tests:
     expect_not_none: true
     mode: [mock, hardware]
 
+  - name: "Auto-trigger temperature after poweroff"
+    action: call
+    setup:
+      - method: poweroff
+    method: temperature
+    expect_not_none: true
+    mode: [mock]
+
+  - name: "Auto-trigger humidity after poweroff"
+    action: call
+    setup:
+      - method: poweroff
+    method: humidity
+    expect_not_none: true
+    mode: [mock]
+
+  - name: "Auto-trigger read after one-shot mode"
+    action: call
+    setup:
+      - method: trigger_one_shot
+    method: read
+    expect_not_none: true
+    mode: [mock]
+
   - name: "Auto-trigger after poweroff"
     action: hardware_script
     script: |
