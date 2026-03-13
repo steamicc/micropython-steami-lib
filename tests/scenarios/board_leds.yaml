@@ -4,6 +4,7 @@ name: "board_leds"
 tests:
   - name: "LED RED on/off"
     action: hardware_script
+    pre_prompt: "Observez la LED rouge sur la carte, puis appuyez sur Entrée."
     script: |
       from machine import Pin
       from time import sleep_ms
@@ -23,6 +24,7 @@ tests:
 
   - name: "LED GREEN on/off"
     action: hardware_script
+    pre_prompt: "Observez la LED verte, puis appuyez sur Entrée."
     script: |
       from machine import Pin
       from time import sleep_ms
@@ -42,6 +44,7 @@ tests:
 
   - name: "LED BLUE on/off"
     action: hardware_script
+    pre_prompt: "Observez la LED bleue, puis appuyez sur Entrée."
     script: |
       from machine import Pin
       from time import sleep_ms
@@ -61,6 +64,7 @@ tests:
 
   - name: "RGB LED full cycle"
     action: hardware_script
+    pre_prompt: "Observez la LED RGB (séquence R/G/B/blanc), puis appuyez sur Entrée."
     script: |
       from machine import Pin
       from time import sleep_ms
@@ -73,7 +77,7 @@ tests:
         led.off()
       # White = all on
       r.on(); g.on(); b.on()
-      sleep_ms(1000)
+      sleep_ms(500)
       r.off(); g.off(); b.off()
       result = True
     expect_true: true
@@ -87,6 +91,7 @@ tests:
 
   - name: "LED BLE on/off"
     action: hardware_script
+    pre_prompt: "Observez la LED BLE, puis appuyez sur Entrée."
     script: |
       from machine import Pin
       from time import sleep_ms
