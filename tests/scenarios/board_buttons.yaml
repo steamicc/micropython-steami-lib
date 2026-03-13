@@ -14,7 +14,10 @@ tests:
       from time import sleep_ms, ticks_ms, ticks_diff
       led = Pin("LED_GREEN", Pin.OUT)
       btn = Pin("A_BUTTON", Pin.IN, Pin.PULL_UP)
+      t_rel = ticks_ms()
       while btn.value() == 0:
+        if ticks_diff(ticks_ms(), t_rel) > 3000:
+          break
         sleep_ms(20)
       led.on()
       detected = False
@@ -38,7 +41,10 @@ tests:
       from time import sleep_ms, ticks_ms, ticks_diff
       led = Pin("LED_GREEN", Pin.OUT)
       btn = Pin("B_BUTTON", Pin.IN, Pin.PULL_UP)
+      t_rel = ticks_ms()
       while btn.value() == 0:
+        if ticks_diff(ticks_ms(), t_rel) > 3000:
+          break
         sleep_ms(20)
       led.on()
       detected = False
@@ -62,7 +68,10 @@ tests:
       from time import sleep_ms, ticks_ms, ticks_diff
       led = Pin("LED_GREEN", Pin.OUT)
       btn = Pin("MENU_BUTTON", Pin.IN, Pin.PULL_UP)
+      t_rel = ticks_ms()
       while btn.value() == 0:
+        if ticks_diff(ticks_ms(), t_rel) > 3000:
+          break
         sleep_ms(20)
       led.on()
       detected = False
@@ -77,7 +86,107 @@ tests:
     expect_true: true
     mode: [hardware]
 
-  # --- Interrupt tests (one per button) ---
+  # --- D-PAD buttons via MCP23009E (I2C 0x20, GPIO register 0x09) ---
+  # Read directly via I2C without importing the driver.
+  # Bit mapping: UP=bit7, DOWN=bit5, LEFT=bit6, RIGHT=bit4.
+
+  - name: "D-PAD UP press (polling)"
+    action: hardware_script
+    pre_prompt: "Test polling D-PAD : appuyez sur chaque bouton quand la LED verte s'allume (5s). Commençons par UP."
+    wait: false
+    script: |
+      from machine import Pin, I2C
+      from time import sleep_ms, ticks_ms, ticks_diff
+      led = Pin("LED_GREEN", Pin.OUT)
+      i2c = I2C(1)
+      bit = 7
+      led.on()
+      detected = False
+      t0 = ticks_ms()
+      while ticks_diff(ticks_ms(), t0) < 5000:
+        gpio = i2c.readfrom_mem(0x20, 0x09, 1)[0]
+        if not (gpio & (1 << bit)):
+          detected = True
+          break
+        sleep_ms(20)
+      led.off()
+      result = detected
+    expect_true: true
+    mode: [hardware]
+
+  - name: "D-PAD DOWN press (polling)"
+    action: hardware_script
+    pre_prompt: "Bouton DOWN"
+    wait: false
+    script: |
+      from machine import Pin, I2C
+      from time import sleep_ms, ticks_ms, ticks_diff
+      led = Pin("LED_GREEN", Pin.OUT)
+      i2c = I2C(1)
+      bit = 5
+      led.on()
+      detected = False
+      t0 = ticks_ms()
+      while ticks_diff(ticks_ms(), t0) < 5000:
+        gpio = i2c.readfrom_mem(0x20, 0x09, 1)[0]
+        if not (gpio & (1 << bit)):
+          detected = True
+          break
+        sleep_ms(20)
+      led.off()
+      result = detected
+    expect_true: true
+    mode: [hardware]
+
+  - name: "D-PAD LEFT press (polling)"
+    action: hardware_script
+    pre_prompt: "Bouton LEFT"
+    wait: false
+    script: |
+      from machine import Pin, I2C
+      from time import sleep_ms, ticks_ms, ticks_diff
+      led = Pin("LED_GREEN", Pin.OUT)
+      i2c = I2C(1)
+      bit = 6
+      led.on()
+      detected = False
+      t0 = ticks_ms()
+      while ticks_diff(ticks_ms(), t0) < 5000:
+        gpio = i2c.readfrom_mem(0x20, 0x09, 1)[0]
+        if not (gpio & (1 << bit)):
+          detected = True
+          break
+        sleep_ms(20)
+      led.off()
+      result = detected
+    expect_true: true
+    mode: [hardware]
+
+  - name: "D-PAD RIGHT press (polling)"
+    action: hardware_script
+    pre_prompt: "Bouton RIGHT"
+    wait: false
+    script: |
+      from machine import Pin, I2C
+      from time import sleep_ms, ticks_ms, ticks_diff
+      led = Pin("LED_GREEN", Pin.OUT)
+      i2c = I2C(1)
+      bit = 4
+      led.on()
+      detected = False
+      t0 = ticks_ms()
+      while ticks_diff(ticks_ms(), t0) < 5000:
+        gpio = i2c.readfrom_mem(0x20, 0x09, 1)[0]
+        if not (gpio & (1 << bit)):
+          detected = True
+          break
+        sleep_ms(20)
+      led.off()
+      result = detected
+    expect_true: true
+    mode: [hardware]
+
+  # --- Interrupt tests (GPIO direct buttons) ---
   # LED_GREEN signals when the board is ready; uses Pin.irq() to detect press.
 
   - name: "Button A press (interrupt)"
@@ -89,7 +198,10 @@ tests:
       from time import sleep_ms, ticks_ms, ticks_diff
       led = Pin("LED_GREEN", Pin.OUT)
       btn = Pin("A_BUTTON", Pin.IN, Pin.PULL_UP)
+      t_rel = ticks_ms()
       while btn.value() == 0:
+        if ticks_diff(ticks_ms(), t_rel) > 3000:
+          break
         sleep_ms(20)
       detected = False
       def on_press(pin):
@@ -117,7 +229,10 @@ tests:
       from time import sleep_ms, ticks_ms, ticks_diff
       led = Pin("LED_GREEN", Pin.OUT)
       btn = Pin("B_BUTTON", Pin.IN, Pin.PULL_UP)
+      t_rel = ticks_ms()
       while btn.value() == 0:
+        if ticks_diff(ticks_ms(), t_rel) > 3000:
+          break
         sleep_ms(20)
       detected = False
       def on_press(pin):
@@ -145,7 +260,10 @@ tests:
       from time import sleep_ms, ticks_ms, ticks_diff
       led = Pin("LED_GREEN", Pin.OUT)
       btn = Pin("MENU_BUTTON", Pin.IN, Pin.PULL_UP)
+      t_rel = ticks_ms()
       while btn.value() == 0:
+        if ticks_diff(ticks_ms(), t_rel) > 3000:
+          break
         sleep_ms(20)
       detected = False
       def on_press(pin):
