@@ -45,7 +45,7 @@ def iter_scenario_tests():
                 modes = [m for m in modes if m == "hardware"]
             for mode in modes:
                 test_id = f"{name}/{test['name']}/{mode}"
-                marks = [pytest.mark.board] if is_board else []
+                marks = [pytest.mark.board, pytest.mark.hardware] if is_board else []
                 yield pytest.param(scenario, test, mode, id=test_id, marks=marks)
 
 
@@ -89,6 +89,8 @@ def test_scenario(scenario, test, mode, port):
         bridge = MpremoteBridge(port=port)
         action = test["action"]
 
+        is_board = scenario.get("type") == "board"
+
         if action == "manual":
             # Skip manual tests when stdin is not available (no -s flag)
             import sys
@@ -96,59 +98,66 @@ def test_scenario(scenario, test, mode, port):
                 pytest.skip("manual test requires interactive mode (-s)")
 
             # Display values before prompting if 'display' is defined
-            for display in test.get("display", []):
-                value = bridge.call_method(
+            # (board scenarios have no driver, so display is not supported)
+            if not is_board:
+                for display in test.get("display", []):
+                    value = bridge.call_method(
+                        scenario["driver"],
+                        scenario["driver_class"],
+                        scenario["i2c"],
+                        display["method"],
+                        display.get("args"),
+                        module_name=scenario.get("module_name"),
+                        hardware_init=scenario.get("hardware_init"),
+                        i2c_address=scenario.get("i2c_address"),
+                    )
+                    label = display.get("label", display["method"])
+                    unit = display.get("unit", "")
+                    if isinstance(value, float):
+                        print(f"  {label}: {value:.2f} {unit}")
+                    else:
+                        print(f"  {label}: {value} {unit}")
+            prompt = test.get("prompt", "Manual check")
+            result = prompt_yes_no(prompt)
+        elif action in ("call", "read_register", "interactive"):
+            if is_board:
+                pytest.fail(
+                    f"Board scenarios do not support '{action}' action; "
+                    f"use 'hardware_script' or 'manual' instead"
+                )
+            if action == "call":
+                result = bridge.call_method(
                     scenario["driver"],
                     scenario["driver_class"],
                     scenario["i2c"],
-                    display["method"],
-                    display.get("args"),
+                    test["method"],
+                    test.get("args"),
                     module_name=scenario.get("module_name"),
                     hardware_init=scenario.get("hardware_init"),
                     i2c_address=scenario.get("i2c_address"),
                 )
-                label = display.get("label", display["method"])
-                unit = display.get("unit", "")
-                if isinstance(value, float):
-                    print(f"  {label}: {value:.2f} {unit}")
-                else:
-                    print(f"  {label}: {value} {unit}")
-            prompt = test.get("prompt", "Manual check")
-            result = prompt_yes_no(prompt)
-        elif action == "call":
-            result = bridge.call_method(
-                scenario["driver"],
-                scenario["driver_class"],
-                scenario["i2c"],
-                test["method"],
-                test.get("args"),
-                module_name=scenario.get("module_name"),
-                hardware_init=scenario.get("hardware_init"),
-                i2c_address=scenario.get("i2c_address"),
-            )
-        elif action == "read_register":
-            result = bridge.read_register(
-                scenario["i2c"],
-                scenario["i2c_address"],
-                test["register"],
-            )
-        elif action == "interactive":
-            # Prompt user first, then call method
-            import sys
-            if not sys.stdin.isatty():
-                pytest.skip("interactive test requires interactive mode (-s)")
-            pre_prompt = test.get("pre_prompt", "Perform action then press Enter")
-            input(f"  [INTERACTIVE] {pre_prompt} ")
-            result = bridge.call_method(
-                scenario["driver"],
-                scenario["driver_class"],
-                scenario["i2c"],
-                test["method"],
-                test.get("args"),
-                module_name=scenario.get("module_name"),
-                hardware_init=scenario.get("hardware_init"),
-                i2c_address=scenario.get("i2c_address"),
-            )
+            elif action == "read_register":
+                result = bridge.read_register(
+                    scenario["i2c"],
+                    scenario["i2c_address"],
+                    test["register"],
+                )
+            else:  # interactive
+                import sys
+                if not sys.stdin.isatty():
+                    pytest.skip("interactive test requires interactive mode (-s)")
+                pre_prompt = test.get("pre_prompt", "Perform action then press Enter")
+                input(f"  [INTERACTIVE] {pre_prompt} ")
+                result = bridge.call_method(
+                    scenario["driver"],
+                    scenario["driver_class"],
+                    scenario["i2c"],
+                    test["method"],
+                    test.get("args"),
+                    module_name=scenario.get("module_name"),
+                    hardware_init=scenario.get("hardware_init"),
+                    i2c_address=scenario.get("i2c_address"),
+                )
         elif action == "hardware_script":
             import sys
             if not sys.stdin.isatty():
@@ -159,7 +168,7 @@ def test_scenario(scenario, test, mode, port):
                     input(f"  [INTERACTIVE] {pre_prompt} ")
                 else:
                     print(f"  [INTERACTIVE] {pre_prompt}")
-            if scenario.get("type") == "board":
+            if is_board:
                 result = bridge.run_raw_script(test["script"])
             else:
                 result = bridge.run_script(
