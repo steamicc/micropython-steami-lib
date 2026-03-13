@@ -4,7 +4,7 @@ name: "board_leds"
 tests:
   - name: "LED RED on/off"
     action: hardware_script
-    pre_prompt: "Observez la LED rouge sur la carte, puis appuyez sur Entrée."
+    pre_prompt: "Observez la LED RGB sur la carte, puis appuyez sur Entrée."
     script: |
       from machine import Pin
       from time import sleep_ms
@@ -24,7 +24,6 @@ tests:
 
   - name: "LED GREEN on/off"
     action: hardware_script
-    pre_prompt: "Observez la LED verte, puis appuyez sur Entrée."
     script: |
       from machine import Pin
       from time import sleep_ms
@@ -44,7 +43,6 @@ tests:
 
   - name: "LED BLUE on/off"
     action: hardware_script
-    pre_prompt: "Observez la LED bleue, puis appuyez sur Entrée."
     script: |
       from machine import Pin
       from time import sleep_ms
@@ -64,7 +62,6 @@ tests:
 
   - name: "RGB LED full cycle"
     action: hardware_script
-    pre_prompt: "Observez la LED RGB (séquence R/G/B/blanc), puis appuyez sur Entrée."
     script: |
       from machine import Pin
       from time import sleep_ms
