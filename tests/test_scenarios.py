@@ -172,7 +172,12 @@ def test_scenario(scenario, test, mode, port):
                 else:
                     print(f"  [INTERACTIVE] {pre_prompt}")
             if is_board:
-                result = bridge.run_raw_script(test["script"])
+                mount_dir = None
+                if scenario.get("drivers"):
+                    mount_dir = Path(__file__).parent.parent / "lib"
+                result = bridge.run_raw_script(
+                    test["script"], mount_dir=mount_dir,
+                )
             else:
                 result = bridge.run_script(
                     scenario["driver"],
