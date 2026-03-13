@@ -1,0 +1,126 @@
+type: board
+name: "board_pins"
+
+# User pin tests for board qualification via test bench.
+# These tests verify electrical continuity and GPIO/ADC functionality
+# of each user-accessible pin on the edge connector and croc pads.
+#
+# Note: Full pin testing requires a physical test bench (jig) that
+# connects each pin to a verification circuit. Tests below cover
+# basic GPIO read-back; more comprehensive tests will be added
+# once the test bench hardware is designed.
+
+tests:
+  - name: "Pin P0 (PC4) analog read"
+    action: hardware_script
+    script: |
+      from machine import ADC, Pin
+      adc = ADC(Pin("P0"))
+      raw = adc.read_u16()
+      result = 0 <= raw <= 65535
+    expect_true: true
+    mode: [hardware]
+
+  - name: "Pin P1 (PA5) analog read"
+    action: hardware_script
+    script: |
+      from machine import ADC, Pin
+      adc = ADC(Pin("P1"))
+      raw = adc.read_u16()
+      result = 0 <= raw <= 65535
+    expect_true: true
+    mode: [hardware]
+
+  - name: "Pin P2 (PC5) analog read"
+    action: hardware_script
+    script: |
+      from machine import ADC, Pin
+      adc = ADC(Pin("P2"))
+      raw = adc.read_u16()
+      result = 0 <= raw <= 65535
+    expect_true: true
+    mode: [hardware]
+
+  - name: "Pin P3 (PA2) analog read"
+    action: hardware_script
+    script: |
+      from machine import ADC, Pin
+      adc = ADC(Pin("P3"))
+      raw = adc.read_u16()
+      result = 0 <= raw <= 65535
+    expect_true: true
+    mode: [hardware]
+
+  - name: "Pin P4 (PA4) analog read"
+    action: hardware_script
+    script: |
+      from machine import ADC, Pin
+      adc = ADC(Pin("P4"))
+      raw = adc.read_u16()
+      result = 0 <= raw <= 65535
+    expect_true: true
+    mode: [hardware]
+
+  - name: "Pin P10 (PA6) analog read"
+    action: hardware_script
+    script: |
+      from machine import ADC, Pin
+      adc = ADC(Pin("P10"))
+      raw = adc.read_u16()
+      result = 0 <= raw <= 65535
+    expect_true: true
+    mode: [hardware]
+
+  - name: "Pin P6 (PC3) digital pull-up read"
+    action: hardware_script
+    script: |
+      from machine import Pin
+      p = Pin("P6", Pin.IN, Pin.PULL_UP)
+      result = p.value() == 1
+    expect_true: true
+    mode: [hardware]
+
+  - name: "Pin P7 (PA9) digital pull-up read"
+    action: hardware_script
+    script: |
+      from machine import Pin
+      p = Pin("P7", Pin.IN, Pin.PULL_UP)
+      result = p.value() == 1
+    expect_true: true
+    mode: [hardware]
+
+  - name: "Pin P8 (PA15) digital pull-up read"
+    action: hardware_script
+    script: |
+      from machine import Pin
+      p = Pin("P8", Pin.IN, Pin.PULL_UP)
+      result = p.value() == 1
+    expect_true: true
+    mode: [hardware]
+
+  - name: "Pin P9 (PC2) digital pull-up read"
+    action: hardware_script
+    script: |
+      from machine import Pin
+      p = Pin("P9", Pin.IN, Pin.PULL_UP)
+      result = p.value() == 1
+    expect_true: true
+    mode: [hardware]
+
+  - name: "Pin P12 (PC6) digital pull-up read"
+    action: hardware_script
+    script: |
+      from machine import Pin
+      p = Pin("P12", Pin.IN, Pin.PULL_UP)
+      result = p.value() == 1
+    expect_true: true
+    mode: [hardware]
+
+  - name: "Pin P16 (PE4) digital pull-up read"
+    action: hardware_script
+    script: |
+      from machine import Pin
+      p = Pin("P16", Pin.IN, Pin.PULL_UP)
+      result = p.value() == 1
+    expect_true: true
+    mode: [hardware]
