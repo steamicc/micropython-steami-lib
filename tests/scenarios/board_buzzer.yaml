@@ -1,0 +1,41 @@
+type: board
+name: "board_buzzer"
+
+tests:
+  - name: "Buzzer tone 440Hz"
+    action: hardware_script
+    script: |
+      from machine import Pin, PWM
+      from time import sleep_ms
+      pwm = PWM(Pin("SPEAKER"), freq=440, duty_u16=32768)
+      sleep_ms(500)
+      pwm.deinit()
+      result = True
+    expect_true: true
+    mode: [hardware]
+
+  - name: "Buzzer 440Hz audible"
+    action: manual
+    prompt: "Avez-vous entendu un bip (La 440Hz) ?"
+    expect_true: true
+    mode: [hardware]
+
+  - name: "Buzzer frequency sweep"
+    action: hardware_script
+    script: |
+      from machine import Pin, PWM
+      from time import sleep_ms
+      pwm = PWM(Pin("SPEAKER"), freq=200, duty_u16=32768)
+      for f in range(200, 2001, 100):
+        pwm.freq(f)
+        sleep_ms(50)
+      pwm.deinit()
+      result = True
+    expect_true: true
+    mode: [hardware]
+
+  - name: "Buzzer sweep audible"
+    action: manual
+    prompt: "Avez-vous entendu un balayage de fréquence (grave vers aigu) ?"
+    expect_true: true
+    mode: [hardware]
