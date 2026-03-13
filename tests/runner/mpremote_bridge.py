@@ -142,18 +142,21 @@ class MpremoteBridge:
         last_line = output.strip().rsplit("\n", 1)[-1]
         return json.loads(last_line)
 
-    def run_raw_script(self, script):
+    def run_raw_script(self, script, mount_dir=None):
         """Run a raw MicroPython script on the board without driver context.
 
         The script must set a ``result`` variable.  Returns the
         JSON-decoded value of ``result``.
+
+        Args:
+            mount_dir: optional local directory to mount on the board.
         """
         code = (
             f"import json\n"
             f"{script}\n"
             f"print(json.dumps(result))"
         )
-        output = self._run(code)
+        output = self._run(code, mount_dir=mount_dir)
         last_line = output.strip().rsplit("\n", 1)[-1]
         return json.loads(last_line)
 

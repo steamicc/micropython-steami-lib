@@ -4,16 +4,24 @@ name: "Temperature comparison (all sensors)"
 i2c:
   id: 1
 
+# List of drivers needed — triggers mounting lib/ via mpremote
+drivers:
+  - hts221
+  - wsen-hids
+  - wsen-pads
+  - lis2mdl
+  - bq27441
+
 tests:
   - name: "Read all temperature sensors"
     action: hardware_script
     script: |
       import sys
-      sys.path.insert(0, '/flash/lib/hts221')
-      sys.path.insert(0, '/flash/lib/wsen-hids')
-      sys.path.insert(0, '/flash/lib/wsen-pads')
-      sys.path.insert(0, '/flash/lib/lis2mdl')
-      sys.path.insert(0, '/flash/lib/bq27441')
+      sys.path.insert(0, '/remote/hts221')
+      sys.path.insert(0, '/remote/wsen-hids')
+      sys.path.insert(0, '/remote/wsen-pads')
+      sys.path.insert(0, '/remote/lis2mdl')
+      sys.path.insert(0, '/remote/bq27441')
 
       from machine import I2C
       from time import sleep_ms
@@ -55,7 +63,7 @@ tests:
       # Print comparison table
       print('--- Temperature Comparison ---')
       for name, t in temps.items():
-        print(f'  {name:12s}: {t:6.2f} C')
+        print('  ' + name.ljust(12) + ': ' + str(round(t, 2)) + ' C')
 
       # Check all in plausible range
       all_ok = all(5.0 <= t <= 50.0 for t in temps.values())
@@ -63,7 +71,7 @@ tests:
       # Check spread between dedicated thermometers
       dedicated = [temps['HTS221'], temps['WSEN-HIDS']]
       spread = max(dedicated) - min(dedicated)
-      print(f'  Spread (HTS221 vs WSEN-HIDS): {spread:.2f} C')
+      print('  Spread (HTS221 vs WSEN-HIDS): ' + str(round(spread, 2)) + ' C')
 
       result = all_ok and spread < 3.0
     expect_true: true
@@ -73,8 +81,8 @@ tests:
     action: hardware_script
     script: |
       import sys
-      sys.path.insert(0, '/flash/lib/hts221')
-      sys.path.insert(0, '/flash/lib/wsen-pads')
+      sys.path.insert(0, '/remote/hts221')
+      sys.path.insert(0, '/remote/wsen-pads')
 
       from machine import I2C
       from time import sleep_ms
@@ -94,7 +102,7 @@ tests:
       t_pads = pads.temperature()
 
       spread = abs(t_hts - t_pads)
-      print(f'  HTS221: {t_hts:.2f} C  |  WSEN-PADS: {t_pads:.2f} C  |  Spread: {spread:.2f} C')
+      print('  HTS221: ' + str(round(t_hts, 2)) + ' C  |  WSEN-PADS: ' + str(round(t_pads, 2)) + ' C  |  Spread: ' + str(round(spread, 2)) + ' C')
       result = spread < 5.0
     expect_true: true
     mode: [hardware]
