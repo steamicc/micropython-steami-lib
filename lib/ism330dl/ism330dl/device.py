@@ -137,9 +137,9 @@ class ISM330DL(object):
         if self._is_power_down():
             self.configure_accel(self._accel_odr, self._accel_scale)
             self.configure_gyro(self._gyro_odr, self._gyro_scale)
+            ready_mask = STATUS_XLDA | STATUS_GDA | STATUS_TDA
             for _ in range(50):
-                s = self._read_u8(REG_STATUS_REG)
-                if s & STATUS_XLDA:
+                if (self._read_u8(REG_STATUS_REG) & ready_mask) == ready_mask:
                     return
                 sleep_ms(10)
             raise OSError("ISM330DL data ready timeout")
