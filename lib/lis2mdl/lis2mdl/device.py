@@ -252,14 +252,11 @@ class LIS2MDL(object):
     def set_temp_offset(self, offset_c):
         """Set a temperature offset in °C (gain remains 1.0).
 
-        This replaces the default base offset (25 °C) with the given value.
-
         Args:
             offset_c: offset value in degrees Celsius.
         """
         self._temp_gain = 1.0
-        self._temp_offset = 0.0
-        self._temp_base_offset = float(offset_c)
+        self._temp_offset = float(offset_c)
 
     def calibrate_temperature(self, ref_low, measured_low, ref_high, measured_high):
         """Two-point calibration from reference measurements.
