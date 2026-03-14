@@ -157,6 +157,7 @@ class VL53L1X(object):
                 if self._is_data_ready():
                     return
                 machine.lightsleep(10)
+            raise OSError("VL53L1X data ready timeout")
 
     def read(self):
         self._ensure_data()
