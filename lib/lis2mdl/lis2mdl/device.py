@@ -32,7 +32,9 @@ class LIS2MDL(object):
         self.writebuffer = bytearray(1)
         self.readbuffer = bytearray(1)
 
-        self._temp_offset = LIS2MDL_TEMP_OFFSET
+        self._temp_gain = 1.0
+        self._temp_offset = 0.0
+        self._temp_base_offset = LIS2MDL_TEMP_OFFSET
 
         # Perform a soft reset to ensure the sensor starts in a known state.
         self._write_reg(LIS2MDL_CFG_REG_A, 0x20)  # SOFT_RST=1 (not 0x10)
@@ -241,18 +243,41 @@ class LIS2MDL(object):
         The LIS2MDL temperature sensor has no guaranteed absolute zero
         point (see datasheet Table 4).  The offset defaults to 25 °C
         based on empirical observation (confirmed by Zephyr RTOS
-        PR #35912).  Use ``set_temp_offset()`` to calibrate against a
-        reference thermometer.
+        PR #35912).  Use ``set_temp_offset()`` or ``calibrate_temperature()``
+        to calibrate against a reference thermometer.
         """
-        return self._temp_offset + self.read_temperature_raw() / LIS2MDL_TEMP_SENSITIVITY
+        factory = self._temp_base_offset + self.read_temperature_raw() / LIS2MDL_TEMP_SENSITIVITY
+        return self._temp_gain * factory + self._temp_offset
 
     def set_temp_offset(self, offset_c):
-        """Set the temperature offset in °C for calibration.
+        """Set a temperature offset in °C (gain remains 1.0).
+
+        This replaces the default base offset (25 °C) with the given value.
 
         Args:
-            offset_c: offset value in degrees Celsius (default is 25).
+            offset_c: offset value in degrees Celsius.
         """
-        self._temp_offset = float(offset_c)
+        self._temp_gain = 1.0
+        self._temp_offset = 0.0
+        self._temp_base_offset = float(offset_c)
+
+    def calibrate_temperature(self, ref_low, measured_low, ref_high, measured_high):
+        """Two-point calibration from reference measurements.
+
+        Computes gain and offset so that the sensor reading is adjusted
+        to match reference values at two temperature points.
+
+        Args:
+            ref_low: reference temperature at the low point (°C).
+            measured_low: sensor reading at the low point (°C).
+            ref_high: reference temperature at the high point (°C).
+            measured_high: sensor reading at the high point (°C).
+        """
+        delta = float(measured_high - measured_low)
+        if delta == 0.0:
+            raise ValueError("measured_low and measured_high must differ")
+        self._temp_gain = float(ref_high - ref_low) / delta
+        self._temp_offset = float(ref_low) - self._temp_gain * float(measured_low)
 
     # --- IDENTITY & HARDWARE OFFSETS ---
 
