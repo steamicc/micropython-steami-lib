@@ -230,8 +230,24 @@ class APDS9960(object):
 
         return val == APDS9960_BIT_AVALID
 
+    def _ensure_light_enabled(self):
+        enable = self.getMode()
+        if not (enable & (1 << APDS9960_MODE_AMBIENT_LIGHT)) or not (enable & 1):
+            self.enableLightSensor(interrupts=False)
+            for _ in range(50):
+                if self.isLightAvailable():
+                    return
+                sleep_ms(10)
+
+    def _ensure_proximity_enabled(self):
+        enable = self.getMode()
+        if not (enable & (1 << APDS9960_MODE_PROXIMITY)) or not (enable & 1):
+            self.enableProximitySensor(interrupts=False)
+            sleep_ms(50)
+
     # reads the ambient (clear) light level as a 16-bit value
     def readAmbientLight(self):
+        self._ensure_light_enabled()
         # read value from clear channel, low byte register
         low = self._read_reg(APDS9960_REG_CDATAL)
 
@@ -242,6 +258,7 @@ class APDS9960(object):
 
     # reads the red light level as a 16-bit value
     def readRedLight(self):
+        self._ensure_light_enabled()
         # read value from red channel, low byte register
         low = self._read_reg(APDS9960_REG_RDATAL)
 
@@ -252,6 +269,7 @@ class APDS9960(object):
 
     # reads the green light level as a 16-bit value
     def readGreenLight(self):
+        self._ensure_light_enabled()
         # read value from green channel, low byte register
         low = self._read_reg(APDS9960_REG_GDATAL)
 
@@ -262,6 +280,7 @@ class APDS9960(object):
 
     # reads the blue light level as a 16-bit value
     def readBlueLight(self):
+        self._ensure_light_enabled()
         # read value from blue channel, low byte register
         low = self._read_reg(APDS9960_REG_BDATAL)
 
@@ -276,6 +295,7 @@ class APDS9960(object):
 
     # reads the proximity level as an 8-bit value
     def readProximity(self):
+        self._ensure_proximity_enabled()
         return self._read_reg(APDS9960_REG_PDATA)
 
     # *******************************************************************************
