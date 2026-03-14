@@ -86,6 +86,57 @@ tests:
     expect_range: [19.0, 21.0]
     mode: [mock]
 
+  # ----- Auto-trigger -----
+
+  - name: "Magnetic field readable after power down"
+    action: script
+    script: |
+      dev.power_down()
+      x, y, z = dev.read_magnet()
+      result = isinstance(x, int) and isinstance(y, int) and isinstance(z, int)
+    expect_true: true
+    mode: [mock]
+
+  - name: "Temperature readable after power down"
+    action: script
+    script: |
+      dev.power_down()
+      t = dev.read_temperature_c()
+      result = isinstance(t, float)
+    expect_true: true
+    mode: [mock]
+
+  - name: "No auto-trigger when already active"
+    action: script
+    script: |
+      dev.read_magnet()
+      i2c.clear_write_log()
+      dev.read_magnet()
+      log = i2c.get_write_log()
+      result = len(log) == 0
+    expect_true: true
+    mode: [mock]
+
+  - name: "Fresh magnitude after power down"
+    action: script
+    script: |
+      dev.power_down()
+      mag = dev.magnitude_uT()
+      result = 10.0 < mag < 300.0
+    expect_true: true
+    mode: [hardware]
+
+  - name: "Fresh temperature after power down"
+    action: script
+    script: |
+      dev.power_down()
+      t = dev.read_temperature_c()
+      result = 10.0 < t < 45.0
+    expect_true: true
+    mode: [hardware]
+
+  # ----- Hardware -----
+
   - name: "Magnitude in plausible range"
     action: call
     method: magnitude_uT
