@@ -93,6 +93,8 @@ class ISM330DL(object):
     # --------------------------------------------------
 
     def configure_accel(self, odr, scale):
+        if odr not in ACCEL_ODR_VALUES:
+            raise ISM330DLConfigError("Invalid accel ODR")
         if scale not in ACCEL_FS_BITS:
             raise ISM330DLConfigError("Invalid accel scale")
         self._accel_scale = scale
@@ -100,6 +102,8 @@ class ISM330DL(object):
         self._write_u8(REG_CTRL1_XL, value)
 
     def configure_gyro(self, odr, scale):
+        if odr not in GYRO_ODR_VALUES:
+            raise ISM330DLConfigError("Invalid gyro ODR")
         if scale == GYRO_FS_125DPS:
             value = (odr << 4) | 0x02
         else:
