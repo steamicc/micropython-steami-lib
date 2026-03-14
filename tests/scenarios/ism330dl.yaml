@@ -375,6 +375,20 @@ tests:
     expect_true: true
     mode: [mock]
 
+  - name: "Timeout raises OSError when data never ready"
+    action: script
+    script: |
+      dev.power_down()
+      i2c._registers[0x1E] = bytes([0x00])
+      try:
+          dev.acceleration_raw()
+          result = False
+      except OSError:
+          result = True
+      i2c._registers[0x1E] = bytes([0x07])
+    expect_true: true
+    mode: [mock]
+
   - name: "Fresh acceleration after power down"
     action: script
     script: |
