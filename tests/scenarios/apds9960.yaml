@@ -79,6 +79,48 @@ tests:
     expect: 128
     mode: [mock]
 
+  # ----- Auto-enable -----
+
+  - name: "Ambient light readable without explicit enable"
+    action: script
+    script: |
+      dev.disableLightSensor()
+      val = dev.readAmbientLight()
+      result = isinstance(val, int)
+    expect_true: true
+    mode: [mock]
+
+  - name: "Proximity readable without explicit enable"
+    action: script
+    script: |
+      dev.disableProximitySensor()
+      val = dev.readProximity()
+      result = isinstance(val, int)
+    expect_true: true
+    mode: [mock]
+
+  - name: "Red light readable after power off"
+    action: script
+    script: |
+      dev.disablePower()
+      val = dev.readRedLight()
+      result = isinstance(val, int)
+    expect_true: true
+    mode: [mock]
+
+  - name: "No re-enable when already active"
+    action: script
+    script: |
+      dev.enableLightSensor(False)
+      i2c.clear_write_log()
+      dev.readAmbientLight()
+      log = i2c.get_write_log()
+      result = len(log) == 0
+    expect_true: true
+    mode: [mock]
+
+  # ----- Hardware -----
+
   - name: "Ambient light in plausible range"
     action: call
     method: readAmbientLight
