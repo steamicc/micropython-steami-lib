@@ -153,6 +153,11 @@ def run_action(action, driver_instance):
         method = getattr(driver_instance, method_name)
         return method(*args)
 
+    if action_type == "script":
+        local_vars = {"dev": driver_instance}
+        exec(action["script"], {}, local_vars)
+        return local_vars.get("result")
+
     if action_type == "hardware_script":
         # hardware_script is hardware-only; skip in mock mode
         return None
