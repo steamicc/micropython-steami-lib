@@ -109,6 +109,33 @@ tests:
     expect_not_none: true
     mode: [mock]
 
+  - name: "Temperature with offset"
+    action: script
+    script: |
+      dev.set_temp_offset(-2.0)
+      result = dev.temperature()
+    expect_not_none: true
+    mode: [mock]
+
+  - name: "Temperature with two-point calibration"
+    action: script
+    script: |
+      t_before = dev.temperature()
+      dev.calibrate_temperature(20.0, t_before, 30.0, t_before + 10.0)
+      result = dev.temperature()
+    expect_range: [19.0, 21.0]
+    mode: [mock]
+
+  - name: "Read applies temperature calibration"
+    action: script
+    script: |
+      dev.set_temp_offset(-2.0)
+      _, temp = dev.read()
+      t_no_offset = dev.temperature() + 2.0
+      result = abs(temp - (t_no_offset - 2.0)) < 0.1
+    expect_true: true
+    mode: [mock]
+
   - name: "Auto-trigger after poweroff"
     action: hardware_script
     script: |
