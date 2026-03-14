@@ -83,6 +83,20 @@ tests:
     expect_range: [22.0, 24.0]
     mode: [mock]
 
+  - name: "Timeout raises exception when data never ready"
+    action: script
+    script: |
+      dev.power_down()
+      i2c._registers[0x27] = bytes([0x00])
+      try:
+          dev.pressure()
+          result = False
+      except Exception:
+          result = True
+      i2c._registers[0x27] = bytes([0x03])
+    expect_true: true
+    mode: [mock]
+
   - name: "Pressure in plausible range"
     action: call
     method: pressure
