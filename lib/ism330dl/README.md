@@ -46,7 +46,7 @@ The sensor can use two I²C addresses depending on the **SA0 pin**:
 | 0   | `0x6A`  |
 | 1   | `0x6B`  |
 
-The STeaMi board uses **0x6A** (default).
+The STeaMi board uses **0x6B** (default).
 
 ---
 

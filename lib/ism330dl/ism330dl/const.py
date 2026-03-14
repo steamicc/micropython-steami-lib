@@ -5,7 +5,7 @@ from micropython import const
 # ---------------------------------------------------------------------
 ISM330DL_I2C_ADDR_LOW = const(0x6A)
 ISM330DL_I2C_ADDR_HIGH = const(0x6B)
-ISM330DL_I2C_DEFAULT_ADDR = ISM330DL_I2C_ADDR_LOW
+ISM330DL_I2C_DEFAULT_ADDR = ISM330DL_I2C_ADDR_HIGH
 ISM330DL_WHO_AM_I_VALUE = const(0x6A)
 
 
