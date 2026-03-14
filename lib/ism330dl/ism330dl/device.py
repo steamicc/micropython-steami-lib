@@ -16,6 +16,9 @@ class ISM330DL(object):
         self._accel_scale = ACCEL_FS_2G
         self._gyro_scale = GYRO_FS_250DPS
 
+        self._temp_gain = 1.0
+        self._temp_offset = 0.0
+
         self.check_device()
         self.reset()
         self.configure_accel(ACCEL_ODR_104HZ, ACCEL_FS_2G)
@@ -149,8 +152,28 @@ class ISM330DL(object):
         return tuple(v * pi / 180.0 for v in dps)
 
     def temperature_c(self):
-        raw = self.temperature_raw()
-        return TEMP_OFFSET + raw / TEMP_SENSITIVITY
+        factory = TEMP_OFFSET + self.temperature_raw() / TEMP_SENSITIVITY
+        return self._temp_gain * factory + self._temp_offset
+
+    def set_temp_offset(self, offset_c):
+        """Set a temperature offset in °C (gain remains 1.0)."""
+        self._temp_gain = 1.0
+        self._temp_offset = float(offset_c)
+
+    def calibrate_temperature(self, ref_low, measured_low, ref_high, measured_high):
+        """Two-point calibration from reference measurements.
+
+        Args:
+            ref_low: reference temperature at the low point (°C).
+            measured_low: sensor reading at the low point (°C).
+            ref_high: reference temperature at the high point (°C).
+            measured_high: sensor reading at the high point (°C).
+        """
+        delta = float(measured_high - measured_low)
+        if delta == 0.0:
+            raise ValueError("measured_low and measured_high must differ")
+        self._temp_gain = float(ref_high - ref_low) / delta
+        self._temp_offset = float(ref_low) - self._temp_gain * float(measured_low)
 
     def orientation(self):
         ax, ay, az = self.acceleration_g()
