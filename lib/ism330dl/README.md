@@ -157,7 +157,7 @@ Example:
 imu.gyroscope_rads()
 ```
 
-### motion orientation 
+### Motion detection
 
 ```python
 imu.motion()
@@ -247,7 +247,7 @@ The repository provides several example scripts:
 
 | Example                 | Description                                       |
 | ----------------------- | ------------------------------------------------- |
-| `basic_reader.py`       | Simple sensor readout                             |
+| `basic_read.py`         | Simple sensor readout                             |
 | `static_orientation.py` | Detect device orientation using the accelerometer |
 | `motion_orientation.py` | Detect rotation using the gyroscope               |
 
