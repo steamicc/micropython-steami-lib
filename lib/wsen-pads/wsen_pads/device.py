@@ -220,6 +220,11 @@ class WSEN_PADS(object):
         """Trigger a one-shot conversion if the sensor is in power-down mode."""
         if self._is_power_down():
             self.trigger_one_shot()
+            for _ in range(50):
+                if self._read_reg(REG_STATUS) & STATUS_P_DA:
+                    return
+                sleep_ms(2)
+            raise OSError("WSEN-PADS data ready timeout")
 
     def pressure_raw(self):
         """
