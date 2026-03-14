@@ -287,7 +287,10 @@ class WSEN_HIDS(object):
             ref_high: reference temperature at the high point (°C).
             measured_high: sensor reading at the high point (°C).
         """
-        self._temp_gain = float(ref_high - ref_low) / float(measured_high - measured_low)
+        delta = float(measured_high - measured_low)
+        if delta == 0.0:
+            raise ValueError("measured_low and measured_high must differ")
+        self._temp_gain = float(ref_high - ref_low) / delta
         self._temp_offset = float(ref_low) - self._temp_gain * float(measured_low)
 
     # -------------------------------------------------------------------------

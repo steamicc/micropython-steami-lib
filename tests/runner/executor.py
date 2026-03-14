@@ -154,9 +154,11 @@ def run_action(action, driver_instance):
         return method(*args)
 
     if action_type == "script":
-        local_vars = {"dev": driver_instance}
-        exec(action["script"], {}, local_vars)
-        return local_vars.get("result")
+        script_vars = {"dev": driver_instance, "i2c": driver_instance.i2c}
+        exec(action["script"], script_vars, script_vars)
+        if "result" not in script_vars:
+            raise ValueError("Script must set a 'result' variable")
+        return script_vars["result"]
 
     if action_type == "hardware_script":
         # hardware_script is hardware-only; skip in mock mode
