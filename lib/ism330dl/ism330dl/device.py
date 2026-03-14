@@ -5,13 +5,14 @@ from ism330dl.const import *
 from ism330dl.exceptions import *
 
 
-class ISM330DL:
+class ISM330DL(object):
     """MicroPython driver for the ISM330DL 6-axis IMU."""
 
     def __init__(self, i2c, address=None):
         self.i2c = i2c
+        self._buffer_1 = bytearray(1)
 
-        if address is None: # Auto-detect address. Je ne sais pas si c'est nécessaire pour la STeaMi, dans le manuel du capteur il y a 2 adresses possibles, 0x6A et 0x6B.
+        if address is None:
             for addr in (ISM330DL_I2C_ADDR_LOW, ISM330DL_I2C_ADDR_HIGH):
                 try:
                     if i2c.readfrom_mem(addr, REG_WHO_AM_I, 1)[0] == ISM330DL_WHO_AM_I_VALUE:
@@ -37,10 +38,12 @@ class ISM330DL:
     # --------------------------------------------------
 
     def _read_u8(self, reg):
-        return self.i2c.readfrom_mem(self.address, reg, 1)[0]
+        self.i2c.readfrom_mem_into(self.address, reg, self._buffer_1)
+        return self._buffer_1[0]
 
     def _write_u8(self, reg, value):
-        self.i2c.writeto_mem(self.address, reg, bytes([value]))
+        self._buffer_1[0] = value & 0xFF
+        self.i2c.writeto_mem(self.address, reg, self._buffer_1)
 
     def _read_bytes(self, reg, n):
         return self.i2c.readfrom_mem(self.address, reg, n)
@@ -86,7 +89,6 @@ class ISM330DL:
     def reset(self):
         self._write_u8(REG_CTRL3_C, CTRL3_C_SW_RESET)
         sleep_ms(50)
-
         self._write_u8(REG_CTRL3_C, CTRL3_C_BDU | CTRL3_C_IF_INC)
 
     # --------------------------------------------------
@@ -94,28 +96,20 @@ class ISM330DL:
     # --------------------------------------------------
 
     def configure_accel(self, odr, scale):
-
         if scale not in ACCEL_FS_BITS:
             raise ISM330DLConfigError("Invalid accel scale")
-
         self._accel_scale = scale
-
         value = (odr << 4) | (ACCEL_FS_BITS[scale] << 2)
-
         self._write_u8(REG_CTRL1_XL, value)
 
     def configure_gyro(self, odr, scale):
-
         if scale == GYRO_FS_125DPS:
             value = (odr << 4) | 0x02
         else:
             if scale not in GYRO_FS_BITS:
                 raise ISM330DLConfigError("Invalid gyro scale")
-
             value = (odr << 4) | (GYRO_FS_BITS[scale] << 2)
-
         self._gyro_scale = scale
-
         self._write_u8(REG_CTRL2_G, value)
 
     # --------------------------------------------------
@@ -136,42 +130,30 @@ class ISM330DL:
     # --------------------------------------------------
 
     def acceleration_g(self):
-
         sens = ACCEL_SENSITIVITY_MG[self._accel_scale]
-
         raw = self.acceleration_raw()
-
         return tuple((v * sens) / 1000.0 for v in raw)
 
     def acceleration_ms2(self):
-
         g = self.acceleration_g()
-
         return tuple(v * STANDARD_GRAVITY for v in g)
 
     def gyroscope_dps(self):
-
         sens = GYRO_SENSITIVITY_MDPS[self._gyro_scale]
-
         raw = self.gyroscope_raw()
-
         return tuple((v * sens) / 1000.0 for v in raw)
 
     def gyroscope_rads(self):
-
         dps = self.gyroscope_dps()
-
         return tuple(v * pi / 180.0 for v in dps)
 
     def temperature_c(self):
-
         raw = self.temperature_raw()
-
         return TEMP_OFFSET + raw / TEMP_SENSITIVITY
 
     def orientation(self):
         ax, ay, az = self.acceleration_g()
-        threshold = 0.75  # ~1 g when aligned with gravity
+        threshold = 0.75
 
         if az > threshold:
             return "SCREEN_DOWN"
@@ -189,36 +171,33 @@ class ISM330DL:
 
     def motion(self):
         gx, gy, gz = self.gyroscope_dps()
-        threshold = 10  # minimum rotation speed in dps to be considered as motion
+        threshold = 10
 
-        if abs(gz) > abs(gx) and abs(gz) > abs(gy): # Z rotation (board turning left/right)
+        if abs(gz) > abs(gx) and abs(gz) > abs(gy):
             if gz > threshold:
                 return "TURNING RIGHT", gz
             if gz < -threshold:
                 return "TURNING LEFT", abs(gz)
 
-        if abs(gx) > abs(gy): # X rotation (console tilting left/right)
+        if abs(gx) > abs(gy):
             if gx > threshold:
                 return "TILTING LEFT", gx
             if gx < -threshold:
                 return "TILTING RIGHT", abs(gx)
-
-        else: # Y rotation (console tilting up/down)
+        else:
             if gy > threshold:
                 return "TILTING DOWN", gy
             if gy < -threshold:
                 return "TILTING UP", abs(gy)
 
-        return "STABLE", 0 # No significant motion detected
+        return "STABLE", 0
 
     # --------------------------------------------------
     # Status
     # --------------------------------------------------
 
     def status(self):
-
         s = self._read_u8(REG_STATUS_REG)
-
         return {
             "temp_ready": bool(s & STATUS_TDA),
             "gyro_ready": bool(s & STATUS_GDA),
@@ -230,6 +209,5 @@ class ISM330DL:
     # --------------------------------------------------
 
     def power_down(self):
-
         self._write_u8(REG_CTRL1_XL, 0)
         self._write_u8(REG_CTRL2_G, 0)
