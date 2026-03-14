@@ -168,6 +168,15 @@ class LIS2MDL(object):
     # --- READ functions ---
     ##
 
+    def _ensure_data(self):
+        """Trigger a single conversion if the sensor is in idle mode."""
+        if self.is_idle():
+            self.set_mode("single")
+            for _ in range(50):
+                if self.data_ready():
+                    return
+                sleep_ms(2)
+
     def read_magnet_raw(self):
         """Reads the raw magnetic field (LSB). Same as read_magnet(), but more explicit."""
         return self.read_magnet()  # (x,y,z) int16 LSB
@@ -222,6 +231,7 @@ class LIS2MDL(object):
 
     def read_magnet(self):
         # Read the raw magnetic field data (X, Y, Z) from the sensor.
+        self._ensure_data()
         buf = self.i2c.readfrom_mem(self.address, LIS2MDL_OUTX_L_REG | 0x80, 6)
         x = self._to_int16((buf[1] << 8) | buf[0])
         y = self._to_int16((buf[3] << 8) | buf[2])
@@ -232,6 +242,7 @@ class LIS2MDL(object):
 
     def read_temperature_raw(self) -> int:
         """Reads the raw temperature (LSB), 8 LSB/°C, absolute offset not guaranteed."""
+        self._ensure_data()
         lo = self._read_reg(LIS2MDL_TEMP_OUT_L_REG)
         hi = self._read_reg(LIS2MDL_TEMP_OUT_H_REG)
         v = (hi << 8) | lo
