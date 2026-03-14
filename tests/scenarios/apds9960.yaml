@@ -81,30 +81,48 @@ tests:
 
   # ----- Auto-enable -----
 
-  - name: "Ambient light readable without explicit enable"
+  - name: "Auto-enable writes ENABLE register for light"
     action: script
     script: |
       dev.disableLightSensor()
-      val = dev.readAmbientLight()
-      result = isinstance(val, int)
+      i2c.clear_write_log()
+      dev.readAmbientLight()
+      log = i2c.get_write_log()
+      wrote_enable = any(reg == 0x80 for reg, data in log)
+      enable_val = dev.getMode()
+      has_pon = bool(enable_val & 0x01)
+      has_aen = bool(enable_val & 0x02)
+      result = wrote_enable and has_pon and has_aen
     expect_true: true
     mode: [mock]
 
-  - name: "Proximity readable without explicit enable"
+  - name: "Auto-enable writes ENABLE register for proximity"
     action: script
     script: |
       dev.disableProximitySensor()
-      val = dev.readProximity()
-      result = isinstance(val, int)
+      i2c.clear_write_log()
+      dev.readProximity()
+      log = i2c.get_write_log()
+      wrote_enable = any(reg == 0x80 for reg, data in log)
+      enable_val = dev.getMode()
+      has_pon = bool(enable_val & 0x01)
+      has_pen = bool(enable_val & 0x04)
+      result = wrote_enable and has_pon and has_pen
     expect_true: true
     mode: [mock]
 
-  - name: "Red light readable after power off"
+  - name: "Auto-enable restores power for light read"
     action: script
     script: |
       dev.disablePower()
-      val = dev.readRedLight()
-      result = isinstance(val, int)
+      i2c.clear_write_log()
+      dev.readRedLight()
+      log = i2c.get_write_log()
+      wrote_enable = any(reg == 0x80 for reg, data in log)
+      enable_val = dev.getMode()
+      has_pon = bool(enable_val & 0x01)
+      has_aen = bool(enable_val & 0x02)
+      result = wrote_enable and has_pon and has_aen
     expect_true: true
     mode: [mock]
 

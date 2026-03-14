@@ -230,9 +230,13 @@ class APDS9960(object):
 
         return val == APDS9960_BIT_AVALID
 
+    def isProximityAvailable(self):
+        val = self._read_reg(APDS9960_REG_STATUS)
+        return (val & APDS9960_BIT_PVALID) == APDS9960_BIT_PVALID
+
     def _ensure_light_enabled(self):
         enable = self.getMode()
-        if not (enable & (1 << APDS9960_MODE_AMBIENT_LIGHT)) or not (enable & 1):
+        if not (enable & (1 << APDS9960_MODE_AMBIENT_LIGHT)) or not (enable & APDS9960_BIT_PON):
             self.enableLightSensor(interrupts=False)
             for _ in range(50):
                 if self.isLightAvailable():
@@ -241,9 +245,12 @@ class APDS9960(object):
 
     def _ensure_proximity_enabled(self):
         enable = self.getMode()
-        if not (enable & (1 << APDS9960_MODE_PROXIMITY)) or not (enable & 1):
+        if not (enable & (1 << APDS9960_MODE_PROXIMITY)) or not (enable & APDS9960_BIT_PON):
             self.enableProximitySensor(interrupts=False)
-            sleep_ms(50)
+            for _ in range(50):
+                if self.isProximityAvailable():
+                    return
+                sleep_ms(10)
 
     # reads the ambient (clear) light level as a 16-bit value
     def readAmbientLight(self):
