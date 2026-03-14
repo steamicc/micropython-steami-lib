@@ -106,6 +106,18 @@ tests:
     expect_true: true
     mode: [mock]
 
+  - name: "Auto-trigger writes single mode to CFG_REG_A"
+    action: script
+    script: |
+      dev.power_down()
+      i2c.clear_write_log()
+      dev.read_magnet()
+      log = i2c.get_write_log()
+      wrote_cfg_a = any(reg == 0x60 for reg, data in log)
+      result = wrote_cfg_a
+    expect_true: true
+    mode: [mock]
+
   - name: "No auto-trigger when already active"
     action: script
     script: |
