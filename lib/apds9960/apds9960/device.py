@@ -242,6 +242,7 @@ class APDS9960(object):
                 if self.isLightAvailable():
                     return
                 sleep_ms(10)
+            raise OSError("APDS9960 light data ready timeout")
 
     def _ensure_proximity_enabled(self):
         enable = self.getMode()
@@ -251,6 +252,7 @@ class APDS9960(object):
                 if self.isProximityAvailable():
                     return
                 sleep_ms(10)
+            raise OSError("APDS9960 proximity data ready timeout")
 
     # reads the ambient (clear) light level as a 16-bit value
     def readAmbientLight(self):
