@@ -110,6 +110,11 @@ class HTS221(object):
     def _ensure_data(self):
         if self._is_power_down() or self._is_one_shot_mode():
             self.trigger_one_shot()
+            for _ in range(50):
+                if self._read_reg(HTS221_STATUS_REG) & HTS221_STATUS_T_DA:
+                    return
+                sleep_ms(2)
+            raise OSError("HTS221 data ready timeout")
 
     # calculate Temperature
     def temperature(self):
