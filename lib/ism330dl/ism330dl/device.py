@@ -16,6 +16,7 @@ class ISM330DL(object):
         self._accel_scale = ACCEL_FS_2G
         self._gyro_scale = GYRO_FS_250DPS
 
+        self.check_device()
         self.reset()
         self.configure_accel(ACCEL_ODR_104HZ, ACCEL_FS_2G)
         self.configure_gyro(GYRO_ODR_104HZ, GYRO_FS_250DPS)
@@ -25,15 +26,24 @@ class ISM330DL(object):
     # --------------------------------------------------
 
     def _read_u8(self, reg):
-        self.i2c.readfrom_mem_into(self.address, reg, self._buffer_1)
+        try:
+            self.i2c.readfrom_mem_into(self.address, reg, self._buffer_1)
+        except OSError as exc:
+            raise ISM330DLIOError("Read register 0x{:02X}".format(reg)) from exc
         return self._buffer_1[0]
 
     def _write_u8(self, reg, value):
-        self._buffer_1[0] = value & 0xFF
-        self.i2c.writeto_mem(self.address, reg, self._buffer_1)
+        try:
+            self._buffer_1[0] = value & 0xFF
+            self.i2c.writeto_mem(self.address, reg, self._buffer_1)
+        except OSError as exc:
+            raise ISM330DLIOError("Write register 0x{:02X}".format(reg)) from exc
 
     def _read_bytes(self, reg, n):
-        return self.i2c.readfrom_mem(self.address, reg, n)
+        try:
+            return self.i2c.readfrom_mem(self.address, reg, n)
+        except OSError as exc:
+            raise ISM330DLIOError("Read {} bytes from 0x{:02X}".format(n, reg)) from exc
 
     def _read_i16(self, reg):
         data = self._read_bytes(reg, 2)
