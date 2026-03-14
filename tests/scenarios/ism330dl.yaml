@@ -337,6 +337,25 @@ tests:
     expect_true: true
     mode: [mock]
 
+  - name: "Fresh acceleration after power down"
+    action: script
+    script: |
+      dev.power_down()
+      ax, ay, az = dev.acceleration_g()
+      mag = (ax**2 + ay**2 + az**2) ** 0.5
+      result = 0.8 < mag < 1.2
+    expect_true: true
+    mode: [hardware]
+
+  - name: "Fresh temperature after power down"
+    action: script
+    script: |
+      dev.power_down()
+      t = dev.temperature_c()
+      result = 10.0 < t < 50.0
+    expect_true: true
+    mode: [hardware]
+
   # ----- Hardware manual -----
 
   - name: "Sensor readings feel correct"
