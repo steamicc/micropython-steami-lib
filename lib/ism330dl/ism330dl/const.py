@@ -65,6 +65,8 @@ ACCEL_ODR_416HZ = const(0x06)
 ACCEL_ODR_833HZ = const(0x07)
 ACCEL_ODR_1660HZ = const(0x08)
 
+ACCEL_ODR_VALUES = (0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08)
+
 
 # ---------------------------------------------------------------------
 # Accelerometer full scale
@@ -101,6 +103,8 @@ GYRO_ODR_208HZ = const(0x05)
 GYRO_ODR_416HZ = const(0x06)
 GYRO_ODR_833HZ = const(0x07)
 GYRO_ODR_1660HZ = const(0x08)
+
+GYRO_ODR_VALUES = (0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08)
 
 
 # ---------------------------------------------------------------------

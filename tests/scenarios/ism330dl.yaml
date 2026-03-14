@@ -171,21 +171,27 @@ tests:
 
   # ----- Configuration -----
 
-  - name: "Configure accel changes scale"
+  - name: "Configure accel writes correct register value"
     action: script
     script: |
       from ism330dl.const import ACCEL_ODR_104HZ, ACCEL_FS_4G
+      i2c.clear_write_log()
       dev.configure_accel(ACCEL_ODR_104HZ, ACCEL_FS_4G)
-      result = dev._accel_scale == ACCEL_FS_4G
+      log = i2c.get_write_log()
+      reg, data = log[-1]
+      result = reg == 0x10 and data[0] == (0x04 << 4) | (0x02 << 2)
     expect_true: true
     mode: [mock]
 
-  - name: "Configure gyro changes scale"
+  - name: "Configure gyro writes correct register value"
     action: script
     script: |
       from ism330dl.const import GYRO_ODR_104HZ, GYRO_FS_500DPS
+      i2c.clear_write_log()
       dev.configure_gyro(GYRO_ODR_104HZ, GYRO_FS_500DPS)
-      result = dev._gyro_scale == GYRO_FS_500DPS
+      log = i2c.get_write_log()
+      reg, data = log[-1]
+      result = reg == 0x11 and data[0] == (0x04 << 4) | (0x01 << 2)
     expect_true: true
     mode: [mock]
 
@@ -195,6 +201,18 @@ tests:
       from ism330dl.const import ACCEL_ODR_104HZ
       try:
           dev.configure_accel(ACCEL_ODR_104HZ, 99)
+          result = False
+      except Exception:
+          result = True
+    expect_true: true
+    mode: [mock]
+
+  - name: "Configure accel rejects invalid ODR"
+    action: script
+    script: |
+      from ism330dl.const import ACCEL_FS_2G
+      try:
+          dev.configure_accel(99, ACCEL_FS_2G)
           result = False
       except Exception:
           result = True
@@ -213,15 +231,28 @@ tests:
     expect_true: true
     mode: [mock]
 
+  - name: "Configure gyro rejects invalid ODR"
+    action: script
+    script: |
+      from ism330dl.const import GYRO_FS_250DPS
+      try:
+          dev.configure_gyro(99, GYRO_FS_250DPS)
+          result = False
+      except Exception:
+          result = True
+    expect_true: true
+    mode: [mock]
+
   # ----- Power -----
 
   - name: "Power down writes zero to CTRL registers"
     action: script
     script: |
+      i2c.clear_write_log()
       dev.power_down()
-      ctrl1 = dev._read_u8(0x10)
-      ctrl2 = dev._read_u8(0x11)
-      result = ctrl1 == 0 and ctrl2 == 0
+      log = i2c.get_write_log()
+      writes = {reg: data[0] for reg, data in log}
+      result = writes.get(0x10) == 0 and writes.get(0x11) == 0
     expect_true: true
     mode: [mock]
 
@@ -230,11 +261,12 @@ tests:
   - name: "Reset sets BDU and IF_INC in CTRL3_C"
     action: script
     script: |
+      i2c.clear_write_log()
       dev.reset()
-      ctrl3 = dev._read_u8(0x12)
-      bdu = bool(ctrl3 & (1 << 6))
-      if_inc = bool(ctrl3 & (1 << 2))
-      result = bdu and if_inc
+      log = i2c.get_write_log()
+      ctrl3_writes = [data[0] for reg, data in log if reg == 0x12]
+      bdu_if_inc = (1 << 6) | (1 << 2)
+      result = len(ctrl3_writes) == 2 and ctrl3_writes[1] == bdu_if_inc
     expect_true: true
     mode: [mock]
 
