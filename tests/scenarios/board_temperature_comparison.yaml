@@ -57,6 +57,7 @@ tests:
       # ISM330DL (auxiliary, offset not guaranteed by datasheet)
       from ism330dl.device import ISM330DL
       imu = ISM330DL(i2c)
+      sleep_ms(200)  # stabilize after reset
       temps['ISM330DL'] = imu.temperature_c()
 
       # Print comparison table
@@ -141,6 +142,7 @@ tests:
 
       from ism330dl.device import ISM330DL
       imu = ISM330DL(i2c)
+      sleep_ms(200)  # stabilize after reset
 
       # Read reference just before each sensor to minimize drift
       ref_t = ref.temperature()
