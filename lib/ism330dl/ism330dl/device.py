@@ -8,23 +8,10 @@ from ism330dl.exceptions import *
 class ISM330DL(object):
     """MicroPython driver for the ISM330DL 6-axis IMU."""
 
-    def __init__(self, i2c, address=None):
+    def __init__(self, i2c, address=ISM330DL_I2C_DEFAULT_ADDR):
         self.i2c = i2c
-        self._buffer_1 = bytearray(1)
-
-        if address is None:
-            for addr in (ISM330DL_I2C_ADDR_LOW, ISM330DL_I2C_ADDR_HIGH):
-                try:
-                    if i2c.readfrom_mem(addr, REG_WHO_AM_I, 1)[0] == ISM330DL_WHO_AM_I_VALUE:
-                        address = addr
-                        break
-                except OSError:
-                    pass
-
-            if address is None:
-                raise ISM330DLNotFound("ISM330DL not detected on I2C bus")
-
         self.address = address
+        self._buffer_1 = bytearray(1)
 
         self._accel_scale = ACCEL_FS_2G
         self._gyro_scale = GYRO_FS_250DPS

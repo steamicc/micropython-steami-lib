@@ -4,7 +4,7 @@ from ism330dl import ISM330DL
 
 i2c = I2C(1)
 
-imu = ISM330DL(i2c, address=0x6B)
+imu = ISM330DL(i2c)
 
 print("ISM330DL gyroscope direction demo")
 print()
