@@ -136,6 +136,20 @@ tests:
     expect_true: true
     mode: [mock]
 
+  - name: "Timeout raises OSError when data never ready"
+    action: script
+    script: |
+      dev.poweroff()
+      i2c._registers[0x27] = bytes([0x00])
+      try:
+          dev.temperature()
+          result = False
+      except OSError:
+          result = True
+      i2c._registers[0x27] = bytes([0x03])
+    expect_true: true
+    mode: [mock]
+
   - name: "Auto-trigger after poweroff"
     action: hardware_script
     script: |

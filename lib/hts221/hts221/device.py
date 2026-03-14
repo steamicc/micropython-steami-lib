@@ -110,8 +110,9 @@ class HTS221(object):
     def _ensure_data(self):
         if self._is_power_down() or self._is_one_shot_mode():
             self.trigger_one_shot()
+            ready_mask = HTS221_STATUS_T_DA | HTS221_STATUS_H_DA
             for _ in range(50):
-                if self._read_reg(HTS221_STATUS_REG) & HTS221_STATUS_T_DA:
+                if (self._read_reg(HTS221_STATUS_REG) & ready_mask) == ready_mask:
                     return
                 sleep_ms(2)
             raise OSError("HTS221 data ready timeout")
