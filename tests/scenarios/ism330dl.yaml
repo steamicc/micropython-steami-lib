@@ -5,14 +5,29 @@ i2c_address: 0x6B
 i2c:
   id: 1
 
+# Register values for mock tests
+# Simulate an ISM330DL at rest, screen facing down
 mock_registers:
+  # WHO_AM_I
   0x0F: 0x6A
+  # CTRL1_XL (written by configure_accel during init)
+  0x10: 0x00
+  # CTRL2_G (written by configure_gyro during init)
+  0x11: 0x00
+  # CTRL3_C (written by reset during init)
+  0x12: 0x00
+  # STATUS_REG (all data ready: TDA | GDA | XLDA)
   0x1E: 0x07
+  # OUT_TEMP_L/H (raw=0 => 25.0°C)
   0x20: [0x00, 0x00]
+  # OUTX_L_G..OUTZ_H_G (gyro all zero => stable)
   0x22: [0x00, 0x00, 0x00, 0x00, 0x00, 0x00]
+  # OUTX_L_XL..OUTZ_H_XL (z=0x4000=16384 => ~1g downward)
   0x28: [0x00, 0x00, 0x00, 0x00, 0x00, 0x40]
 
 tests:
+  # ----- Identity -----
+
   - name: "Verify WHO_AM_I register"
     action: read_register
     register: 0x0F
@@ -25,55 +40,207 @@ tests:
     expect: 0x6A
     mode: [mock, hardware]
 
+  # ----- Status -----
+
+  - name: "Status returns all ready flags"
+    action: script
+    script: |
+      s = dev.status()
+      result = s["temp_ready"] and s["gyro_ready"] and s["accel_ready"]
+    expect_true: true
+    mode: [mock]
+
   - name: "Status returns dictionary"
     action: call
     method: status
     expect_not_none: true
-    mode: [mock, hardware]
+    mode: [hardware]
 
-  - name: "Acceleration returns tuple"
-    action: call
-    method: acceleration_g
-    expect_not_none: true
+  # ----- Accelerometer -----
+
+  - name: "Acceleration raw returns tuple of 3 ints"
+    action: script
+    script: |
+      raw = dev.acceleration_raw()
+      result = len(raw) == 3 and all(isinstance(v, int) for v in raw)
+    expect_true: true
     mode: [mock]
 
-  - name: "Gyroscope returns tuple"
-    action: call
-    method: gyroscope_dps
-    expect_not_none: true
+  - name: "Acceleration g returns expected values"
+    action: script
+    script: |
+      ax, ay, az = dev.acceleration_g()
+      result = abs(ax) < 0.01 and abs(ay) < 0.01 and abs(az - 1.0) < 0.01
+    expect_true: true
     mode: [mock]
 
-  - name: "Temperature returns plausible value"
+  - name: "Acceleration ms2 matches g times 9.80665"
+    action: script
+    script: |
+      g = dev.acceleration_g()
+      ms2 = dev.acceleration_ms2()
+      ok = all(abs(ms2[i] - g[i] * 9.80665) < 0.01 for i in range(3))
+      result = ok
+    expect_true: true
+    mode: [mock]
+
+  - name: "Acceleration magnitude near 1g"
+    action: script
+    script: |
+      ax, ay, az = dev.acceleration_g()
+      mag = (ax**2 + ay**2 + az**2) ** 0.5
+      result = 0.8 < mag < 1.2
+    expect_true: true
+    mode: [hardware]
+
+  # ----- Gyroscope -----
+
+  - name: "Gyroscope raw returns tuple of 3 ints"
+    action: script
+    script: |
+      raw = dev.gyroscope_raw()
+      result = len(raw) == 3 and all(isinstance(v, int) for v in raw)
+    expect_true: true
+    mode: [mock]
+
+  - name: "Gyroscope dps returns zeros when static"
+    action: script
+    script: |
+      gx, gy, gz = dev.gyroscope_dps()
+      result = gx == 0.0 and gy == 0.0 and gz == 0.0
+    expect_true: true
+    mode: [mock]
+
+  - name: "Gyroscope rads consistent with dps"
+    action: script
+    script: |
+      from math import pi
+      dps = dev.gyroscope_dps()
+      rads = dev.gyroscope_rads()
+      ok = all(abs(rads[i] - dps[i] * pi / 180.0) < 0.001 for i in range(3))
+      result = ok
+    expect_true: true
+    mode: [mock]
+
+  - name: "Gyroscope values plausible at rest"
+    action: script
+    script: |
+      gx, gy, gz = dev.gyroscope_dps()
+      result = abs(gx) < 20 and abs(gy) < 20 and abs(gz) < 20
+    expect_true: true
+    mode: [hardware]
+
+  # ----- Temperature -----
+
+  - name: "Temperature returns 25.0 from mock data"
     action: call
     method: temperature_c
-    expect_range: [24.0, 26.0]
+    expect_range: [24.9, 25.1]
     mode: [mock]
 
-  - name: "Orientation detection works"
+  - name: "Temperature raw returns int"
+    action: script
+    script: |
+      result = isinstance(dev.temperature_raw(), int)
+    expect_true: true
+    mode: [mock]
+
+  - name: "Temperature in plausible range"
+    action: call
+    method: temperature_c
+    expect_range: [10.0, 50.0]
+    mode: [hardware]
+
+  # ----- Orientation -----
+
+  - name: "Orientation detects SCREEN_DOWN"
     action: call
     method: orientation
     expect: "SCREEN_DOWN"
     mode: [mock]
 
-  - name: "Acceleration magnitude plausible"
-    action: call
-    method: acceleration_g
-    expect_not_none: true
-    mode: [hardware]
+  # ----- Motion -----
 
-  - name: "Gyroscope magnitude plausible"
-    action: call
-    method: gyroscope_dps
-    expect_not_none: true
-    mode: [hardware]
+  - name: "Motion returns STABLE when static"
+    action: script
+    script: |
+      direction, speed = dev.motion()
+      result = direction == "STABLE" and speed == 0
+    expect_true: true
+    mode: [mock]
 
-  - name: "Temperature in plausible range"
-    action: call
-    method: temperature_c
-    expect_range: [-20.0, 80.0]
-    mode: [hardware]
+  # ----- Configuration -----
 
-  - name: "Orientation feels correct"
+  - name: "Configure accel changes scale"
+    action: script
+    script: |
+      from ism330dl.const import ACCEL_ODR_104HZ, ACCEL_FS_4G
+      dev.configure_accel(ACCEL_ODR_104HZ, ACCEL_FS_4G)
+      result = dev._accel_scale == ACCEL_FS_4G
+    expect_true: true
+    mode: [mock]
+
+  - name: "Configure gyro changes scale"
+    action: script
+    script: |
+      from ism330dl.const import GYRO_ODR_104HZ, GYRO_FS_500DPS
+      dev.configure_gyro(GYRO_ODR_104HZ, GYRO_FS_500DPS)
+      result = dev._gyro_scale == GYRO_FS_500DPS
+    expect_true: true
+    mode: [mock]
+
+  - name: "Configure accel rejects invalid scale"
+    action: script
+    script: |
+      from ism330dl.const import ACCEL_ODR_104HZ
+      try:
+          dev.configure_accel(ACCEL_ODR_104HZ, 99)
+          result = False
+      except Exception:
+          result = True
+    expect_true: true
+    mode: [mock]
+
+  - name: "Configure gyro rejects invalid scale"
+    action: script
+    script: |
+      from ism330dl.const import GYRO_ODR_104HZ
+      try:
+          dev.configure_gyro(GYRO_ODR_104HZ, 99)
+          result = False
+      except Exception:
+          result = True
+    expect_true: true
+    mode: [mock]
+
+  # ----- Power -----
+
+  - name: "Power down writes zero to CTRL registers"
+    action: script
+    script: |
+      dev.power_down()
+      ctrl1 = dev._read_u8(0x10)
+      ctrl2 = dev._read_u8(0x11)
+      result = ctrl1 == 0 and ctrl2 == 0
+    expect_true: true
+    mode: [mock]
+
+  # ----- Reset -----
+
+  - name: "Reset sets BDU and IF_INC in CTRL3_C"
+    action: script
+    script: |
+      dev.reset()
+      ctrl3 = dev._read_u8(0x12)
+      bdu = bool(ctrl3 & (1 << 6))
+      if_inc = bool(ctrl3 & (1 << 2))
+      result = bdu and if_inc
+    expect_true: true
+    mode: [mock]
+
+  # ----- Hardware manual -----
+
+  - name: "Sensor readings feel correct"
     action: manual
     display:
       - method: acceleration_g
@@ -85,6 +252,9 @@ tests:
       - method: temperature_c
         label: "Temperature"
         unit: "°C"
-    prompt: "Les valeurs d'accélération, rotation et température sont-elles cohérentes ?"
+      - method: orientation
+        label: "Orientation"
+        unit: ""
+    prompt: "Les valeurs d'accélération, rotation, température et orientation sont-elles cohérentes ?"
     expect_true: true
     mode: [hardware]
