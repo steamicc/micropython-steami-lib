@@ -20,7 +20,7 @@ micropython-steami-lib/
 │   ├── vl53l1cx/       # Distance sensor VL53L1CX
 │   ├── apds9960/       # Gesture and color sensor APDS-9960
 │   ├── wsen_hids/      # Humidity sensor WSEN-HIDS 2525020210001
-│   ├── ism330dlc/      # Accelerometer and gyroscope ISM330DLCTR
+│   ├── ism330dl/       # Accelerometer and gyroscope ISM330DL
 │   ├── lis2mdl/        # Magnetometer LIS2MDLTR
 │   ├── wsen_pads/      # Pressure sensor WSEN-PADS 25110202133011
 │   ├── im34dt05/       # Digital microphone IM34DT05
@@ -199,33 +199,34 @@ distance = tof.read()  # Distance in mm
 
 ```
 
-### ISM330DLCTR (Accelerometer and Gyroscope)
+### ISM330DL (Accelerometer and Gyroscope)
 
-The ISM330DLCTR is a 6DOF inertial module integrating accelerometer and gyroscope.
+The ISM330DL is a 6DOF inertial module integrating accelerometer and gyroscope.
 
 #### Mounting and Running an Example
 
 ```bash
 # Mount the driver and run the example
-mpremote mount lib/ism330dlc run lib/ism330dlc/examples/imu_reading.py
+mpremote mount lib/ism330dl run lib/ism330dl/examples/basic_read.py
 ```
 
 #### Basic API
 
 ```python
-from ism330dlc import ISM330DLC
+from ism330dl import ISM330DL
 
 # Initialization
 i2c = machine.I2C(1)
-imu = ISM330DLC(i2c)
+imu = ISM330DL(i2c)
 
 # Reading values
-accel_x, accel_y, accel_z = imu.read_accel()
-gyro_x, gyro_y, gyro_z = imu.read_gyro()
+ax, ay, az = imu.acceleration_g()
+gx, gy, gz = imu.gyroscope_dps()
+temp = imu.temperature_c()
 
 # Configuration
-imu.set_accel_odr(ISM330DLC.ACCEL_ODR_104HZ)
-imu.set_gyro_odr(ISM330DLC.GYRO_ODR_104HZ)
+from ism330dl.const import ACCEL_ODR_104HZ, ACCEL_FS_4G
+imu.configure_accel(ACCEL_ODR_104HZ, ACCEL_FS_4G)
 ```
 
 ### APDS-9960 (Gesture and Color Sensor)
