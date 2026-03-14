@@ -14,7 +14,9 @@ class ISM330DL(object):
         self._buffer_1 = bytearray(1)
 
         self._accel_scale = ACCEL_FS_2G
+        self._accel_odr = ACCEL_ODR_104HZ
         self._gyro_scale = GYRO_FS_250DPS
+        self._gyro_odr = GYRO_ODR_104HZ
 
         self._temp_gain = 1.0
         self._temp_offset = 0.0
@@ -101,6 +103,8 @@ class ISM330DL(object):
         if scale not in ACCEL_FS_BITS:
             raise ISM330DLConfigError("Invalid accel scale")
         self._accel_scale = scale
+        if odr != ACCEL_ODR_POWER_DOWN:
+            self._accel_odr = odr
         value = (odr << 4) | (ACCEL_FS_BITS[scale] << 2)
         self._write_u8(REG_CTRL1_XL, value)
 
@@ -114,19 +118,41 @@ class ISM330DL(object):
                 raise ISM330DLConfigError("Invalid gyro scale")
             value = (odr << 4) | (GYRO_FS_BITS[scale] << 2)
         self._gyro_scale = scale
+        if odr != GYRO_ODR_POWER_DOWN:
+            self._gyro_odr = odr
         self._write_u8(REG_CTRL2_G, value)
+
+    # --------------------------------------------------
+    # Auto-trigger
+    # --------------------------------------------------
+
+    def _is_power_down(self):
+        """Return True if both accel and gyro ODR are 0 (power-down)."""
+        ctrl1 = self._read_u8(REG_CTRL1_XL)
+        ctrl2 = self._read_u8(REG_CTRL2_G)
+        return (ctrl1 & 0xF0) == 0 and (ctrl2 & 0xF0) == 0
+
+    def _ensure_data(self):
+        """Restore previous ODR and wait for data if in power-down mode."""
+        if self._is_power_down():
+            self.configure_accel(self._accel_odr, self._accel_scale)
+            self.configure_gyro(self._gyro_odr, self._gyro_scale)
+            sleep_ms(100)
 
     # --------------------------------------------------
     # Raw readings
     # --------------------------------------------------
 
     def acceleration_raw(self):
+        self._ensure_data()
         return self._read_vector(REG_OUTX_L_XL)
 
     def gyroscope_raw(self):
+        self._ensure_data()
         return self._read_vector(REG_OUTX_L_G)
 
     def temperature_raw(self):
+        self._ensure_data()
         return self._read_i16(REG_OUT_TEMP_L)
 
     # --------------------------------------------------
