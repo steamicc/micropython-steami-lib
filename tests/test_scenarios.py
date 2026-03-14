@@ -122,6 +122,21 @@ def test_scenario(scenario, test, mode, port):
                         print(f"  {label}: {value} {unit}")
             prompt = test.get("prompt", "Manual check")
             result = prompt_yes_no(prompt)
+        elif action == "script":
+            if is_board:
+                pytest.fail(
+                    "Board scenarios do not support 'script' action; "
+                    "use 'hardware_script' instead"
+                )
+            result = bridge.run_script(
+                scenario["driver"],
+                scenario["driver_class"],
+                scenario["i2c"],
+                test["script"],
+                module_name=scenario.get("module_name"),
+                hardware_init=scenario.get("hardware_init"),
+                i2c_address=scenario.get("i2c_address"),
+            )
         elif action in ("call", "read_register", "interactive"):
             if is_board:
                 pytest.fail(
