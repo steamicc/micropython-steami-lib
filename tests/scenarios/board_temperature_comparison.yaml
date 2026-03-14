@@ -58,13 +58,13 @@ tests:
         pad = ' ' * (12 - len(name))
         print('  ' + name + pad + ': ' + str(round(t, 2)) + ' C')
 
-      # Check dedicated thermometers in plausible range
-      dedicated = [temps['HTS221'], temps['WSEN-HIDS'], temps['WSEN-PADS']]
-      all_ok = all(5.0 <= t <= 50.0 for t in dedicated)
+      # Check thermometers in plausible range (HTS221, WSEN-HIDS, WSEN-PADS)
+      thermometers = [temps['HTS221'], temps['WSEN-HIDS'], temps['WSEN-PADS']]
+      all_ok = all(5.0 <= t <= 50.0 for t in thermometers)
 
-      # Check spread between dedicated thermometers
-      spread = max(dedicated) - min(dedicated)
-      print('  Spread (dedicated): ' + str(round(spread, 2)) + ' C')
+      # Check spread between thermometers
+      spread = max(thermometers) - min(thermometers)
+      print('  Spread: ' + str(round(spread, 2)) + ' C')
 
       result = all_ok and spread < 8.0
     expect_true: true
@@ -102,6 +102,6 @@ tests:
 
   - name: "Temperature values feel correct"
     action: manual
-    prompt: "Les temperatures lues sont-elles coherentes entre elles et avec l'ambiance ?"
+    prompt: "Les températures lues sont-elles cohérentes entre elles et avec l'ambiance ?"
     expect_true: true
     mode: [hardware]
