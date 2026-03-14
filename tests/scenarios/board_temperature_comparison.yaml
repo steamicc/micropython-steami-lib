@@ -10,6 +10,7 @@ drivers:
   - wsen-hids
   - wsen-pads
   - lis2mdl
+  - ism330dl
 
 tests:
   - name: "Read all temperature sensors"
@@ -20,6 +21,7 @@ tests:
       sys.path.insert(0, '/remote/wsen-hids')
       sys.path.insert(0, '/remote/wsen-pads')
       sys.path.insert(0, '/remote/lis2mdl')
+      sys.path.insert(0, '/remote/ism330dl')
 
       from machine import I2C
       from time import sleep_ms
@@ -51,6 +53,11 @@ tests:
       from lis2mdl.device import LIS2MDL
       mag = LIS2MDL(i2c)
       temps['LIS2MDL'] = mag.read_temperature_c()
+
+      # ISM330DL (auxiliary, offset not guaranteed by datasheet)
+      from ism330dl.device import ISM330DL
+      imu = ISM330DL(i2c)
+      temps['ISM330DL'] = imu.temperature_c()
 
       # Print comparison table
       print('--- Temperature Comparison ---')
@@ -108,6 +115,7 @@ tests:
       sys.path.insert(0, '/remote/wsen-hids')
       sys.path.insert(0, '/remote/wsen-pads')
       sys.path.insert(0, '/remote/lis2mdl')
+      sys.path.insert(0, '/remote/ism330dl')
 
       from machine import I2C
       from time import sleep_ms
@@ -131,6 +139,9 @@ tests:
       from lis2mdl.device import LIS2MDL
       mag = LIS2MDL(i2c)
 
+      from ism330dl.device import ISM330DL
+      imu = ISM330DL(i2c)
+
       # Read reference just before each sensor to minimize drift
       ref_t = ref.temperature()
       hts_t = hts.temperature()
@@ -141,34 +152,41 @@ tests:
       ref_t3 = ref.temperature()
       mag_t = mag.read_temperature_c()
 
+      ref_t4 = ref.temperature()
+      imu_t = imu.temperature_c()
+
       print('--- Before offset alignment ---')
       print('  WSEN-HIDS (ref): ' + str(round(ref_t, 2)) + ' C')
       print('  HTS221:          ' + str(round(hts_t, 2)) + ' C')
       print('  WSEN-PADS:       ' + str(round(pads_t, 2)) + ' C')
       print('  LIS2MDL:         ' + str(round(mag_t, 2)) + ' C')
+      print('  ISM330DL:        ' + str(round(imu_t, 2)) + ' C')
 
-      spread_before = max(hts_t, pads_t, mag_t, ref_t) - min(hts_t, pads_t, mag_t, ref_t)
+      spread_before = max(hts_t, pads_t, mag_t, imu_t, ref_t) - min(hts_t, pads_t, mag_t, imu_t, ref_t)
       print('  Spread: ' + str(round(spread_before, 2)) + ' C')
 
       # Apply offset to align each sensor to the reference reading
       hts.set_temp_offset(ref_t - hts_t)
       pads.set_temp_offset(ref_t2 - pads_t)
       mag.set_temp_offset(ref_t3 - mag_t)
+      imu.set_temp_offset(ref_t4 - imu_t)
 
       # Re-read after offset alignment
       sleep_ms(50)
-      ref_t4 = ref.temperature()
+      ref_t5 = ref.temperature()
       hts_t2 = hts.temperature()
       pads_t2 = pads.temperature()
       mag_t2 = mag.read_temperature_c()
+      imu_t2 = imu.temperature_c()
 
       print('--- After offset alignment ---')
-      print('  WSEN-HIDS (ref): ' + str(round(ref_t4, 2)) + ' C')
+      print('  WSEN-HIDS (ref): ' + str(round(ref_t5, 2)) + ' C')
       print('  HTS221:          ' + str(round(hts_t2, 2)) + ' C')
       print('  WSEN-PADS:       ' + str(round(pads_t2, 2)) + ' C')
       print('  LIS2MDL:         ' + str(round(mag_t2, 2)) + ' C')
+      print('  ISM330DL:        ' + str(round(imu_t2, 2)) + ' C')
 
-      spread_after = max(hts_t2, pads_t2, mag_t2, ref_t4) - min(hts_t2, pads_t2, mag_t2, ref_t4)
+      spread_after = max(hts_t2, pads_t2, mag_t2, imu_t2, ref_t5) - min(hts_t2, pads_t2, mag_t2, imu_t2, ref_t5)
       print('  Spread: ' + str(round(spread_after, 2)) + ' C')
 
       # After alignment, spread should be < 2°C
