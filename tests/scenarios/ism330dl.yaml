@@ -337,6 +337,44 @@ tests:
     expect_true: true
     mode: [mock]
 
+  - name: "Auto-trigger preserves custom ODR"
+    action: script
+    script: |
+      from ism330dl.const import ACCEL_ODR_26HZ, ACCEL_FS_2G, GYRO_ODR_52HZ, GYRO_FS_250DPS
+      dev.configure_accel(ACCEL_ODR_26HZ, ACCEL_FS_2G)
+      dev.configure_gyro(GYRO_ODR_52HZ, GYRO_FS_250DPS)
+      dev.power_down()
+      dev.acceleration_raw()
+      ctrl1 = i2c.readfrom_mem(dev.address, 0x10, 1)[0]
+      ctrl2 = i2c.readfrom_mem(dev.address, 0x11, 1)[0]
+      accel_odr = (ctrl1 >> 4) & 0x0F
+      gyro_odr = (ctrl2 >> 4) & 0x0F
+      result = accel_odr == ACCEL_ODR_26HZ and gyro_odr == GYRO_ODR_52HZ
+    expect_true: true
+    mode: [mock]
+
+  - name: "Repeated power down and read cycle"
+    action: script
+    script: |
+      dev.power_down()
+      a1 = dev.acceleration_g()
+      dev.power_down()
+      a2 = dev.acceleration_g()
+      result = len(a1) == 3 and len(a2) == 3
+    expect_true: true
+    mode: [mock]
+
+  - name: "No register write when already active"
+    action: script
+    script: |
+      dev.acceleration_raw()
+      i2c.clear_write_log()
+      dev.acceleration_raw()
+      log = i2c.get_write_log()
+      result = len(log) == 0
+    expect_true: true
+    mode: [mock]
+
   - name: "Fresh acceleration after power down"
     action: script
     script: |
