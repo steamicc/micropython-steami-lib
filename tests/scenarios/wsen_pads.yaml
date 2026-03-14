@@ -49,13 +49,29 @@ tests:
   - name: "Read pressure returns float"
     action: call
     method: pressure
-    expect_not_none: true
+    expect_range: [1013.0, 1014.0]
     mode: [mock]
 
   - name: "Read temperature returns float"
     action: call
     method: temperature
-    expect_not_none: true
+    expect: 25.0
+    mode: [mock]
+
+  - name: "Temperature with offset"
+    action: script
+    script: |
+      dev.set_temp_offset(-2.0)
+      result = dev.temperature()
+    expect_range: [22.0, 24.0]
+    mode: [mock]
+
+  - name: "Temperature with two-point calibration"
+    action: script
+    script: |
+      dev.calibrate_temperature(20.0, 25.0, 30.0, 35.0)
+      result = dev.temperature()
+    expect_range: [19.0, 21.0]
     mode: [mock]
 
   - name: "Pressure in plausible range"
