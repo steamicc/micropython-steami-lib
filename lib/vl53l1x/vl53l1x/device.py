@@ -136,40 +136,31 @@ class VL53L1X(object):
         machine.lightsleep(100)
         self._write_reg(0x0000, 0x01)
 
+    def start_ranging(self):
+        self._write_reg(0x0087, 0x40)
+
+    def stop_ranging(self):
+        self._write_reg(0x0087, 0x00)
+
+    def _is_data_ready(self):
+        polarity = self._read_reg(0x0030) & 0x10
+        ready_val = 1 if polarity == 0 else 0
+        return (self._read_reg(0x0031) & 0x01) == ready_val
+
+    def _clear_interrupt(self):
+        self._write_reg(0x0086, 0x01)
+
+    def _ensure_data(self):
+        if not self._is_data_ready():
+            self.start_ranging()
+            for _ in range(100):
+                if self._is_data_ready():
+                    return
+                machine.lightsleep(10)
+
     def read(self):
-        data = self.i2c.readfrom_mem(self.address, 0x0089, 17, addrsize=16)  # RESULT__RANGE_STATUS
-        # range_status = data[0]
-        # report_status = data[1]
-        # stream_count = data[2]
-        # dss_actual_effective_spads_sd0 = (data[3] << 8) + data[4]
-        # peak_signal_count_rate_mcps_sd0 = (data[5]<<8) + data[6]
-        # ambient_count_rate_mcps_sd0 = (data[7] << 8) + data[8]
-        # sigma_sd0 = (data[9]<<8) + data[10]
-        # phase_sd0 = (data[11]<<8) + data[12]
+        self._ensure_data()
+        data = self.i2c.readfrom_mem(self.address, 0x0089, 17, addrsize=16)
         final_crosstalk_corrected_range_mm_sd0 = (data[13] << 8) + data[14]
-        # peak_signal_count_rate_crosstalk_corrected_mcps_sd0 = (data[15] << 8) + data[16]
-        # status = None
-        # if range_status in (17, 2, 1, 3):
-        # status = "HardwareFail"
-        # elif range_status == 13:
-        # status = "MinRangeFail"
-        # elif range_status == 18:
-        # status = "SynchronizationInt"
-        # elif range_status == 5:
-        # status = "OutOfBoundsFail"
-        # elif range_status == 4:
-        # status = "SignalFail"
-        # elif range_status == 6:
-        # status = "SignalFail"
-        # elif range_status == 7:
-        # status = "WrapTargetFail"
-        # elif range_status == 12:
-        # status = "XtalkSignalFail"
-        # elif range_status == 8:
-        # status = "RangeValidMinRangeClipped"
-        # elif range_status == 9:
-        # if stream_count == 0:
-        # status = "RangeValidNoWrapCheckFail"
-        # else:
-        # status = "OK"
+        self._clear_interrupt()
         return final_crosstalk_corrected_range_mm_sd0

@@ -15,6 +15,14 @@ mock_registers:
   0x0000: 0x01
   # MM_CONFIG__OUTER_OFFSET_MM (0x0022): used during init
   0x0022: [0x00, 0x00]
+  # GPIO__TIO_HV_STATUS (0x0031): data ready (bit 0 = 1 when polarity=0)
+  0x0031: 0x01
+  # SYSTEM__INTERRUPT_CLEAR (0x0086)
+  0x0086: 0x00
+  # SYSTEM__MODE_START (0x0087)
+  0x0087: 0x40
+  # GPIO__HV_MUX__CTRL (0x0030): interrupt polarity (bit 4 = 0 -> active low)
+  0x0030: 0x01
   # RESULT__RANGE_STATUS (0x0089): 17-byte result block
   # Bytes: range_status, report_status, stream_count,
   #         dss_spads(2), peak_rate(2), ambient_rate(2),
@@ -38,6 +46,35 @@ tests:
     method: read
     expect: 250
     mode: [mock]
+
+  - name: "Data ready check works"
+    action: script
+    script: |
+      result = dev._is_data_ready()
+    expect_true: true
+    mode: [mock]
+
+  - name: "Read clears interrupt"
+    action: script
+    script: |
+      i2c.clear_write_log()
+      dev.read()
+      log = i2c.get_write_log()
+      cleared = any(reg == 0x0086 and data[0] == 0x01 for reg, data in log)
+      result = cleared
+    expect_true: true
+    mode: [mock]
+
+  - name: "Distance after stop and restart"
+    action: script
+    script: |
+      dev.stop_ranging()
+      d = dev.read()
+      result = isinstance(d, int)
+    expect_true: true
+    mode: [mock]
+
+  # ----- Hardware -----
 
   - name: "Distance in plausible range"
     action: call
