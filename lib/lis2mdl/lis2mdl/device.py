@@ -236,12 +236,23 @@ class LIS2MDL(object):
         return v - 0x10000 if (v & 0x8000) else v
 
     def read_temperature_c(self) -> float:
-        """Temperature in °C (8 LSB/°C + offset)."""
+        """Temperature in °C (8 LSB/°C + empirical offset).
+
+        The LIS2MDL temperature sensor has no guaranteed absolute zero
+        point (see datasheet Table 4).  The offset defaults to 25 °C
+        based on empirical observation (confirmed by Zephyr RTOS
+        PR #35912).  Use ``set_temp_offset()`` to calibrate against a
+        reference thermometer.
+        """
         return self._temp_offset + self.read_temperature_raw() / LIS2MDL_TEMP_SENSITIVITY
 
-    def set_temp_offset(self, offset):
-        """Set the temperature offset in °C for calibration."""
-        self._temp_offset = offset
+    def set_temp_offset(self, offset_c):
+        """Set the temperature offset in °C for calibration.
+
+        Args:
+            offset_c: offset value in degrees Celsius (default is 25).
+        """
+        self._temp_offset = float(offset_c)
 
     # --- IDENTITY & HARDWARE OFFSETS ---
 

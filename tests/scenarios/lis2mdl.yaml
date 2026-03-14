@@ -67,7 +67,7 @@ tests:
   - name: "Read temperature returns float"
     action: call
     method: read_temperature_c
-    expect_not_none: true
+    expect: 25.0
     mode: [mock]
 
   - name: "Magnitude in plausible range"
