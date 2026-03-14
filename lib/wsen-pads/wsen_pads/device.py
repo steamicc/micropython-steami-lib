@@ -28,6 +28,8 @@ class WSEN_PADS(object):
         """
         self.i2c = i2c
         self.address = address
+        self._temp_gain = 1.0
+        self._temp_offset = 0.0
 
         # Wait for the sensor boot sequence after power-up.
         sleep_ms(BOOT_DELAY_MS)
@@ -269,7 +271,8 @@ class WSEN_PADS(object):
         """
         Read and return temperature in degrees Celsius.
         """
-        return self.temperature_raw() * TEMPERATURE_C_PER_DIGIT
+        factory = self.temperature_raw() * TEMPERATURE_C_PER_DIGIT
+        return self._temp_gain * factory + self._temp_offset
 
     def read(self):
         """
@@ -285,7 +288,8 @@ class WSEN_PADS(object):
         p_raw = self._to_signed24((p_data[2] << 16) | (p_data[1] << 8) | p_data[0])
         t_data = self._read_block(REG_DATA_T_L, 2)
         t_raw = self._to_signed16((t_data[1] << 8) | t_data[0])
-        return p_raw * PRESSURE_HPA_PER_DIGIT, t_raw * TEMPERATURE_C_PER_DIGIT
+        t_c = self._temp_gain * (t_raw * TEMPERATURE_C_PER_DIGIT) + self._temp_offset
+        return p_raw * PRESSURE_HPA_PER_DIGIT, t_c
 
     # ---------------------------------------------------------------------
     # One-shot mode
@@ -410,3 +414,34 @@ class WSEN_PADS(object):
         current = self._read_reg(REG_CTRL_1)
         current &= ~(CTRL1_EN_LPFP | CTRL1_LPFP_CFG)
         self._write_reg(REG_CTRL_1, current)
+
+    # ---------------------------------------------------------------------
+    # Temperature calibration
+    # ---------------------------------------------------------------------
+
+    def set_temp_offset(self, offset_c):
+        """Set a temperature offset in °C (gain remains 1.0).
+
+        Args:
+            offset_c: offset value in degrees Celsius.
+        """
+        self._temp_gain = 1.0
+        self._temp_offset = float(offset_c)
+
+    def calibrate_temperature(self, ref_low, measured_low, ref_high, measured_high):
+        """Two-point calibration from reference measurements.
+
+        Computes gain and offset so that the sensor reading is adjusted
+        to match reference values at two temperature points.
+
+        Args:
+            ref_low: reference temperature at the low point (°C).
+            measured_low: sensor reading at the low point (°C).
+            ref_high: reference temperature at the high point (°C).
+            measured_high: sensor reading at the high point (°C).
+        """
+        delta = float(measured_high - measured_low)
+        if delta == 0.0:
+            raise ValueError("measured_low and measured_high must differ")
+        self._temp_gain = float(ref_high - ref_low) / delta
+        self._temp_offset = float(ref_low) - self._temp_gain * float(measured_low)
