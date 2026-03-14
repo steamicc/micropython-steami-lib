@@ -90,6 +90,8 @@ class WSEN_HIDS(object):
 
     def _read_regs(self, reg, length):
         try:
+            if length > 1:
+                reg |= AUTO_INCREMENT
             return self.i2c.readfrom_mem(self.address, reg, length)
         except OSError as exc:
             raise WSENHIDSCommunicationError(
@@ -220,7 +222,7 @@ class WSEN_HIDS(object):
 
     def _read_raw_humidity_temperature(self):
         # Multi-byte read with auto-increment bit set.
-        data = self._read_regs(REG_H_OUT_L | AUTO_INCREMENT, 4)
+        data = self._read_regs(REG_H_OUT_L, 4)
 
         h_raw = data[0] | (data[1] << 8)
         t_raw = data[2] | (data[3] << 8)
