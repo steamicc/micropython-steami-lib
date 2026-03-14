@@ -1,7 +1,3 @@
-Voici un **README propre et complet** pour ton driver **ISM330DL**, dans le style des drivers MicroPython (similaire à ce que tu as fait pour `wsen-pads` et `lis2mdl`).
-
----
-
 # ISM330DL MicroPython Driver
 
 MicroPython driver for the **STMicroelectronics ISM330DL** 6-axis IMU.
@@ -164,7 +160,7 @@ imu.gyroscope_rads()
 ### motion orientation 
 
 ```python
-imu.gyro_motion()
+imu.motion()
 ```
 
 ---
