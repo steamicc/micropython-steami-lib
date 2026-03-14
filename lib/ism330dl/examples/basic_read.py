@@ -1,5 +1,5 @@
 from machine import I2C
-from time import sleep
+from time import sleep_ms
 from ism330dl import ISM330DL
 
 i2c = I2C(1)
@@ -25,4 +25,4 @@ while True:
         )
     )
 
-    sleep(0.5)
+    sleep_ms(500)

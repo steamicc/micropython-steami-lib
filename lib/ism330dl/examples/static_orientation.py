@@ -1,5 +1,5 @@
-from machine import I2C, Pin
-from time import sleep
+from machine import I2C
+from time import sleep_ms
 from ism330dl import ISM330DL
 
 i2c = I2C(1)
@@ -19,4 +19,4 @@ while True:
 
     print("Orientation: {}".format(dir))
 
-    sleep(0.5)
+    sleep_ms(500)
