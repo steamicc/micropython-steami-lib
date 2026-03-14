@@ -48,10 +48,9 @@ tests:
       temps['WSEN-PADS'] = pads.temperature()
 
       # LIS2MDL (auxiliary, offset not guaranteed by datasheet)
-      # Add 25°C empirical offset (raw value has no guaranteed zero point)
       from lis2mdl.device import LIS2MDL
       mag = LIS2MDL(i2c)
-      temps['LIS2MDL'] = 25.0 + mag.read_temperature_raw() / 8.0
+      temps['LIS2MDL'] = mag.read_temperature_c()
 
       # Print comparison table
       print('--- Temperature Comparison ---')
