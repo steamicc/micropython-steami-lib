@@ -297,6 +297,46 @@ tests:
     expect_true: true
     mode: [mock]
 
+  # ----- Auto-trigger -----
+
+  - name: "Acceleration readable after power down"
+    action: script
+    script: |
+      dev.power_down()
+      ax, ay, az = dev.acceleration_g()
+      result = isinstance(ax, float) and isinstance(ay, float) and isinstance(az, float)
+    expect_true: true
+    mode: [mock]
+
+  - name: "Gyroscope readable after power down"
+    action: script
+    script: |
+      dev.power_down()
+      gx, gy, gz = dev.gyroscope_dps()
+      result = isinstance(gx, float) and isinstance(gy, float) and isinstance(gz, float)
+    expect_true: true
+    mode: [mock]
+
+  - name: "Temperature readable after power down"
+    action: script
+    script: |
+      dev.power_down()
+      t = dev.temperature_c()
+      result = isinstance(t, float)
+    expect_true: true
+    mode: [mock]
+
+  - name: "Auto-trigger restores ODR after power down"
+    action: script
+    script: |
+      dev.power_down()
+      dev.acceleration_raw()
+      ctrl1 = i2c.readfrom_mem(dev.address, 0x10, 1)[0]
+      ctrl2 = i2c.readfrom_mem(dev.address, 0x11, 1)[0]
+      result = (ctrl1 & 0xF0) != 0 and (ctrl2 & 0xF0) != 0
+    expect_true: true
+    mode: [mock]
+
   # ----- Hardware manual -----
 
   - name: "Sensor readings feel correct"
