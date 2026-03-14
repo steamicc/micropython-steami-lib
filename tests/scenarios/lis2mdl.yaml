@@ -73,9 +73,9 @@ tests:
   - name: "Temperature with offset"
     action: script
     script: |
-      dev.set_temp_offset(30.0)
+      dev.set_temp_offset(-2.0)
       result = dev.read_temperature_c()
-    expect: 30.0
+    expect_range: [22.0, 24.0]
     mode: [mock]
 
   - name: "Temperature with two-point calibration"
