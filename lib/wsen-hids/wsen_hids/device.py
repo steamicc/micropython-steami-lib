@@ -59,6 +59,8 @@ class WSEN_HIDS(object):
         self._buffer_1 = bytearray(1)
 
         self._calibration = {}
+        self._temp_gain = 1.0
+        self._temp_offset = 0.0
 
         if check_device:
             self.check_device()
@@ -257,7 +259,36 @@ class WSEN_HIDS(object):
         if delta_out == 0:
             raise WSENHIDSError("Invalid temperature calibration data")
 
-        return ((t1_degC - t0_degC) * (t_raw - t0_out) / delta_out) + t0_degC
+        factory = ((t1_degC - t0_degC) * (t_raw - t0_out) / delta_out) + t0_degC
+        return self._temp_gain * factory + self._temp_offset
+
+    # -------------------------------------------------------------------------
+    # Calibration
+    # -------------------------------------------------------------------------
+
+    def set_temp_offset(self, offset_c):
+        """Set a temperature offset in °C (gain remains 1.0).
+
+        Args:
+            offset_c: offset value in degrees Celsius.
+        """
+        self._temp_gain = 1.0
+        self._temp_offset = float(offset_c)
+
+    def calibrate_temperature(self, ref_low, measured_low, ref_high, measured_high):
+        """Two-point calibration from reference measurements.
+
+        Computes gain and offset so that the sensor reading is adjusted
+        to match reference values at two temperature points.
+
+        Args:
+            ref_low: reference temperature at the low point (°C).
+            measured_low: sensor reading at the low point (°C).
+            ref_high: reference temperature at the high point (°C).
+            measured_high: sensor reading at the high point (°C).
+        """
+        self._temp_gain = float(ref_high - ref_low) / float(measured_high - measured_low)
+        self._temp_offset = float(ref_low) - self._temp_gain * float(measured_low)
 
     # -------------------------------------------------------------------------
     # Public measurement API
