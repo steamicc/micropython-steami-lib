@@ -176,6 +176,7 @@ class LIS2MDL(object):
                 if self.data_ready():
                     return
                 sleep_ms(2)
+            raise OSError("LIS2MDL data ready timeout")
 
     def read_magnet_raw(self):
         """Reads the raw magnetic field (LSB). Same as read_magnet(), but more explicit."""
