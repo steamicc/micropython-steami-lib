@@ -14,7 +14,7 @@ This driver provides a simple API to configure the sensor and read motion data u
 # Features
 
 * I²C communication
-* automatic device detection (`WHO_AM_I`)
+* device identification (`WHO_AM_I`)
 * accelerometer configuration
 * gyroscope configuration
 * raw sensor readings
@@ -46,19 +46,19 @@ The sensor can use two I²C addresses depending on the **SA0 pin**:
 | 0   | `0x6A`  |
 | 1   | `0x6B`  |
 
-Most breakout boards use **0x6B**.
+The STeaMi board uses **0x6A** (default).
 
 ---
 
 # Basic Usage
 
 ```python
-from machine import I2C, Pin
+from machine import I2C
 from ism330dl import ISM330DL
 
 i2c = I2C(1)
 
-imu = ISM330DL(i2c, address=0x6B)
+imu = ISM330DL(i2c)
 
 ax, ay, az = imu.acceleration_g()
 gx, gy, gz = imu.gyroscope_dps()
