@@ -1,6 +1,6 @@
 driver: ism330dl
 driver_class: ISM330DL
-i2c_address: 0x6A
+i2c_address: 0x6B
 
 i2c:
   id: 1
