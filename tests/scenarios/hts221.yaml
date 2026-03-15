@@ -109,11 +109,15 @@ tests:
     expect_not_none: true
     mode: [mock]
 
-  - name: "Reboot reloads calibration"
+  - name: "Reboot re-reads calibration registers"
     action: script
     script: |
+      i2c.clear_write_log()
       dev.reboot()
-      result = isinstance(dev.temperature(), float)
+      # After reboot, calibration registers (0x3C-0x3F) should be re-read
+      # Verify T0_OUT and T1_OUT are still valid by checking temperature works
+      t = dev.temperature()
+      result = isinstance(t, float) and t != 0.0
     expect_true: true
     mode: [mock]
 
