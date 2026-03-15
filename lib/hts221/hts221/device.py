@@ -64,6 +64,16 @@ class HTS221(object):
     def status(self):
         return self._read_reg(HTS221_STATUS_REG)
 
+    def data_ready(self):
+        s = self.status()
+        return bool((s & HTS221_STATUS_T_DA) and (s & HTS221_STATUS_H_DA))
+
+    def temperature_ready(self):
+        return bool(self.status() & HTS221_STATUS_T_DA)
+
+    def humidity_ready(self):
+        return bool(self.status() & HTS221_STATUS_H_DA)
+
     # power control
     def power_off(self):
         t = self._read_reg(HTS221_CTRL_REG1) & 0x7F

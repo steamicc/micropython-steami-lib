@@ -79,11 +79,26 @@ tests:
     expect_range: [10.0, 90.0]
     mode: [hardware]
 
-  - name: "Status register has data ready"
-    action: call
-    method: status
-    expect_not_none: true
-    mode: [mock, hardware]
+  - name: "Status register returns int"
+    action: script
+    script: |
+      result = isinstance(dev.status(), int)
+    expect_true: true
+    mode: [mock]
+
+  - name: "Data ready when both channels ready"
+    action: script
+    script: |
+      result = dev.data_ready()
+    expect_true: true
+    mode: [mock]
+
+  - name: "Per-channel ready methods work"
+    action: script
+    script: |
+      result = dev.temperature_ready() and dev.humidity_ready()
+    expect_true: true
+    mode: [mock]
 
   - name: "Auto-trigger temperature after power_off"
     action: call

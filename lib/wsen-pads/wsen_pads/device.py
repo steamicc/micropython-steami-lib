@@ -159,15 +159,15 @@ class WSEN_PADS(object):
         """Return the raw STATUS register value."""
         return self._read_reg(REG_STATUS)
 
-    def pressure_available(self):
+    def pressure_ready(self):
         """Return True when new pressure data is available."""
         return bool(self.status() & STATUS_P_DA)
 
-    def temperature_available(self):
+    def temperature_ready(self):
         """Return True when new temperature data is available."""
         return bool(self.status() & STATUS_T_DA)
 
-    def is_ready(self):
+    def data_ready(self):
         """
         Return True when both pressure and temperature data are available.
 

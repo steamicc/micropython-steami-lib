@@ -82,6 +82,12 @@ class APDS9960(object):
     def device_id(self):
         return self.dev_id
 
+    def status(self):
+        return self._read_reg(APDS9960_REG_STATUS)
+
+    def data_ready(self):
+        return self.light_ready() and self.proximity_ready()
+
     def get_mode(self):
         return self._read_reg(APDS9960_REG_ENABLE)
 
@@ -225,15 +231,15 @@ class APDS9960(object):
     # *******************************************************************************
 
     # check if there is new light data available
-    def is_light_available(self):
+    def light_ready(self):
         val = self._read_reg(APDS9960_REG_STATUS)
 
-        # shift and mask out AVALID bit
+        # mask out AVALID bit
         val &= APDS9960_BIT_AVALID
 
         return val == APDS9960_BIT_AVALID
 
-    def is_proximity_available(self):
+    def proximity_ready(self):
         val = self._read_reg(APDS9960_REG_STATUS)
         return (val & APDS9960_BIT_PVALID) == APDS9960_BIT_PVALID
 
@@ -242,7 +248,7 @@ class APDS9960(object):
         if not (enable & (1 << APDS9960_MODE_AMBIENT_LIGHT)) or not (enable & APDS9960_BIT_PON):
             self.enable_light_sensor(interrupts=False)
             for _ in range(50):
-                if self.is_light_available():
+                if self.light_ready():
                     return
                 sleep_ms(10)
             raise OSError("APDS9960 light data ready timeout")
@@ -252,7 +258,7 @@ class APDS9960(object):
         if not (enable & (1 << APDS9960_MODE_PROXIMITY)) or not (enable & APDS9960_BIT_PON):
             self.enable_proximity_sensor(interrupts=False)
             for _ in range(50):
-                if self.is_proximity_available():
+                if self.proximity_ready():
                     return
                 sleep_ms(10)
             raise OSError("APDS9960 proximity data ready timeout")

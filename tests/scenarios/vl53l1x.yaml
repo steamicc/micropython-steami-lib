@@ -50,7 +50,7 @@ tests:
   - name: "Data ready check works"
     action: script
     script: |
-      result = dev._is_data_ready()
+      result = dev.data_ready()
     expect_true: true
     mode: [mock]
 
