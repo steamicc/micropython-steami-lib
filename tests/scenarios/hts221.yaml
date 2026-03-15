@@ -109,6 +109,25 @@ tests:
     expect_not_none: true
     mode: [mock]
 
+  - name: "Reboot reloads calibration"
+    action: script
+    script: |
+      dev.reboot()
+      result = isinstance(dev.temperature(), float)
+    expect_true: true
+    mode: [mock]
+
+  - name: "Reboot writes BOOT bit"
+    action: script
+    script: |
+      i2c.clear_write_log()
+      dev.reboot()
+      log = i2c.get_write_log()
+      wrote_boot = any(reg == 0x21 and (data[0] & 0x80) for reg, data in log)
+      result = wrote_boot
+    expect_true: true
+    mode: [mock]
+
   - name: "Temperature with offset"
     action: script
     script: |
