@@ -61,7 +61,7 @@ class TempMeasureType(object):
         self.value = value
 
 
-# Parameters for the setGPOUTFunction() funciton
+# Parameters for the set_gpout_function() function
 class GpoutFunctionType(object):
     SOC_INT = 0  # Set GPOUT to SOC_INT functionality
     BAT_LOW = 1  # Set GPOUT to BAT_LOW functionality
@@ -85,8 +85,8 @@ class BQ27441(object):
         self.i2c = i2c
         self.gpout = None
         self._shutdown_en = False
-        self._userConfigControl = False
-        self._sealFlag = False
+        self._user_config_control = False
+        self._seal_flag = False
         self.gpout_pin = gpout_pin
         self.capacity_mAh = capacity_mAh
         self.configure_gpout_input()
@@ -115,14 +115,14 @@ class BQ27441(object):
 
     def enable_shutdown_mode(self):
         """send i2c shutdown mode enable cmd"""
-        self.executeControlWord(BQ27441_CONTROL_SHUTDOWN_ENABLE)
+        self.execute_control_word(BQ27441_CONTROL_SHUTDOWN_ENABLE)
         self._shutdown_en = True
 
     def enter_shutdown_mode(self):
         """Enter shutdown mode"""
         self.configure_gpout_input()
         self.enable_shutdown_mode()
-        self.executeControlWord(BQ27441_CONTROL_SHUTDOWN)
+        self.execute_control_word(BQ27441_CONTROL_SHUTDOWN)
 
     def disable_shutdown_mode(self):
         if self.gpout_pin:
@@ -135,18 +135,18 @@ class BQ27441(object):
         self._shutdown_en = False
 
     def is_valid_device(self):
-        """Checks if device id returned matches bq27442"""
-        deviceID = self.deviceType()  # Read deviceType from BQ27441
-        return deviceID == BQ27441_DEVICE_ID
+        """Checks if device id returned matches bq27441"""
+        device_id = self.device_type()  # Read device_type from BQ27441
+        return device_id == BQ27441_DEVICE_ID
 
     # Configures the design capacity of the connected battery.
     def set_capacity(self, capacity):
         # Write to STATE subclass(82) of BQ27441 extended memory.
         # Offset 0x0A(10) Design capacity is a 2 - byte piece of data - MSB first
-        capMSB = capacity >> 8
-        capLSB = capacity & 0x00FF
-        capacityData = [capMSB, capLSB]
-        return self.writeExtendedData(BQ27441_ID_STATE, 10, capacityData, 2)
+        cap_msb = capacity >> 8
+        cap_lsb = capacity & 0x00FF
+        capacity_data = [cap_msb, cap_lsb]
+        return self.write_extended_data(BQ27441_ID_STATE, 10, capacity_data, 2)
 
     # Battery Characteristic Functions
 
@@ -177,19 +177,19 @@ class BQ27441(object):
     # Reads and returns the battery voltage
     def voltage(self):
         """Return current voltage"""
-        return self.readWord(BQ27441_COMMAND_VOLTAGE)
+        return self.read_word(BQ27441_COMMAND_VOLTAGE)
 
     # Reads and returns the specified current measurement
     def current(self, current_measure_type):
         current = 0
         if current_measure_type == CurrentMeasureType.AVG:
-            current = self.readWord(BQ27441_COMMAND_AVG_CURRENT)
+            current = self.read_word(BQ27441_COMMAND_AVG_CURRENT)
 
         elif current_measure_type == CurrentMeasureType.STBY:
-            current = self.readWord(BQ27441_COMMAND_STDBY_CURRENT)
+            current = self.read_word(BQ27441_COMMAND_STDBY_CURRENT)
 
         elif current_measure_type == CurrentMeasureType.MAX:
-            current = self.readWord(BQ27441_COMMAND_MAX_CURRENT)
+            current = self.read_word(BQ27441_COMMAND_MAX_CURRENT)
 
         return current
 
@@ -197,180 +197,180 @@ class BQ27441(object):
     def capacity(self, capacity_measure_type):
         capacity = 0
         if capacity_measure_type == CapacityMeasureType.REMAIN:
-            return self.readWord(BQ27441_COMMAND_REM_CAPACITY)
+            return self.read_word(BQ27441_COMMAND_REM_CAPACITY)
         elif capacity_measure_type == CapacityMeasureType.FULL:
-            return self.readWord(BQ27441_COMMAND_FULL_CAPACITY)
+            return self.read_word(BQ27441_COMMAND_FULL_CAPACITY)
         elif capacity_measure_type == CapacityMeasureType.AVAIL:
-            capacity = self.readWord(BQ27441_COMMAND_NOM_CAPACITY)
+            capacity = self.read_word(BQ27441_COMMAND_NOM_CAPACITY)
         elif capacity_measure_type == CapacityMeasureType.AVAIL_FULL:
-            capacity = self.readWord(BQ27441_COMMAND_AVAIL_CAPACITY)
+            capacity = self.read_word(BQ27441_COMMAND_AVAIL_CAPACITY)
         elif capacity_measure_type == CapacityMeasureType.REMAIN_F:
-            capacity = self.readWord(BQ27441_COMMAND_REM_CAP_FIL)
+            capacity = self.read_word(BQ27441_COMMAND_REM_CAP_FIL)
         elif capacity_measure_type == CapacityMeasureType.REMAIN_UF:
-            capacity = self.readWord(BQ27441_COMMAND_REM_CAP_UNFL)
+            capacity = self.read_word(BQ27441_COMMAND_REM_CAP_UNFL)
         elif capacity_measure_type == CapacityMeasureType.FULL_F:
-            capacity = self.readWord(BQ27441_COMMAND_FULL_CAP_FIL)
+            capacity = self.read_word(BQ27441_COMMAND_FULL_CAP_FIL)
         elif capacity_measure_type == CapacityMeasureType.FULL_UF:
-            capacity = self.readWord(BQ27441_COMMAND_FULL_CAP_UNFL)
+            capacity = self.read_word(BQ27441_COMMAND_FULL_CAP_UNFL)
         elif capacity_measure_type == CapacityMeasureType.DESIGN:
-            capacity = self.readWord(BQ27441_EXTENDED_CAPACITY)
+            capacity = self.read_word(BQ27441_EXTENDED_CAPACITY)
 
         return capacity
 
     # Reads and returns measured average power
 
     def power(self):
-        return self.readWord(BQ27441_COMMAND_AVG_POWER)
+        return self.read_word(BQ27441_COMMAND_AVG_POWER)
 
     # Reads and returns specified state of charge measurement
     def soc(self, soc_measure_type=SocMeasureType.FILTERED):
-        socRet = 0
+        soc_ret = 0
         if soc_measure_type == SocMeasureType.FILTERED:
-            socRet = self.readWord(BQ27441_COMMAND_SOC)
+            soc_ret = self.read_word(BQ27441_COMMAND_SOC)
         elif soc_measure_type == SocMeasureType.UNFILTERED:
-            socRet = self.readWord(BQ27441_COMMAND_SOC_UNFL)
+            soc_ret = self.read_word(BQ27441_COMMAND_SOC_UNFL)
 
-        return socRet
+        return soc_ret
 
     # Reads and returns specified state of health measurement
     def soh(self, soh_measure_type=SohMeasureType.PERCENT):
-        sohRaw = self.readWord(BQ27441_COMMAND_SOH)
-        sohStatus = sohRaw >> 8
-        sohPercent = sohRaw & 0x00FF
+        soh_raw = self.read_word(BQ27441_COMMAND_SOH)
+        soh_status = soh_raw >> 8
+        soh_percent = soh_raw & 0x00FF
 
         if soh_measure_type == SohMeasureType.PERCENT:
-            return sohPercent
+            return soh_percent
         else:
-            return sohStatus
+            return soh_status
 
     # Reads and returns specified temperature measurement
     def temperature(self, temp_measure_type):
         temp = 0
         if temp_measure_type == TempMeasureType.BATTERY:
-            temp = self.readWord(BQ27441_COMMAND_TEMP)
+            temp = self.read_word(BQ27441_COMMAND_TEMP)
         elif temp_measure_type == TempMeasureType.INTERNAL_TEMP:
-            temp = self.readWord(BQ27441_COMMAND_INT_TEMP)
+            temp = self.read_word(BQ27441_COMMAND_INT_TEMP)
 
         return temp
 
     # GPOUT Control Functions
 
     # Get GPOUT polarity setting(active - high or active - low)
-    def GPOUTPolarity(self):
-        opConfigRegister = self.opConfig()
-        return opConfigRegister & BQ27441_OPCONFIG_GPIOPOL
+    def gpout_polarity(self):
+        op_config_register = self.op_config()
+        return op_config_register & BQ27441_OPCONFIG_GPIOPOL
 
     # Set GPOUT polarity to active - high or active - low
-    def setGPOUTPolarity(self, activeHigh):
-        oldOpConfig = self.opConfig()
+    def set_gpout_polarity(self, active_high):
+        old_op_config = self.op_config()
 
-        # Check to see if we need to update opConfig:
-        if (activeHigh and (oldOpConfig & BQ27441_OPCONFIG_GPIOPOL)) or (
-            not activeHigh and not (oldOpConfig & BQ27441_OPCONFIG_GPIOPOL)
+        # Check to see if we need to update op_config:
+        if (active_high and (old_op_config & BQ27441_OPCONFIG_GPIOPOL)) or (
+            not active_high and not (old_op_config & BQ27441_OPCONFIG_GPIOPOL)
         ):
             return True
-        newOpConfig = oldOpConfig
-        if activeHigh:
-            newOpConfig |= BQ27441_OPCONFIG_GPIOPOL
+        new_op_config = old_op_config
+        if active_high:
+            new_op_config |= BQ27441_OPCONFIG_GPIOPOL
         else:
-            newOpConfig &= ~(BQ27441_OPCONFIG_GPIOPOL)
+            new_op_config &= ~(BQ27441_OPCONFIG_GPIOPOL)
 
-        return self.writeOpConfig(newOpConfig)
+        return self.write_op_config(new_op_config)
 
-    # Get GPOUT function(BAT_LOW or SOC_INT)
-    def GPOUTFunction(self):
-        opConfigRegister = self.opConfig()
-        return opConfigRegister & BQ27441_OPCONFIG_BATLOWEN
+    # Get GPOUT function (BAT_LOW or SOC_INT)
+    def gpout_function(self):
+        op_config_register = self.op_config()
+        return op_config_register & BQ27441_OPCONFIG_BATLOWEN
 
     # Set GPOUT function to BAT_LOW or SOC_INT
-    def setGPOUTFunction(self, gpout_function):
-        oldOpConfig = self.opConfig()
-        # Check to see if we need to update opConfig:
-        if (gpout_function and (oldOpConfig & BQ27441_OPCONFIG_BATLOWEN)) or (
-            not gpout_function and not (oldOpConfig & BQ27441_OPCONFIG_BATLOWEN)
+    def set_gpout_function(self, gpout_function):
+        old_op_config = self.op_config()
+        # Check to see if we need to update op_config:
+        if (gpout_function and (old_op_config & BQ27441_OPCONFIG_BATLOWEN)) or (
+            not gpout_function and not (old_op_config & BQ27441_OPCONFIG_BATLOWEN)
         ):
             return True
 
-        # Modify BATLOWN_EN bit of opConfig:
-        newOpConfig = oldOpConfig
+        # Modify BATLOWN_EN bit of op_config:
+        new_op_config = old_op_config
         if gpout_function:
-            newOpConfig |= BQ27441_OPCONFIG_BATLOWEN
+            new_op_config |= BQ27441_OPCONFIG_BATLOWEN
         else:
-            newOpConfig &= ~(BQ27441_OPCONFIG_BATLOWEN)
-        # Write new opConfig
-        return self.writeOpConfig(newOpConfig)
+            new_op_config &= ~(BQ27441_OPCONFIG_BATLOWEN)
+        # Write new op_config
+        return self.write_op_config(new_op_config)
 
     # Get SOC1_Set Threshold - threshold to set the alert flag
-    def SOC1SetThreshold(self):
-        return self.readExtendedData(BQ27441_ID_DISCHARGE, 0)
+    def soc1_set_threshold(self):
+        return self.read_extended_data(BQ27441_ID_DISCHARGE, 0)
 
     # Get SOC1_Clear Threshold - threshold to clear the alert flag
-    def SOC1ClearThreshold(self):
-        return self.readExtendedData(BQ27441_ID_DISCHARGE, 1)
+    def soc1_clear_threshold(self):
+        return self.read_extended_data(BQ27441_ID_DISCHARGE, 1)
 
     # Set the SOC1 set and clear thresholds to a percentage
-    def setSOC1Thresholds(self, set_soc, clear_soc):
+    def set_soc1_thresholds(self, set_soc, clear_soc):
         thresholds = [0, 0]
         thresholds[0] = constrain(set_soc, 0, 100)
         thresholds[1] = constrain(clear_soc, 0, 100)
-        return self.writeExtendedData(BQ27441_ID_DISCHARGE, 0, thresholds, 2)
+        return self.write_extended_data(BQ27441_ID_DISCHARGE, 0, thresholds, 2)
 
     # Get SOCF_Set Threshold - threshold to set the alert flag
-    def SOCFSetThreshold(self):
-        return self.readExtendedData(BQ27441_ID_DISCHARGE, 2)
+    def socf_set_threshold(self):
+        return self.read_extended_data(BQ27441_ID_DISCHARGE, 2)
 
     # Get SOCF_Clear Threshold - threshold to clear the alert flag
-    def SOCFClearThreshold(self):
-        return self.readExtendedData(BQ27441_ID_DISCHARGE, 3)
+    def socf_clear_threshold(self):
+        return self.read_extended_data(BQ27441_ID_DISCHARGE, 3)
 
     # Set the SOCF set and clear thresholds to a percentage
-    def setSOCFThresholds(self, set_socf, clear_socf):
+    def set_socf_thresholds(self, set_socf, clear_socf):
         thresholds = [0, 0]
         thresholds[0] = constrain(set_socf, 0, 100)
         thresholds[1] = constrain(clear_socf, 0, 100)
-        return self.writeExtendedData(BQ27441_ID_DISCHARGE, 2, thresholds, 2)
+        return self.write_extended_data(BQ27441_ID_DISCHARGE, 2, thresholds, 2)
 
     # Check if the SOC1 flag is set
-    def socFlag(self):
-        flagState = self.flags()
-        return flagState & BQ27441_FLAG_SOC1
+    def soc_flag(self):
+        flag_state = self.flags()
+        return flag_state & BQ27441_FLAG_SOC1
 
     # Check if the SOCF flag is set
-    def socfFlag(self):
-        flagState = self.flags()
-        return flagState & BQ27441_FLAG_SOCF
+    def socf_flag(self):
+        flag_state = self.flags()
+        return flag_state & BQ27441_FLAG_SOCF
 
     # Get the SOC_INT interval delta
-    def sociDelta(self):
-        return self.readExtendedData(BQ27441_ID_STATE, 26)
+    def soci_delta(self):
+        return self.read_extended_data(BQ27441_ID_STATE, 26)
 
     # Set the SOC_INT interval delta to a value between 1 and 100
-    def setSOCIDelta(self, delta):
+    def set_soci_delta(self, delta):
         soci = constrain(delta, 0, 100)
-        return self.writeExtendedData(BQ27441_ID_STATE, 26, soci, 1)
+        return self.write_extended_data(BQ27441_ID_STATE, 26, soci, 1)
 
     # Pulse the GPOUT pin - must be in SOC_INT mode
-    def pulseGPOUT(self):
-        return self.executeControlWord(BQ27441_CONTROL_PULSE_SOC_INT)
+    def pulse_gpout(self):
+        return self.execute_control_word(BQ27441_CONTROL_PULSE_SOC_INT)
 
     # Read the device type - should be 0x0421
-    def deviceType(self):
-        return self.readControlWord(BQ27441_CONTROL_DEVICE_TYPE)
+    def device_type(self):
+        return self.read_control_word(BQ27441_CONTROL_DEVICE_TYPE)
 
     def get_time_ms(self):
         return ticks_ms()
 
-    # Enter configuration mode - set userControl if calling from an Arduino sketch
-    # and you want control over when to exitConfig
-    def enterConfig(self, userControl):
-        if userControl:
-            self._userConfigControl = True
+    # Enter configuration mode - set user_control if calling from user code
+    # and you want control over when to exit_config
+    def enter_config(self, user_control):
+        if user_control:
+            self._user_config_control = True
 
         if self.sealed():
-            self._sealFlag = True
+            self._seal_flag = True
             self.unseal()  # be unsealed before making changes
 
-        if self.executeControlWord(BQ27441_CONTROL_SET_CFGUPDATE):
+        if self.execute_control_word(BQ27441_CONTROL_SET_CFGUPDATE):
             start_ms = self.get_time_ms()
             timeout = False
             while not (self.flags() & BQ27441_FLAG_CFGUPMODE):
@@ -385,7 +385,7 @@ class BQ27441(object):
         return False
 
     # Exit configuration mode with the option to perform a resimulation
-    def exitConfig(self, resim=True):
+    def exit_config(self, resim=True):
         # There are two methods for exiting config mode:
         # 1. Execute the EXIT_CFGUPDATE command
         # 2. Execute the SOFT_RESET command
@@ -394,7 +394,7 @@ class BQ27441(object):
         #  If a new OCV measurement or resimulation is desired, SOFT_RESET or
         # EXIT_RESIM should be used to exit config mode.
         if resim:
-            if self.softReset():
+            if self.soft_reset():
                 start_ms = self.get_time_ms()
                 timeout = False
 
@@ -406,22 +406,22 @@ class BQ27441(object):
                         break
 
                 if not timeout:
-                    if self._sealFlag:
+                    if self._seal_flag:
                         self.seal()  # Seal back up if we IC was sealed coming in
                     return True
 
             return False
 
         else:
-            return self.executeControlWord(BQ27441_CONTROL_EXIT_CFGUPDATE)
+            return self.execute_control_word(BQ27441_CONTROL_EXIT_CFGUPDATE)
 
     # Read the flags() command
     def flags(self):
-        return self.readWord(BQ27441_COMMAND_FLAGS)
+        return self.read_word(BQ27441_COMMAND_FLAGS)
 
     # Read the CONTROL_STATUS subcommand of control()
     def status(self):
-        return self.readControlWord(BQ27441_CONTROL_STATUS)
+        return self.read_control_word(BQ27441_CONTROL_STATUS)
 
     # Private Functions
     # Check if the BQ27441 - G1A is sealed or not.
@@ -431,44 +431,44 @@ class BQ27441(object):
 
     # Seal the BQ27441 - G1A
     def seal(self):
-        return self.readControlWord(BQ27441_CONTROL_SEALED)
+        return self.read_control_word(BQ27441_CONTROL_SEALED)
 
     # UNseal the BQ27441 - G1A
     def unseal(self):
         # To unseal the BQ27441, write the key to
         # the control command.Then immediately write the same key to control again.
-        if self.readControlWord(BQ27441_UNSEAL_KEY):
-            return self.readControlWord(BQ27441_UNSEAL_KEY)
+        if self.read_control_word(BQ27441_UNSEAL_KEY):
+            return self.read_control_word(BQ27441_UNSEAL_KEY)
 
         return False
 
-    # Readthe 16 - bit opConfig register from extended data
-    def opConfig(self):
-        return self.readWord(BQ27441_EXTENDED_OPCONFIG)
+    # Read the 16-bit op_config register from extended data
+    def op_config(self):
+        return self.read_word(BQ27441_EXTENDED_OPCONFIG)
 
-    # Write the 16 - bit opConfig register in extended data
-    def writeOpConfig(self, value):
-        opConfigMSB = value >> 8
-        opConfigLSB = value & 0x00FF
-        opConfigData = [opConfigMSB, opConfigLSB]
+    # Write the 16-bit op_config register in extended data
+    def write_op_config(self, value):
+        op_config_msb = value >> 8
+        op_config_lsb = value & 0x00FF
+        op_config_data = [op_config_msb, op_config_lsb]
 
         # OpConfig register location: BQ27441_ID_REGISTERS id, offset 0
-        return self.writeExtendedData(BQ27441_ID_REGISTERS, 0, opConfigData, 2)
+        return self.write_extended_data(BQ27441_ID_REGISTERS, 0, op_config_data, 2)
 
     # Issue a soft - reset to the BQ27441 - G1A
-    def softReset(self):
-        return self.executeControlWord(BQ27441_CONTROL_SOFT_RESET)
+    def soft_reset(self):
+        return self.execute_control_word(BQ27441_CONTROL_SOFT_RESET)
 
     # Read a 16 - bit command word from the BQ27441-G1A, def format = little endian int16
-    def readWord(self, subAddress, format="<h"):
-        data = bytes(self._read_reg(subAddress, 2))
+    def read_word(self, sub_address, format="<h"):
+        data = bytes(self._read_reg(sub_address, 2))
         return struct.unpack(format, data)[0]
 
     # Read a 16 - bit subcommand() from the BQ27441-G1A's control()
-    def readControlWord(self, function):
-        subCommandMSB = function >> 8
-        subCommandLSB = function & 0x00FF
-        command = [subCommandLSB, subCommandMSB]
+    def read_control_word(self, function):
+        sub_command_msb = function >> 8
+        sub_command_lsb = function & 0x00FF
+        command = [sub_command_lsb, sub_command_msb]
         self._write_reg(0, command, 2)
         data = self._read_reg(0, 2)
         if data:
@@ -477,52 +477,51 @@ class BQ27441(object):
         return False
 
     # Execute a subcommand() from the BQ27441-G1A's control()
-    def executeControlWord(self, function):
-        subCommandMSB = function >> 8
-        subCommandLSB = function & 0x00FF
-        command = [subCommandLSB, subCommandMSB]
+    def execute_control_word(self, function):
+        sub_command_msb = function >> 8
+        sub_command_lsb = function & 0x00FF
+        command = [sub_command_lsb, sub_command_msb]
         if self._write_reg(0, command, 2):
             return True
 
         return False
 
     # Extended Data Cmds
-    # Issue a BlockDataControl() command to enable BlockData access
-    def blockDataControl(self):
-        enableByte = [0x00]
-        return self._write_reg(BQ27441_EXTENDED_CONTROL, enableByte, 1)
+    # Issue a block_data_control() command to enable block data access
+    def block_data_control(self):
+        enable_byte = [0x00]
+        return self._write_reg(BQ27441_EXTENDED_CONTROL, enable_byte, 1)
 
-    # Issue a DataClass() command to set the data class to be accessed
-
-    def blockDataClass(self, _id):
+    # Issue a block_data_class() command to set the data class to be accessed
+    def block_data_class(self, _id):
         _id = [_id]
         return self._write_reg(BQ27441_EXTENDED_DATACLASS, _id, 1)
 
-    # Issue a DataBlock() command to set the data block to be accessed
-    def blockDataOffset(self, offset):
+    # Issue a block_data_offset() command to set the data block to be accessed
+    def block_data_offset(self, offset):
         offset = [offset]
         return self._write_reg(BQ27441_EXTENDED_DATABLOCK, offset, 1)
 
-    # Read the current checksum using BlockDataCheckSum()
-    def blockDataChecksum(self):
+    # Read the current checksum using block_data_checksum()
+    def block_data_checksum(self):
         csum = self._read_reg(BQ27441_EXTENDED_CHECKSUM, 1)
         return csum
 
     # Use BlockData() to read a byte from the loaded extended data
-    def readBlockData(self, offset):
+    def read_block_data(self, offset):
         address = offset + BQ27441_EXTENDED_BLOCKDATA
         ret = self._read_reg(address, 1)
         return ret
 
     # Use BlockData() to write a byte to an offset of the loaded data
-    def writeBlockData(self, offset, data):
+    def write_block_data(self, offset, data):
         address = offset + BQ27441_EXTENDED_BLOCKDATA
         data = [data]
         return self._write_reg(address, data, 1)
 
     # Read all 32 bytes of the loaded extended data and compute a
     # checksum based on the values.
-    def computeBlockChecksum(self):
+    def compute_block_checksum(self):
         data = self._read_reg(BQ27441_EXTENDED_BLOCKDATA, 32)
         csum = 0
         for i in range(32):
@@ -531,76 +530,76 @@ class BQ27441(object):
         csum = 255 - csum
         return csum
 
-    # Use the BlockDataCheckSum() command to write a checksum value
-    def writeBlockChecksum(self, csum):
+    # Use the block_data_checksum command to write a checksum value
+    def write_block_checksum(self, csum):
         csum = [csum]
         return self._write_reg(BQ27441_EXTENDED_CHECKSUM, csum, 1)
 
     # Read a byte from extended data specifying a class ID and position offset
-    def readExtendedData(self, classID, offset):
-        if not self._userConfigControl:
-            self.enterConfig(False)
+    def read_extended_data(self, class_id, offset):
+        if not self._user_config_control:
+            self.enter_config(False)
 
-        if not self.blockDataControl():  # enable block data memory control
+        if not self.block_data_control():  # enable block data memory control
             return False  # Return false if enable fails
-        if not self.blockDataClass(classID):  # Write class ID using DataBlockClass()
+        if not self.block_data_class(class_id):
             return False
 
-        self.blockDataOffset(offset / 32)  # Write 32 - bit block offset(usually 0)
+        self.block_data_offset(offset / 32)  # Write 32 - bit block offset(usually 0)
 
-        self.computeBlockChecksum()  # Compute checksum going in
-        self.blockDataChecksum()
+        self.compute_block_checksum()  # Compute checksum going in
+        self.block_data_checksum()
 
-        retData = self.readBlockData(offset % 32)  # Read from offset (limit to 0 - 31)
+        ret_data = self.read_block_data(offset % 32)  # Read from offset (limit to 0 - 31)
 
-        if not self._userConfigControl:
-            self.exitConfig()
+        if not self._user_config_control:
+            self.exit_config()
 
-        return retData
+        return ret_data
 
     # Write a specified number of bytes to extended data specifying a
     # class ID, position offset.
 
-    def writeExtendedData(self, class_id, offset, data, length):
+    def write_extended_data(self, class_id, offset, data, length):
         if length > 32:
             return False
 
-        if not self._userConfigControl:
-            self.enterConfig(False)
+        if not self._user_config_control:
+            self.enter_config(False)
 
-        if not self.blockDataControl():  # enable block data memory control
+        if not self.block_data_control():  # enable block data memory control
             return False  # Return false if enable fails
 
-        if not self.blockDataClass(class_id):  # Write class ID using DataBlockClass()
+        if not self.block_data_class(class_id):
             return False
 
-        self.blockDataOffset(int(offset / 32))  # Write 32 - bit block offset(usually 0)
-        self.computeBlockChecksum()  # Compute checksum going in
-        self.blockDataChecksum()
+        self.block_data_offset(int(offset / 32))  # Write 32-bit block offset (usually 0)
+        self.compute_block_checksum()  # Compute checksum going in
+        self.block_data_checksum()
 
         # Write data bytes:
         for i in range(length):
-            # Write to offset, mod 32 if offset is greater than 32 The blockDataOffset above sets
-            # the 32 - bit block
-            self.writeBlockData((offset % 32) + i, data[i])
+            # Write to offset, mod 32 if offset is greater than 32
+            # block_data_offset above sets the 32-bit block
+            self.write_block_data((offset % 32) + i, data[i])
 
-        # Write new checksum using BlockDataChecksum(0x60)
-        newCsum = self.computeBlockChecksum()  # Compute the new checksum
-        self.writeBlockChecksum(newCsum)
+        # Write new checksum using block_data_checksum (0x60)
+        new_csum = self.compute_block_checksum()  # Compute the new checksum
+        self.write_block_checksum(new_csum)
 
-        if not self._userConfigControl:
-            self.exitConfig()
+        if not self._user_config_control:
+            self.exit_config()
 
         return True
 
     # I2C Read / Write Functions
-    def _read_reg(self, subAddress, count):
-        result = self.i2c.readfrom_mem(self.address, subAddress, count)
+    def _read_reg(self, sub_address, count):
+        result = self.i2c.readfrom_mem(self.address, sub_address, count)
         return list(result)
 
-    # Write a specified number of bytes over I2C to a given subAddress
-    def _write_reg(self, memAddress, buf, count):
-        self.i2c.writeto_mem(self.address, memAddress, bytes(buf))
+    # Write a specified number of bytes over I2C to a given address
+    def _write_reg(self, mem_address, buf, count):
+        self.i2c.writeto_mem(self.address, mem_address, bytes(buf))
         return True
 
 
