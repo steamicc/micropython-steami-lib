@@ -234,7 +234,7 @@ Returns:
 ## Power Down
 
 ```python
-imu.power_down()
+imu.power_off()
 ```
 
 Stops accelerometer and gyroscope.

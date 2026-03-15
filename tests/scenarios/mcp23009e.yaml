@@ -53,6 +53,23 @@ tests:
     expect_not_none: true
     mode: [mock, hardware]
 
+  - name: "Power off holds reset pin low"
+    action: script
+    script: |
+      dev.power_off()
+      result = dev.reset_pin.value() == 0
+    expect_true: true
+    mode: [mock]
+
+  - name: "Power on releases reset pin"
+    action: script
+    script: |
+      dev.power_off()
+      dev.power_on()
+      result = dev.reset_pin.value() == 1
+    expect_true: true
+    mode: [mock]
+
   - name: "Read individual GPIO level"
     action: call
     method: get_level

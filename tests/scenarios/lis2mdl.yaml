@@ -91,7 +91,7 @@ tests:
   - name: "Magnetic field readable after power down"
     action: script
     script: |
-      dev.power_down()
+      dev.power_off()
       x, y, z = dev.read_magnet()
       result = isinstance(x, int) and isinstance(y, int) and isinstance(z, int)
     expect_true: true
@@ -100,7 +100,7 @@ tests:
   - name: "Temperature readable after power down"
     action: script
     script: |
-      dev.power_down()
+      dev.power_off()
       t = dev.read_temperature_c()
       result = isinstance(t, float)
     expect_true: true
@@ -109,7 +109,7 @@ tests:
   - name: "Auto-trigger writes single mode to CFG_REG_A"
     action: script
     script: |
-      dev.power_down()
+      dev.power_off()
       i2c.clear_write_log()
       dev.read_magnet()
       log = i2c.get_write_log()
@@ -132,7 +132,7 @@ tests:
   - name: "Fresh magnitude after power down"
     action: script
     script: |
-      dev.power_down()
+      dev.power_off()
       mag = dev.magnitude_uT()
       result = 10.0 < mag < 300.0
     expect_true: true
@@ -141,7 +141,7 @@ tests:
   - name: "Fresh temperature after power down"
     action: script
     script: |
-      dev.power_down()
+      dev.power_off()
       t = dev.read_temperature_c()
       result = 10.0 < t < 45.0
     expect_true: true

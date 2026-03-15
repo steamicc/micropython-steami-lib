@@ -120,7 +120,7 @@ tests:
   - name: "Auto-enable restores power for light read"
     action: script
     script: |
-      dev.disable_power()
+      dev.power_off()
       i2c.clear_write_log()
       dev.read_red_light()
       log = i2c.get_write_log()

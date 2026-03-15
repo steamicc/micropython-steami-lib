@@ -85,7 +85,7 @@ tests:
     expect_not_none: true
     mode: [mock, hardware]
 
-  - name: "Auto-trigger temperature after poweroff"
+  - name: "Auto-trigger temperature after power_off"
     action: call
     setup:
       - method: power_off
@@ -93,7 +93,7 @@ tests:
     expect_not_none: true
     mode: [mock]
 
-  - name: "Auto-trigger humidity after poweroff"
+  - name: "Auto-trigger humidity after power_off"
     action: call
     setup:
       - method: power_off
@@ -173,7 +173,7 @@ tests:
     expect_true: true
     mode: [mock]
 
-  - name: "Auto-trigger after poweroff"
+  - name: "Auto-trigger after power_off"
     action: hardware_script
     script: |
       from machine import I2C

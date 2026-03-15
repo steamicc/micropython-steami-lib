@@ -192,6 +192,16 @@ class WSEN_HIDS(object):
         ctrl1 |= odr
         self._write_reg(REG_CTRL_1, ctrl1)
 
+    def power_off(self):
+        ctrl1 = self._read_reg(REG_CTRL_1)
+        ctrl1 &= ~CTRL_1_PD
+        self._write_reg(REG_CTRL_1, ctrl1)
+
+    def power_on(self):
+        ctrl1 = self._read_reg(REG_CTRL_1)
+        ctrl1 |= CTRL_1_PD
+        self._write_reg(REG_CTRL_1, ctrl1)
+
     def enable_heater(self, enabled=True):
         value = CTRL_2_HEATER if enabled else 0
         self._update_reg(REG_CTRL_2, CTRL_2_HEATER, value)

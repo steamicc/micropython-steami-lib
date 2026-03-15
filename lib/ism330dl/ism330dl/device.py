@@ -263,6 +263,10 @@ class ISM330DL(object):
     # Power
     # --------------------------------------------------
 
-    def power_down(self):
+    def power_off(self):
         self._write_u8(REG_CTRL1_XL, 0)
         self._write_u8(REG_CTRL2_G, 0)
+
+    def power_on(self):
+        self.configure_accel(self._accel_odr, self._accel_scale)
+        self.configure_gyro(self._gyro_odr, self._gyro_scale)

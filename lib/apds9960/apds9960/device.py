@@ -111,7 +111,7 @@ class APDS9960(object):
     def enable_light_sensor(self, interrupts=True):
         self.set_ambient_light_gain(APDS9960_DEFAULT_AGAIN)
         self.set_ambient_light_int_enable(interrupts)
-        self.enable_power()
+        self.power_on()
         self.set_mode(APDS9960_MODE_AMBIENT_LIGHT, True)
 
     # stop the light sensor
@@ -124,7 +124,7 @@ class APDS9960(object):
         self.set_proximity_gain(APDS9960_DEFAULT_PGAIN)
         self.set_led_drive(APDS9960_DEFAULT_LDRIVE)
         self.set_proximity_int_enable(interrupts)
-        self.enable_power()
+        self.power_on()
         self.set_mode(APDS9960_MODE_PROXIMITY, True)
 
     # stop the proximity sensor
@@ -140,7 +140,7 @@ class APDS9960(object):
         self.set_led_boost(APDS9960_LED_BOOST_300)
         self.set_gesture_int_enable(interrupts)
         self.set_gesture_mode(True)
-        self.enable_power()
+        self.power_on()
         self.set_mode(APDS9960_MODE_WAIT, True)
         self.set_mode(APDS9960_MODE_PROXIMITY, True)
         self.set_mode(APDS9960_MODE_GESTURE, True)
@@ -213,10 +213,10 @@ class APDS9960(object):
         return motion
 
     # turn the APDS-9960 on
-    def enable_power(self):
+    def power_on(self):
         self.set_mode(APDS9960_MODE_POWER, True)
 
-    def disable_power(self):
+    def power_off(self):
         # turn the APDS-9960 off
         self.set_mode(APDS9960_MODE_POWER, False)
 

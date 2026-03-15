@@ -208,7 +208,7 @@ def test_continuous_mode(sensor, odr, label, wait_s=2):
 
             sleep(0.5)
 
-        sensor.power_down()
+        sensor.power_off()
 
         if ok:
             print_pass("Continuous mode - {}".format(label))
@@ -239,7 +239,7 @@ def test_status_flags(sensor):
         print("temperature_available() =", t_avail)
         print("is_ready()            =", ready)
 
-        sensor.power_down()
+        sensor.power_off()
 
         if p_avail or t_avail or ready:
             print_pass("STATUS helper methods")

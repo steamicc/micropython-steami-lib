@@ -77,6 +77,25 @@ tests:
     expect_range: [24.0, 26.0]
     mode: [mock]
 
+  - name: "Power off clears PD bit"
+    action: script
+    script: |
+      dev.power_off()
+      ctrl1 = i2c.readfrom_mem(dev.address, 0x20, 1)[0]
+      result = (ctrl1 & 0x80) == 0
+    expect_true: true
+    mode: [mock]
+
+  - name: "Power on restores continuous mode"
+    action: script
+    script: |
+      dev.power_off()
+      dev.power_on()
+      ctrl1 = i2c.readfrom_mem(dev.address, 0x20, 1)[0]
+      result = (ctrl1 & 0x80) != 0
+    expect_true: true
+    mode: [mock]
+
   - name: "Temperature with offset"
     action: script
     script: |

@@ -58,6 +58,13 @@ class MCP23009E(object):
         self.reset_pin.value(1)
         sleep_ms(10)
 
+    def power_off(self):
+        self.reset_pin.value(0)
+
+    def power_on(self):
+        self.reset_pin.value(1)
+        sleep_ms(10)
+
     def _soft_reset(self):
         """Réinitialise le composant avec les valeurs par défaut"""
         # Configuration par défaut : toutes les pins en entrée

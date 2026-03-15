@@ -210,7 +210,7 @@ print("Register dump:", regs)
 | `heading_flat_only()`              | Flat compass heading           |
 | `heading_with_tilt_compensation()` | Tilt-corrected heading         |
 | `read_temperature_c()`             | Read relative temperature      |
-| `power_down()` / `wake()`          | Power management               |
+| `power_on()` / `power_off()`      | Power management               |
 | `soft_reset()` / `reboot()`        | Sensor reset functions         |
 
 ---

@@ -74,6 +74,29 @@ tests:
     expect_true: true
     mode: [mock]
 
+  - name: "Power off writes reset register"
+    action: script
+    script: |
+      i2c.clear_write_log()
+      dev.power_off()
+      log = i2c.get_write_log()
+      wrote_off = any(reg == 0x0000 and data[0] == 0x00 for reg, data in log)
+      result = wrote_off
+    expect_true: true
+    mode: [mock]
+
+  - name: "Power on writes reset register"
+    action: script
+    script: |
+      dev.power_off()
+      i2c.clear_write_log()
+      dev.power_on()
+      log = i2c.get_write_log()
+      wrote_on = any(reg == 0x0000 and data[0] == 0x01 for reg, data in log)
+      result = wrote_on
+    expect_true: true
+    mode: [mock]
+
   # ----- Hardware -----
 
   - name: "Distance in plausible range"
