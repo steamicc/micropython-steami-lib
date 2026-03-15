@@ -42,7 +42,7 @@ tests:
 
   - name: "Read WHO_AM_I via method"
     action: call
-    method: read_who_am_i
+    method: device_id
     expect: 0x40
     mode: [mock, hardware]
 
@@ -165,7 +165,7 @@ tests:
     action: hardware_script
     script: |
       dev.soft_reset()
-      result = dev.read_who_am_i()
+      result = dev.device_id()
     expect: 0x40
     mode: [hardware]
 
@@ -173,7 +173,7 @@ tests:
     action: hardware_script
     script: |
       dev.reboot()
-      result = dev.read_who_am_i()
+      result = dev.device_id()
     expect: 0x40
     mode: [hardware]
 

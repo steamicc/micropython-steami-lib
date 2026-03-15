@@ -77,11 +77,11 @@ class ISM330DL(object):
     # Device check
     # --------------------------------------------------
 
-    def who_am_i(self):
+    def device_id(self):
         return self._read_u8(REG_WHO_AM_I)
 
     def check_device(self):
-        if self.who_am_i() != ISM330DL_WHO_AM_I_VALUE:
+        if self.device_id() != ISM330DL_WHO_AM_I_VALUE:
             raise ISM330DLNotFound("ISM330DL not detected")
 
     # --------------------------------------------------

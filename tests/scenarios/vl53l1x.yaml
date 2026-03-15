@@ -37,7 +37,7 @@ mock_registers:
 tests:
   - name: "Verify model ID register"
     action: call
-    method: read_model_id
+    method: device_id
     expect: 0xEACC
     mode: [mock, hardware]
 

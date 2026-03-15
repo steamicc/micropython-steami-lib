@@ -57,7 +57,7 @@ class HTS221(object):
         return (hi << 8) + lo
 
     # Device identification
-    def who_am_i(self):
+    def device_id(self):
         return self._read_reg(HTS221_WHO_AM_I)
 
     # get STATUS register

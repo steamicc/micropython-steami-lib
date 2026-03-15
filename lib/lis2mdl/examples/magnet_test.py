@@ -234,7 +234,7 @@ def test_reads(dev):
     print("\n=== TEST READS ===")
 
     # WHO_AM_I
-    who = dev.read_who_am_i()
+    who = dev.device_id()
     print(f"WHO_AM_I=0x{who:02X}  expected 0x40 =>", "OK" if who == 0x40 else "FAIL")
     ok &= who == 0x40
 
@@ -652,7 +652,7 @@ def test_reboot(dev):
     ok &= reboot_cleared
 
     # WHO_AM_I still correct
-    who = dev.read_who_am_i()
+    who = dev.device_id()
     print(f"WHO_AM_I=0x{who:02X} expected 0x40 =>", "OK" if who == 0x40 else "FAIL")
     ok &= who == 0x40
 

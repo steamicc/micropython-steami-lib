@@ -79,6 +79,9 @@ class APDS9960(object):
         self._write_reg(APDS9960_REG_GCONF3, APDS9960_DEFAULT_GCONF3)
         self.set_gesture_int_enable(APDS9960_DEFAULT_GIEN)
 
+    def device_id(self):
+        return self._read_reg(APDS9960_REG_ID)
+
     def get_mode(self):
         return self._read_reg(APDS9960_REG_ENABLE)
 
