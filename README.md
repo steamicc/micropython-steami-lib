@@ -473,6 +473,7 @@ lib/<component>/
 - **Attributes**: `self.i2c` for the I2C bus, `self.address` for the device address (not `self.bus`, `self.addr`).
 - **I2C helpers**: use private snake_case methods `_read_reg()`, `_write_reg()` for register access.
 - **Device identification**: `device_id()` — returns the device/WHO_AM_I register value. All I2C drivers with an ID register must implement this method.
+- **Reset methods**: `reset()` for hardware reset (pin toggle), `soft_reset()` for software reset (register write), `reboot()` for memory reboot (reload trimming).
 
 ### Linting
 

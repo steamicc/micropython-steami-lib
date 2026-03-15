@@ -289,7 +289,7 @@ tests:
     action: script
     script: |
       i2c.clear_write_log()
-      dev.reset()
+      dev.soft_reset()
       log = i2c.get_write_log()
       ctrl3_writes = [data[0] for reg, data in log if reg == 0x12]
       bdu_if_inc = (1 << 6) | (1 << 2)
