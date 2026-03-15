@@ -51,7 +51,7 @@ tests:
 
   - name: "Read WHO_AM_I via method"
     action: call
-    method: whoAmI
+    method: who_am_i
     expect: 0xBC
     mode: [mock, hardware]
 
@@ -88,7 +88,7 @@ tests:
   - name: "Auto-trigger temperature after poweroff"
     action: call
     setup:
-      - method: poweroff
+      - method: power_off
     method: temperature
     expect_not_none: true
     mode: [mock]
@@ -96,7 +96,7 @@ tests:
   - name: "Auto-trigger humidity after poweroff"
     action: call
     setup:
-      - method: poweroff
+      - method: power_off
     method: humidity
     expect_not_none: true
     mode: [mock]
@@ -139,7 +139,7 @@ tests:
   - name: "Timeout raises OSError when data never ready"
     action: script
     script: |
-      dev.poweroff()
+      dev.power_off()
       i2c._registers[0x27] = bytes([0x00])
       try:
           dev.temperature()
@@ -157,7 +157,7 @@ tests:
       from hts221.device import HTS221
       i2c = I2C(1)
       sensor = HTS221(i2c)
-      sensor.poweroff()
+      sensor.power_off()
       t = sensor.temperature()
       result = 10.0 <= t <= 45.0
     expect_true: true
