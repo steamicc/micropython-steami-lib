@@ -419,13 +419,13 @@ class BQ27441(object):
         return self.read_word(BQ27441_COMMAND_FLAGS)
 
     # Read the CONTROL_STATUS subcommand of control()
-    def status(self):
+    def _control_status(self):
         return self.read_control_word(BQ27441_CONTROL_STATUS)
 
     # Private Functions
     # Check if the BQ27441 - G1A is sealed or not.
     def sealed(self):
-        stat = self.status()
+        stat = self._control_status()
         return stat & BQ27441_STATUS_SS
 
     # Seal the BQ27441 - G1A
