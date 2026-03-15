@@ -85,7 +85,7 @@ class ISM330DL(object):
             raise ISM330DLNotFound("ISM330DL not detected")
 
     # --------------------------------------------------
-    # Reset
+    # Soft reset
     # --------------------------------------------------
 
     def soft_reset(self):
