@@ -2,11 +2,11 @@ import machine
 
 VL53L1X_DEFAULT_CONFIGURATION = bytes(
     [
-        0x00,  # 0x2d : set bit 2 and 5 to 1 for fast plus mode (1MHz I2C), else don't touch */
+        0x00,  # 0x2d : fast plus mode disabled (set bit 2 and 5 to 1 for 1MHz I2C) */
         0x00,  # 0x2e : bit 0 if I2C pulled up at 1.8V, else set bit 0 to 1 (pull up at AVDD) */
         0x00,  # 0x2f : bit 0 if GPIO pulled up at 1.8V, else set bit 0 to 1 (pull up at AVDD) */
-        0x01,  # 0x30 : set bit 4 to 0 for active high interrupt and 1 for active low (bits 3:0 must be 0x1), use SetInterruptPolarity() */
-        0x02,  # 0x31 : bit 1 = interrupt depending on the polarity, use CheckForDataReady() */
+        0x01,  # 0x30 : set bit 4 to 0 for active high interrupt and 1 for active low (bits 3:0 must be 0x1) */
+        0x02,  # 0x31 : bit 1 = interrupt depending on the polarity */
         0x00,  # 0x32 : not user-modifiable */
         0x02,  # 0x33 : not user-modifiable */
         0x08,  # 0x34 : not user-modifiable */
@@ -27,7 +27,7 @@ VL53L1X_DEFAULT_CONFIGURATION = bytes(
         0x00,  # 0x43 : not user-modifiable */
         0x00,  # 0x44 : not user-modifiable */
         0x00,  # 0x45 : not user-modifiable */
-        0x20,  # 0x46 : interrupt configuration 0->level low detection, 1-> level high, 2-> Out of window, 3->In window, 0x20-> New sample ready , TBC */
+        0x20,  # 0x46 : interrupt configuration 0x20 = new sample ready */
         0x0B,  # 0x47 : not user-modifiable */
         0x00,  # 0x48 : not user-modifiable */
         0x00,  # 0x49 : not user-modifiable */
@@ -57,23 +57,23 @@ VL53L1X_DEFAULT_CONFIGURATION = bytes(
         0x01,  # 0x61 : not user-modifiable */
         0xF1,  # 0x62 : not user-modifiable */
         0x0D,  # 0x63 : not user-modifiable */
-        0x01,  # 0x64 : Sigma threshold MSB (mm in 14.2 format for MSB+LSB), use SetSigmaThreshold(), default value 90 mm  */
+        0x01,  # 0x64 : Sigma threshold MSB (mm in 14.2 format for MSB+LSB), default value 90 mm */
         0x68,  # 0x65 : Sigma threshold LSB */
-        0x00,  # 0x66 : Min count Rate MSB (MCPS in 9.7 format for MSB+LSB), use SetSignalThreshold() */
+        0x00,  # 0x66 : Min count Rate MSB (MCPS in 9.7 format for MSB+LSB) */
         0x80,  # 0x67 : Min count Rate LSB */
         0x08,  # 0x68 : not user-modifiable */
         0xB8,  # 0x69 : not user-modifiable */
         0x00,  # 0x6a : not user-modifiable */
         0x00,  # 0x6b : not user-modifiable */
-        0x00,  # 0x6c : Intermeasurement period MSB, 32 bits register, use SetIntermeasurementInMs() */
+        0x00,  # 0x6c : Intermeasurement period MSB, 32 bits register */
         0x00,  # 0x6d : Intermeasurement period */
         0x0F,  # 0x6e : Intermeasurement period */
         0x89,  # 0x6f : Intermeasurement period LSB */
         0x00,  # 0x70 : not user-modifiable */
         0x00,  # 0x71 : not user-modifiable */
-        0x00,  # 0x72 : distance threshold high MSB (in mm, MSB+LSB), use SetD:tanceThreshold() */
+        0x00,  # 0x72 : distance threshold high MSB (in mm, MSB+LSB) */
         0x00,  # 0x73 : distance threshold high LSB */
-        0x00,  # 0x74 : distance threshold low MSB ( in mm, MSB+LSB), use SetD:tanceThreshold() */
+        0x00,  # 0x74 : distance threshold low MSB (in mm, MSB+LSB) */
         0x00,  # 0x75 : distance threshold low LSB */
         0x00,  # 0x76 : not user-modifiable */
         0x01,  # 0x77 : not user-modifiable */
@@ -84,15 +84,15 @@ VL53L1X_DEFAULT_CONFIGURATION = bytes(
         0x00,  # 0x7c : not user-modifiable */
         0x00,  # 0x7d : not user-modifiable */
         0x02,  # 0x7e : not user-modifiable */
-        0xC7,  # 0x7f : ROI center, use SetROI() */
-        0xFF,  # 0x80 : XY ROI (X=Width, Y=Height), use SetROI() */
+        0xC7,  # 0x7f : ROI center */
+        0xFF,  # 0x80 : XY ROI (X=Width, Y=Height) */
         0x9B,  # 0x81 : not user-modifiable */
         0x00,  # 0x82 : not user-modifiable */
         0x00,  # 0x83 : not user-modifiable */
         0x00,  # 0x84 : not user-modifiable */
         0x01,  # 0x85 : not user-modifiable */
-        0x01,  # 0x86 : clear interrupt, use ClearInterrupt() */
-        0x40,  # 0x87 : start ranging, use StartRanging() or StopRanging(), If you want an automatic start after VL53L1X_init() call, put 0x40 in location 0x87 */
+        0x01,  # 0x86 : clear interrupt */
+        0x40,  # 0x87 : start ranging, put 0x40 for automatic start after init */
     ]
 )
 
@@ -107,9 +107,7 @@ class VL53L1X(object):
             raise RuntimeError("Failed to find expected ID register values. Check wiring!")
         # write default configuration
         self.i2c.writeto_mem(self.address, 0x2D, VL53L1X_DEFAULT_CONFIGURATION, addrsize=16)
-        # machine.lightsleep(100)
-        # the API triggers this change in VL53L1_init_and_start_range() once a
-        # measurement is started; assumes MM1 and MM2 are disabled
+        # adjust timing; assumes MM1 and MM2 are disabled
         self._write_reg16(0x001E, self._read_reg16(0x0022) * 4)
         machine.lightsleep(200)
 
