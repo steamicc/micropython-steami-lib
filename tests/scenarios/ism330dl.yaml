@@ -283,9 +283,9 @@ tests:
     expect_true: true
     mode: [mock]
 
-  # ----- Reset -----
+  # ----- Soft reset -----
 
-  - name: "Reset sets BDU and IF_INC in CTRL3_C"
+  - name: "Soft reset sets BDU and IF_INC in CTRL3_C"
     action: script
     script: |
       i2c.clear_write_log()
