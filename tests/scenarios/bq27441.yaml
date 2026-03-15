@@ -67,6 +67,17 @@ tests:
     expect: 185
     mode: [mock]
 
+  - name: "Reset sends CONTROL_RESET command"
+    action: script
+    script: |
+      i2c.clear_write_log()
+      dev.reset()
+      log = i2c.get_write_log()
+      wrote_reset = any(reg == 0x00 and data[0] == 0x41 for reg, data in log)
+      result = wrote_reset
+    expect_true: true
+    mode: [mock]
+
   - name: "Read state of health"
     action: call
     method: state_of_health
