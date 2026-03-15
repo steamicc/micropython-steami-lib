@@ -48,7 +48,7 @@ tests:
 
   - name: "Read status register"
     action: call
-    method: status
+    method: _status
     expect_not_none: true
     mode: [mock, hardware]
 
