@@ -107,6 +107,13 @@ class HTS221(object):
         self._write_reg(HTS221_CTRL_REG2, ctrl2 | HTS221_CTRL2_ONE_SHOT)
         sleep_ms(15)
 
+    def reboot(self):
+        ctrl2 = self._read_reg(HTS221_CTRL_REG2)
+        self._write_reg(HTS221_CTRL_REG2, ctrl2 | HTS221_CTRL2_BOOT)
+        sleep_ms(15)
+        self._read_temperature_calibration()
+        self._read_humidity_calibration()
+
     def _ensure_data(self):
         if self._is_power_down() or self._is_one_shot_mode():
             self.trigger_one_shot()
