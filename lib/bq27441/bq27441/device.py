@@ -90,7 +90,7 @@ class BQ27441(object):
         self.gpout_pin = gpout_pin
         self.capacity_mAh = capacity_mAh
         self.configure_gpout_input()
-        self.power_up()
+        self.power_on()
 
     def configure_gpout_input(self):
         if self.gpout_pin:
@@ -100,7 +100,7 @@ class BQ27441(object):
         if self.gpout_pin:
             self.gpout = Pin(self.gpout_pin, mode=Pin.OUT)
 
-    def power_up(self):
+    def power_on(self):
         """Wake up fuel gauge ic if in shutdown mode"""
         self.disable_shutdown_mode()
         sleep_ms(10)
@@ -109,7 +109,7 @@ class BQ27441(object):
         except Exception:
             raise
 
-    def power_down(self):
+    def power_off(self):
         """Put fuel gauge ic in shutdown mode by sending shutdown i2c cmd"""
         self.enter_shutdown_mode()
 

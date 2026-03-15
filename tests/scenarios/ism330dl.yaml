@@ -276,7 +276,7 @@ tests:
     action: script
     script: |
       i2c.clear_write_log()
-      dev.power_down()
+      dev.power_off()
       log = i2c.get_write_log()
       writes = {reg: data[0] for reg, data in log}
       result = writes.get(0x10) == 0 and writes.get(0x11) == 0
@@ -302,7 +302,7 @@ tests:
   - name: "Acceleration readable after power down"
     action: script
     script: |
-      dev.power_down()
+      dev.power_off()
       ax, ay, az = dev.acceleration_g()
       result = isinstance(ax, float) and isinstance(ay, float) and isinstance(az, float)
     expect_true: true
@@ -311,7 +311,7 @@ tests:
   - name: "Gyroscope readable after power down"
     action: script
     script: |
-      dev.power_down()
+      dev.power_off()
       gx, gy, gz = dev.gyroscope_dps()
       result = isinstance(gx, float) and isinstance(gy, float) and isinstance(gz, float)
     expect_true: true
@@ -320,7 +320,7 @@ tests:
   - name: "Temperature readable after power down"
     action: script
     script: |
-      dev.power_down()
+      dev.power_off()
       t = dev.temperature_c()
       result = isinstance(t, float)
     expect_true: true
@@ -329,7 +329,7 @@ tests:
   - name: "Auto-trigger restores ODR after power down"
     action: script
     script: |
-      dev.power_down()
+      dev.power_off()
       dev.acceleration_raw()
       ctrl1 = i2c.readfrom_mem(dev.address, 0x10, 1)[0]
       ctrl2 = i2c.readfrom_mem(dev.address, 0x11, 1)[0]
@@ -343,7 +343,7 @@ tests:
       from ism330dl.const import ACCEL_ODR_26HZ, ACCEL_FS_2G, GYRO_ODR_52HZ, GYRO_FS_250DPS
       dev.configure_accel(ACCEL_ODR_26HZ, ACCEL_FS_2G)
       dev.configure_gyro(GYRO_ODR_52HZ, GYRO_FS_250DPS)
-      dev.power_down()
+      dev.power_off()
       dev.acceleration_raw()
       ctrl1 = i2c.readfrom_mem(dev.address, 0x10, 1)[0]
       ctrl2 = i2c.readfrom_mem(dev.address, 0x11, 1)[0]
@@ -356,9 +356,9 @@ tests:
   - name: "Repeated power down and read cycle"
     action: script
     script: |
-      dev.power_down()
+      dev.power_off()
       a1 = dev.acceleration_g()
-      dev.power_down()
+      dev.power_off()
       a2 = dev.acceleration_g()
       result = len(a1) == 3 and len(a2) == 3
     expect_true: true
@@ -378,7 +378,7 @@ tests:
   - name: "Timeout raises OSError when data never ready"
     action: script
     script: |
-      dev.power_down()
+      dev.power_off()
       i2c._registers[0x1E] = bytes([0x00])
       try:
           dev.acceleration_raw()
@@ -392,7 +392,7 @@ tests:
   - name: "Fresh acceleration after power down"
     action: script
     script: |
-      dev.power_down()
+      dev.power_off()
       ax, ay, az = dev.acceleration_g()
       mag = (ax**2 + ay**2 + az**2) ** 0.5
       result = 0.8 < mag < 1.2
@@ -402,7 +402,7 @@ tests:
   - name: "Fresh temperature after power down"
     action: script
     script: |
-      dev.power_down()
+      dev.power_off()
       t = dev.temperature_c()
       result = 10.0 < t < 50.0
     expect_true: true

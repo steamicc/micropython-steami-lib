@@ -584,14 +584,14 @@ class LIS2MDL(object):
         md = r & 0b11
         return {0b00: "continuous", 0b01: "single", 0b11: "idle"}.get(md, "idle")
 
-    def power_down(self):
+    def power_off(self):
         """Switches to IDLE mode (low power)."""
         r = self._read_reg(LIS2MDL_CFG_REG_A)
         r = (r & ~0b11) | 0b11  # MD1..0 = 11
         self._write_reg(LIS2MDL_CFG_REG_A, r)
 
-    def wake(self, mode: str = "continuous"):
-        """Wakes the sensor: 'continuous' (default) or 'single'."""
+    def power_on(self, mode: str = "continuous"):
+        """Power on the sensor: 'continuous' (default) or 'single'."""
         md = {"continuous": 0b00, "single": 0b01}.get(mode, 0b00)
         r = self._read_reg(LIS2MDL_CFG_REG_A)
         r = (r & ~0b11) | md

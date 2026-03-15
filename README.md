@@ -474,6 +474,7 @@ lib/<component>/
 - **I2C helpers**: use private snake_case methods `_read_reg()`, `_write_reg()` for register access.
 - **Device identification**: `device_id()` — returns the device/WHO_AM_I register value. All I2C drivers with an ID register must implement this method.
 - **Reset methods**: `reset()` for hardware reset (pin toggle), `soft_reset()` for software reset (register write), `reboot()` for memory reboot (reload trimming).
+- **Power methods**: `power_on()` / `power_off()`. All drivers must implement both.
 
 ### Linting
 

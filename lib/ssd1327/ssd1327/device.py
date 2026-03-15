@@ -25,7 +25,7 @@ class SSD1327(object):
         # 96x96     32
         # 128x128   0
 
-        self.poweron()
+        self.power_on()
         self.init_display()
 
     def init_display(self):
@@ -81,12 +81,12 @@ class SSD1327(object):
         self.fill(0)
         self.write_data(self.buffer)
 
-    def poweroff(self):
+    def power_off(self):
         self.write_cmd(SET_FN_SELECT_A)
         self.write_cmd(0x00)  # Disable internal VDD regulator, to save power
         self.write_cmd(SET_DISP)
 
-    def poweron(self):
+    def power_on(self):
         self.write_cmd(SET_FN_SELECT_A)
         self.write_cmd(0x01)  # Enable internal VDD regulator
         self.write_cmd(SET_DISP | 0x01)
@@ -96,12 +96,12 @@ class SSD1327(object):
         self.write_cmd(contrast)  # 0-255
 
     def rotate(self, rotate):
-        self.poweroff()
+        self.power_off()
         self.write_cmd(SET_DISP_OFFSET)
         self.write_cmd(self.height if rotate else self.offset)
         self.write_cmd(SET_SEG_REMAP)
         self.write_cmd(0x42 if rotate else 0x51)
-        self.poweron()
+        self.power_on()
 
     def invert(self, invert):
         self.write_cmd(

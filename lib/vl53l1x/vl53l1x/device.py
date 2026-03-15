@@ -134,6 +134,13 @@ class VL53L1X(object):
         machine.lightsleep(100)
         self._write_reg(0x0000, 0x01)
 
+    def power_off(self):
+        self._write_reg(0x0000, 0x00)
+
+    def power_on(self):
+        self._write_reg(0x0000, 0x01)
+        machine.lightsleep(1)
+
     def start_ranging(self):
         self._write_reg(0x0087, 0x40)
 

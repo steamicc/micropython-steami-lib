@@ -36,6 +36,23 @@ tests:
     args: ["Test", 0, 0, 15]
     mode: [mock]
 
+  - name: "Power off does not crash"
+    action: script
+    script: |
+      dev.power_off()
+      result = True
+    expect_true: true
+    mode: [mock]
+
+  - name: "Power on does not crash"
+    action: script
+    script: |
+      dev.power_off()
+      dev.power_on()
+      result = True
+    expect_true: true
+    mode: [mock]
+
   - name: "Show does not crash"
     action: call
     method: show

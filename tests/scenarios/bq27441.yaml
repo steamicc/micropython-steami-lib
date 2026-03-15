@@ -8,7 +8,7 @@ i2c:
 
 # Register values for mock tests
 # BQ27441 uses 2-byte little-endian registers read via struct.unpack("<h")
-# The constructor calls power_up() -> set_capacity() -> writeExtendedData()
+# The constructor calls power_on() -> set_capacity() -> writeExtendedData()
 # which enters config mode (needs CFGUPMODE flag in FLAGS register).
 mock_registers:
   # CONTROL (0x00): status word (unsealed, INITCOMP set)

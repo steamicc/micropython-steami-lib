@@ -135,7 +135,7 @@ class WSEN_PADS(object):
         - low-noise disabled
         - low-pass filter disabled
         """
-        self.power_down()
+        self.power_off()
 
         # Enable automatic register address increment.
         self._update_reg(REG_CTRL_2, CTRL2_IF_ADD_INC, CTRL2_IF_ADD_INC)
@@ -180,9 +180,13 @@ class WSEN_PADS(object):
     # Power and reset control
     # ---------------------------------------------------------------------
 
-    def power_down(self):
+    def power_off(self):
         """Put the device in power-down mode by setting ODR = 000."""
         self._update_reg(REG_CTRL_1, CTRL1_ODR_MASK, ODR_POWER_DOWN << CTRL1_ODR_SHIFT)
+
+    def power_on(self, odr=ODR_1_HZ):
+        """Resume continuous measurement at the given ODR."""
+        self.set_continuous(odr=odr)
 
     def soft_reset(self):
         """
@@ -311,7 +315,7 @@ class WSEN_PADS(object):
         Parameters:
             low_noise: False for low-power mode, True for low-noise mode
         """
-        self.power_down()
+        self.power_off()
 
         # LOW_NOISE_EN must only be changed while in power-down mode.
         if low_noise:
@@ -375,7 +379,7 @@ class WSEN_PADS(object):
             raise ValueError("Low-noise mode is not available at 100 Hz or 200 Hz")
 
         # Enter power-down before changing LOW_NOISE_EN as required by the sensor.
-        self.power_down()
+        self.power_off()
 
         # Configure low-noise mode and auto-increment.
         ctrl2_value = CTRL2_IF_ADD_INC

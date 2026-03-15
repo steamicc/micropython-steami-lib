@@ -518,7 +518,7 @@ def test_power_modes(dev):
     ok = True
 
     # Wake in continuous
-    dev.wake("continuous")
+    dev.power_on("continuous")
     r = dev.read_reg(LIS2MDL_CFG_REG_A)
     md = _bits(r, 1, 0)
     print(
@@ -530,7 +530,7 @@ def test_power_modes(dev):
     ok &= md == 0b00
 
     # Wake in single
-    dev.wake("single")
+    dev.power_on("single")
     r = dev.read_reg(LIS2MDL_CFG_REG_A)
     md = _bits(r, 1, 0)
     print(
@@ -542,11 +542,11 @@ def test_power_modes(dev):
     ok &= md == 0b01
 
     # Power down
-    dev.power_down()
+    dev.power_off()
     r = dev.read_reg(LIS2MDL_CFG_REG_A)
     md = _bits(r, 1, 0)
     print(
-        "power_down()        => MD=",
+        "power_off()        => MD=",
         md,
         "expected 0b11 =>",
         "OK" if md == 0b11 else "FAIL",
@@ -561,7 +561,7 @@ def test_power_modes(dev):
     ok &= dev.is_idle()
 
     # Back to continuous
-    dev.wake("continuous")
+    dev.power_on("continuous")
     r = dev.read_reg(LIS2MDL_CFG_REG_A)
     md = _bits(r, 1, 0)
     print(
