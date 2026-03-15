@@ -51,7 +51,7 @@ tests:
 
   - name: "Read WHO_AM_I via method"
     action: call
-    method: who_am_i
+    method: device_id
     expect: 0xBC
     mode: [mock, hardware]
 

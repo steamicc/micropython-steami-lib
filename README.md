@@ -472,6 +472,7 @@ lib/<component>/
 - **Constructor signature**: `def __init__(self, i2c, ..., address=DEFAULT_ADDR)` — first parameter is always `i2c` (not `bus`), address uses keyword argument with a default from `const.py`.
 - **Attributes**: `self.i2c` for the I2C bus, `self.address` for the device address (not `self.bus`, `self.addr`).
 - **I2C helpers**: use private snake_case methods `_read_reg()`, `_write_reg()` for register access.
+- **Device identification**: `device_id()` — returns the device/WHO_AM_I register value. All I2C drivers with an ID register must implement this method.
 
 ### Linting
 

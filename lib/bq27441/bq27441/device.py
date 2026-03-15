@@ -136,8 +136,7 @@ class BQ27441(object):
 
     def is_valid_device(self):
         """Checks if device id returned matches bq27441"""
-        device_id = self.device_type()  # Read device_type from BQ27441
-        return device_id == BQ27441_DEVICE_ID
+        return self.device_id() == BQ27441_DEVICE_ID
 
     # Configures the design capacity of the connected battery.
     def set_capacity(self, capacity):
@@ -353,8 +352,8 @@ class BQ27441(object):
     def pulse_gpout(self):
         return self.execute_control_word(BQ27441_CONTROL_PULSE_SOC_INT)
 
-    # Read the device type - should be 0x0421
-    def device_type(self):
+    # Read the device ID - should be 0x0421
+    def device_id(self):
         return self.read_control_word(BQ27441_CONTROL_DEVICE_TYPE)
 
     def get_time_ms(self):

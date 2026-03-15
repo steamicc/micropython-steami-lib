@@ -103,7 +103,7 @@ class VL53L1X(object):
         self.address = address
         self.reset()
         machine.lightsleep(1)
-        if self.read_model_id() != 0xEACC:
+        if self.device_id() != 0xEACC:
             raise RuntimeError("Failed to find expected ID register values. Check wiring!")
         # write default configuration
         self.i2c.writeto_mem(self.address, 0x2D, VL53L1X_DEFAULT_CONFIGURATION, addrsize=16)
@@ -126,7 +126,7 @@ class VL53L1X(object):
         data = self.i2c.readfrom_mem(self.address, reg, 2, addrsize=16)
         return (data[0] << 8) + data[1]
 
-    def read_model_id(self):
+    def device_id(self):
         return self._read_reg16(0x010F)
 
     def reset(self):

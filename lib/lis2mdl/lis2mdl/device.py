@@ -290,7 +290,7 @@ class LIS2MDL(object):
 
     # --- IDENTITY & HARDWARE OFFSETS ---
 
-    def read_who_am_i(self) -> int:
+    def device_id(self) -> int:
         """Reads WHO_AM_I (should be 0x40)."""
         return self._read_reg(LIS2MDL_WHO_AM_I)
 
