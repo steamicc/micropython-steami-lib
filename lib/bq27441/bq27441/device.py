@@ -77,7 +77,7 @@ class BQ27441(object):
     def __init__(
         self,
         i2c,
-        capacity_mAh=LIPO_BATTERY_CAPACITY,
+        capacity_mAh=LIPO_BATTERY_CAPACITY,  # noqa: N803
         address=BQ27441_I2C_ADDRESS,
         gpout_pin=None,
     ):

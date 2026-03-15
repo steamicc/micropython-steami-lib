@@ -27,7 +27,7 @@ p2y = [0, 0, 0, 0, 0, 0, 0, 0]
 r = [0, 0, 0]
 
 
-def drawCube():
+def draw_cube():
     r[0] = r[0] + pi / 180.0
     r[1] = r[1] + pi / 180.0
     r[2] = r[2] + pi / 180.0
@@ -70,4 +70,4 @@ def drawCube():
 
 
 while True:
-    drawCube()
+    draw_cube()

@@ -41,7 +41,10 @@ select = [
   # "FBT",  # flake8-boolean-trap
   # "I",    # isort
   # "INP",  # flake8-no-pep420
-  # "N",    # pep8-naming
+  "N802",  # pep8-naming: function name should be lowercase
+  "N803",  # pep8-naming: argument name should be lowercase
+  "N806",  # pep8-naming: variable in function should be lowercase
+  "T20",   # flake8-print: no print() in production code
   # "NPY",  # NumPy-specific rules
   # "PD",   # pandas-vet
   # "PT",   # flake8-pytest-style
@@ -92,6 +95,8 @@ max-statements = 166
 [tool.ruff.lint.per-file-ignores]
 # manifest.py files are evaluated with some global names pre-defined
 "**/manifest.py" = ["F821"]
+"**/examples/*.py" = ["T20", "N806"]
+"tests/**/*.py" = ["T20"]
 
 [tool.ruff.format]
 # Like Black, use double quotes for strings.

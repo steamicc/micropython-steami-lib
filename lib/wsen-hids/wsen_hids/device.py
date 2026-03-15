@@ -144,20 +144,20 @@ class WSEN_HIDS(object):
     def _read_calibration(self):
         h0_rh_x2 = self._read_reg(REG_H0_RH_X2)
         h1_rh_x2 = self._read_reg(REG_H1_RH_X2)
-        t0_degC_x8_lsb = self._read_reg(REG_T0_DEGC_X8)
-        t1_degC_x8_lsb = self._read_reg(REG_T1_DEGC_X8)
+        t0_degc_x8_lsb = self._read_reg(REG_T0_DEGC_X8)
+        t1_degc_x8_lsb = self._read_reg(REG_T1_DEGC_X8)
         t1_t0_msb = self._read_reg(REG_T1_T0_MSB)
 
-        t0_degC_x8 = ((t1_t0_msb & 0x03) << 8) | t0_degC_x8_lsb
-        t1_degC_x8 = ((t1_t0_msb & 0x0C) << 6) | t1_degC_x8_lsb
+        t0_degc_x8 = ((t1_t0_msb & 0x03) << 8) | t0_degc_x8_lsb
+        t1_degc_x8 = ((t1_t0_msb & 0x0C) << 6) | t1_degc_x8_lsb
 
         self._calibration = {
             "H0_rH": h0_rh_x2 / 2.0,
             "H1_rH": h1_rh_x2 / 2.0,
             "H0_T0_OUT": self._read_s16_le(REG_H0_T0_OUT_L),
             "H1_T0_OUT": self._read_s16_le(REG_H1_T0_OUT_L),
-            "T0_degC": t0_degC_x8 / 8.0,
-            "T1_degC": t1_degC_x8 / 8.0,
+            "T0_degC": t0_degc_x8 / 8.0,
+            "T1_degC": t1_degc_x8 / 8.0,
             "T0_OUT": self._read_s16_le(REG_T0_OUT_L),
             "T1_OUT": self._read_s16_le(REG_T1_OUT_L),
         }
@@ -250,8 +250,8 @@ class WSEN_HIDS(object):
         return self._clamp(humidity, 0.0, 100.0)
 
     def _convert_temperature(self, t_raw):
-        t0_degC = self._calibration["T0_degC"]
-        t1_degC = self._calibration["T1_degC"]
+        t0_degc = self._calibration["T0_degC"]
+        t1_degc = self._calibration["T1_degC"]
         t0_out = self._calibration["T0_OUT"]
         t1_out = self._calibration["T1_OUT"]
 
@@ -259,7 +259,7 @@ class WSEN_HIDS(object):
         if delta_out == 0:
             raise WSENHIDSError("Invalid temperature calibration data")
 
-        factory = ((t1_degC - t0_degC) * (t_raw - t0_out) / delta_out) + t0_degC
+        factory = ((t1_degc - t0_degc) * (t_raw - t0_out) / delta_out) + t0_degc
         return self._temp_gain * factory + self._temp_offset
 
     # -------------------------------------------------------------------------

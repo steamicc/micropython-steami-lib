@@ -203,7 +203,7 @@ class LIS2MDL(object):
 
     _MAG_LSB_TO_uT = 0.15  # 1.5 mG/LSB ≈ 0.15 µT/LSB
 
-    def read_magnet_uT(self):
+    def read_magnet_uT(self):  # noqa: N802
         """Reads the magnetic field in µT, uncalibrated (simple conversion from LSB)."""
         x, y, z = self.read_magnet()
         return (
@@ -220,7 +220,7 @@ class LIS2MDL(object):
         z = (z - self.z_off) / self.z_scale
         return (x, y, z)
 
-    def magnitude_uT(self) -> float:
+    def magnitude_uT(self) -> float:  # noqa: N802
         """Total magnetic field strength (µT)."""
         x, y, z = self.read_magnet_uT()
         return math.sqrt(x * x + y * y + z * z)
@@ -328,11 +328,11 @@ class LIS2MDL(object):
     def read_all(self) -> dict:
         """Grouped reading useful for debug & logs."""
         raw = self.read_magnet_raw()
-        uT = self.read_magnet_uT()
+        mag_ut = self.read_magnet_uT()
         cal = self.read_magnet_calibrated_norm()
-        T = self.read_temperature_c()
+        temp = self.read_temperature_c()
         st = self.read_status()
-        return {"raw": raw, "uT": uT, "cal_norm": cal, "tempC": T, "status": st}
+        return {"raw": raw, "uT": mag_ut, "cal_norm": cal, "tempC": temp, "status": st}
 
     ##
     #  --- CALIBRATIONS ---
@@ -508,9 +508,9 @@ class LIS2MDL(object):
             self._hf_cos = (1.0 - a) * self._hf_cos + a * c
             self._hf_sin = (1.0 - a) * self._hf_sin + a * s
             # light normalization to avoid amplitude drift
-            NORMALIZATION_THRESHOLD = 1e-6
+            norm_threshold = 1e-6
             norm = math.sqrt(self._hf_cos * self._hf_cos + self._hf_sin * self._hf_sin)
-            if norm > NORMALIZATION_THRESHOLD:
+            if norm > norm_threshold:
                 self._hf_cos /= norm
                 self._hf_sin /= norm
         ang = math.degrees(math.atan2(self._hf_sin, self._hf_cos))
@@ -556,13 +556,13 @@ class LIS2MDL(object):
         roll = math.atan2(ay, az)
         pitch = math.atan2(-ax, math.sqrt(ay * ay + az * az))
         # straighten the magnetic vector
-        Xh = x * math.cos(pitch) + z * math.sin(pitch)
-        Yh = (
+        xh = x * math.cos(pitch) + z * math.sin(pitch)
+        yh = (
             x * math.sin(roll) * math.sin(pitch)
             + y * math.cos(roll)
             - z * math.sin(roll) * math.cos(pitch)
         )
-        ang = math.degrees(math.atan2(Yh, Xh))  # atan2(Yh, Xh)
+        ang = math.degrees(math.atan2(yh, xh))
         ang = self._apply_heading_offsets(ang)
         return self._filter_heading(ang)
 
