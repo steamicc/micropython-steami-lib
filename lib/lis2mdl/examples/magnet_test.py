@@ -238,10 +238,7 @@ def test_reads(dev):
     print(f"WHO_AM_I=0x{who:02X}  expected 0x40 =>", "OK" if who == 0x40 else "FAIL")
     ok &= who == 0x40
 
-    # STATUS & DATA READY
-    st1 = dev.data_ready()
-    print(f"Initial STATUS=0x{st1:02X}")
-    # wait a few ms to let a new frame arrive
+    # DATA READY
     sleep_ms(50)
     ready = dev.data_ready()
     print("data_ready():", ready, "=>", "OK" if isinstance(ready, bool) else "FAIL")

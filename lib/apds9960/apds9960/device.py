@@ -86,7 +86,8 @@ class APDS9960(object):
         return self._read_reg(APDS9960_REG_STATUS)
 
     def data_ready(self):
-        return self.light_ready() and self.proximity_ready()
+        s = self._status()
+        return bool((s & APDS9960_BIT_AVALID) and (s & APDS9960_BIT_PVALID))
 
     def get_mode(self):
         return self._read_reg(APDS9960_REG_ENABLE)
