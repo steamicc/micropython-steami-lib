@@ -184,7 +184,7 @@ def test_continuous_mode(sensor, odr, label, wait_s=2):
         ok = True
 
         for i in range(5):
-            pressure_hpa = sensor.pressure()
+            pressure_hpa = sensor.pressure_hpa()
             temperature_c = sensor.temperature()
             raw_p = sensor.pressure_raw()
             raw_t = sensor.temperature_raw()

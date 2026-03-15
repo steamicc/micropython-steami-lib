@@ -63,7 +63,7 @@ mag = LIS2MDL(i2c)
 ### Read magnetic field
 
 ```python
-x, y, z = mag.read_magnet_uT()
+x, y, z = mag.magnetic_field_ut()
 print("Magnetic field (µT):", x, y, z)
 ```
 
@@ -181,7 +181,7 @@ Expected value: `0x40`
 ### Read temperature (approximate)
 
 ```python
-print("Temperature (°C):", mag.read_temperature_c())
+print("Temperature (°C):", mag.temperature())
 ```
 
 ### Check data readiness
@@ -204,12 +204,12 @@ print("Register dump:", regs)
 
 | Method                             | Description                    |
 | ---------------------------------- | ------------------------------ |
-| `read_magnet_raw()`                | Raw sensor values (int16)      |
-| `read_magnet_uT()`                 | Magnetic field in µT           |
-| `read_magnet_calibrated_norm()`    | Calibrated and normalized data |
+| `magnetic_field_raw()`                | Raw sensor values (int16)      |
+| `magnetic_field_ut()`                 | Magnetic field in µT           |
+| `calibrated_field()`    | Calibrated and normalized data |
 | `heading_flat_only()`              | Flat compass heading           |
 | `heading_with_tilt_compensation()` | Tilt-corrected heading         |
-| `read_temperature_c()`             | Read relative temperature      |
+| `temperature()`             | Read relative temperature      |
 | `power_on()` / `power_off()`      | Power management               |
 | `soft_reset()` / `reboot()`        | Sensor reset functions         |
 

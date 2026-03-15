@@ -10,7 +10,7 @@ sensor = WSEN_PADS(i2c)
 sensor.set_continuous(odr=ODR_10_HZ)
 
 for _ in range(10):
-    pressure = sensor.pressure()
+    pressure = sensor.pressure_hpa()
     temperature = sensor.temperature()
 
     print("P:", pressure, "hPa  T:", temperature, "°C")

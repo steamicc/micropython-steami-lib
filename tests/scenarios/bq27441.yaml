@@ -33,7 +33,7 @@ mock_registers:
 tests:
   - name: "Read voltage"
     action: call
-    method: voltage
+    method: voltage_mv
     expect: 3700
     mode: [mock]
 
@@ -98,7 +98,7 @@ tests:
 
   - name: "Voltage in plausible range"
     action: call
-    method: voltage
+    method: voltage_mv
     expect_range: [3000, 4300]
     mode: [hardware]
 
@@ -141,7 +141,7 @@ tests:
   - name: "Battery info summary"
     action: manual
     display:
-      - method: voltage
+      - method: voltage_mv
         label: "Tension"
         unit: "mV"
       - method: state_of_charge

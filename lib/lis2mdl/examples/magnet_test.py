@@ -245,16 +245,16 @@ def test_reads(dev):
     ok &= isinstance(ready, bool)
 
     # MAG RAW
-    xr, yr, zr = dev.read_magnet_raw()
+    xr, yr, zr = dev.magnetic_field_raw()
     print(
-        f"read_magnet_raw: (X,Y,Z)=({xr},{yr},{zr}) LSB  =>",
+        f"magnetic_field_raw: (X,Y,Z)=({xr},{yr},{zr}) LSB  =>",
         "OK" if all(isinstance(v, int) for v in (xr, yr, zr)) else "FAIL",
     )
     ok &= all(isinstance(v, int) for v in (xr, yr, zr))
 
     # MAG µT vs RAW
-    xu, yu, zu = dev.read_magnet_uT()
-    print(f"read_magnet_uT: (X,Y,Z)=({xu:.2f},{yu:.2f},{zu:.2f}) µT")
+    xu, yu, zu = dev.magnetic_field_ut()
+    print(f"magnetic_field_ut: (X,Y,Z)=({xu:.2f},{yu:.2f},{zu:.2f}) µT")
     # check consistency of conversion µT ≈ raw*0.15
     ok_conv = (
         _approx_equal(xu, xr * 0.15, 0.5)
@@ -265,25 +265,25 @@ def test_reads(dev):
     ok &= ok_conv
 
     # MAGNITUDE
-    B = dev.magnitude_uT()
+    B = dev.magnitude_ut()
     print(
-        f"magnitude_uT: |B|={B:.1f} µT (Earth ~25-65 µT).  =>",
+        f"magnitude_ut: |B|={B:.1f} µT (Earth ~25-65 µT).  =>",
         "OK" if MAGNETIC_FIELD_MIN <= B <= MAGNETIC_FIELD_MAX else "FAIL",
     )
     ok &= MAGNETIC_FIELD_MIN <= B <= MAGNETIC_FIELD_MAX  # wide, since local disturbances are possible
 
     # CALIBRATION NORM
-    xc, yc, zc = dev.read_magnet_calibrated_norm()
-    print(f"read_magnet_calibrated_norm: ({xc:.3f},{yc:.3f},{zc:.3f})")
+    xc, yc, zc = dev.calibrated_field()
+    print(f"calibrated_field: ({xc:.3f},{yc:.3f},{zc:.3f})")
     # expected: magnitudes ~[-2..+2] after simple calibration
     ok_cal_rng = abs(xc) < 5 and abs(yc) < 5 and abs(zc) < 5
     print("Calibration norm (|val|<5) =>", "OK" if ok_cal_rng else "WARN")
     ok &= ok_cal_rng
 
     # TEMP
-    t1 = dev.read_temperature_c()
+    t1 = dev.temperature()
     sleep_ms(50)
-    t2 = dev.read_temperature_c()
+    t2 = dev.temperature()
     print(f"TempC: t1={t1:.2f}°C, t2={t2:.2f}°C (8 LSB/°C, absolute offset unknown)")
     # test: type & broad plausible range
     ok_temp = (

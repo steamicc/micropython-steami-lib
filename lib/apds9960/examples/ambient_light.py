@@ -15,7 +15,7 @@ apds.enable_light_sensor()
 oval = -1
 while True:
     sleep(0.25)
-    val = apds.read_ambient_light()
+    val = apds.ambient_light()
     if val != oval:
         print("AmbientLight={}".format(val))
         oval = val

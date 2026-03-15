@@ -178,9 +178,9 @@ class LIS2MDL(object):
                 sleep_ms(2)
             raise OSError("LIS2MDL data ready timeout")
 
-    def read_magnet_raw(self):
-        """Reads the raw magnetic field (LSB). Same as read_magnet(), but more explicit."""
-        return self.read_magnet()  # (x,y,z) int16 LSB
+    def magnetic_field_raw(self):
+        """Reads the raw magnetic field (LSB). Same as magnetic_field(), but more explicit."""
+        return self.magnetic_field()  # (x,y,z) int16 LSB
 
     def _status(self) -> int:
         """Reads STATUS_REG (0x67)."""
@@ -203,26 +203,26 @@ class LIS2MDL(object):
 
     _MAG_LSB_TO_uT = 0.15  # 1.5 mG/LSB ≈ 0.15 µT/LSB
 
-    def read_magnet_uT(self):  # noqa: N802
+    def magnetic_field_ut(self):
         """Reads the magnetic field in µT, uncalibrated (simple conversion from LSB)."""
-        x, y, z = self.read_magnet()
+        x, y, z = self.magnetic_field()
         return (
             x * self._MAG_LSB_TO_uT,
             y * self._MAG_LSB_TO_uT,
             z * self._MAG_LSB_TO_uT,
         )
 
-    def read_magnet_calibrated_norm(self):
+    def calibrated_field(self):
         """Reads the calibrated field (offset/scale per axis), normalized (unitless, ~circle in XY)."""
-        x, y, z = self.read_magnet()
+        x, y, z = self.magnetic_field()
         x = (x - self.x_off) / self.x_scale
         y = (y - self.y_off) / self.y_scale
         z = (z - self.z_off) / self.z_scale
         return (x, y, z)
 
-    def magnitude_uT(self) -> float:  # noqa: N802
+    def magnitude_ut(self) -> float:
         """Total magnetic field strength (µT)."""
-        x, y, z = self.read_magnet_uT()
+        x, y, z = self.magnetic_field_ut()
         return math.sqrt(x * x + y * y + z * z)
 
     @staticmethod
@@ -230,7 +230,7 @@ class LIS2MDL(object):
         # Convert an unsigned 16-bit value to a signed 16-bit value.
         return v - 0x10000 if v & 0x8000 else v
 
-    def read_magnet(self):
+    def magnetic_field(self):
         # Read the raw magnetic field data (X, Y, Z) from the sensor.
         self._ensure_data()
         buf = self.i2c.readfrom_mem(self.address, LIS2MDL_OUTX_L_REG | 0x80, 6)
@@ -249,7 +249,7 @@ class LIS2MDL(object):
         v = (hi << 8) | lo
         return v - 0x10000 if (v & 0x8000) else v
 
-    def read_temperature_c(self) -> float:
+    def temperature(self) -> float:
         """Temperature in °C (8 LSB/°C + empirical offset).
 
         The LIS2MDL temperature sensor has no guaranteed absolute zero
@@ -327,10 +327,10 @@ class LIS2MDL(object):
 
     def read_all(self) -> dict:
         """Grouped reading useful for debug & logs."""
-        raw = self.read_magnet_raw()
-        mag_ut = self.read_magnet_uT()
-        cal = self.read_magnet_calibrated_norm()
-        temp = self.read_temperature_c()
+        raw = self.magnetic_field_raw()
+        mag_ut = self.magnetic_field_ut()
+        cal = self.calibrated_field()
+        temp = self.temperature()
         st = self._status()
         return {"raw": raw, "uT": mag_ut, "cal_norm": cal, "tempC": temp, "status": st}
 
@@ -357,7 +357,7 @@ class LIS2MDL(object):
         xmax = ymax = -1e9
 
         for _ in range(samples):
-            x, y, _ = self.read_magnet()
+            x, y, _ = self.magnetic_field()
             xmin = min(xmin, x)
             xmax = max(xmax, x)
             ymin = min(ymin, y)
@@ -382,7 +382,7 @@ class LIS2MDL(object):
         xmax = ymax = zmax = -1e9
 
         for _ in range(samples):
-            x, y, z = self.read_magnet()
+            x, y, z = self.magnetic_field()
             xmin = min(xmin, x)
             xmax = max(xmax, x)
             ymin = min(ymin, y)
@@ -419,7 +419,7 @@ class LIS2MDL(object):
         ys = []
         zs = []
         for _ in range(samples_check):
-            x, y, z = self.read_magnet()
+            x, y, z = self.magnetic_field()
             xc, yc, zc = self.calibrate_apply(x, y, z)
             xs.append(xc)
             ys.append(yc)
@@ -536,7 +536,7 @@ class LIS2MDL(object):
         Reads the sensor and returns the angle (0..360°) assuming the board is FLAT.
         Uses XY (no tilt compensation).
         """
-        x, y, z = self.read_magnet()
+        x, y, z = self.magnetic_field()
         return self.heading_from_vectors(x, y, z, calibrated=True)
 
     def heading_with_tilt_compensation(self, read_accel):
@@ -545,7 +545,7 @@ class LIS2MDL(object):
         read_accel() must return (ax, ay, az) ~g.
         """
 
-        x, y, z = self.read_magnet()
+        x, y, z = self.magnetic_field()
         # 3D calibration
         x = (x - self.x_off) / (self.x_scale or 1.0)
         y = (y - self.y_off) / (self.y_scale or 1.0)

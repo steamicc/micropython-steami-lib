@@ -193,7 +193,3 @@ class HTS221(object):
             raise ValueError("measured_low and measured_high must differ")
         self._temp_gain = float(ref_high - ref_low) / delta
         self._temp_offset = float(ref_low) - self._temp_gain * float(measured_low)
-
-    def get(self):
-        h, t = self.read()
-        return [h, t]

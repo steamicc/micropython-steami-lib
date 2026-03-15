@@ -12,6 +12,6 @@ mag.calibrate_minmax_3d()
 print("Calibration complete.")
 
 while True:
-    field_strength = mag.magnitude_uT()
+    field_strength = mag.magnitude_ut()
     print("Champ magnétique :", field_strength, "µT")
     sleep_ms(100)
