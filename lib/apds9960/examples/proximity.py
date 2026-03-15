@@ -17,7 +17,7 @@ apds.enable_proximity_sensor()
 oval = -1
 while True:
     sleep(0.25)
-    val = apds.read_proximity()
+    val = apds.proximity()
     if val != oval:
         print("proximity={}".format(val))
         oval = val

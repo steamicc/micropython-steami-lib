@@ -131,7 +131,7 @@ from wsen_pads.const import ODR_10_HZ
 
 sensor.set_continuous(odr=ODR_10_HZ)
 
-pressure = sensor.pressure()
+pressure = sensor.pressure_hpa()
 temperature = sensor.temperature()
 ```
 

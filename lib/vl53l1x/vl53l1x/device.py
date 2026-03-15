@@ -164,9 +164,12 @@ class VL53L1X(object):
                 machine.lightsleep(10)
             raise OSError("VL53L1X data ready timeout")
 
-    def read(self):
+    def distance_mm(self):
         self._ensure_data()
         data = self.i2c.readfrom_mem(self.address, 0x0089, 17, addrsize=16)
-        final_crosstalk_corrected_range_mm_sd0 = (data[13] << 8) + data[14]
+        distance_mm = (data[13] << 8) + data[14]
         self._clear_interrupt()
-        return final_crosstalk_corrected_range_mm_sd0
+        return distance_mm
+
+    def read(self):
+        return self.distance_mm()

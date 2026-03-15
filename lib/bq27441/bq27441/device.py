@@ -174,7 +174,7 @@ class BQ27441(object):
         return self.soh(SohMeasureType.PERCENT)
 
     # Reads and returns the battery voltage
-    def voltage(self):
+    def voltage_mv(self):
         """Return current voltage"""
         return self.read_word(BQ27441_COMMAND_VOLTAGE)
 

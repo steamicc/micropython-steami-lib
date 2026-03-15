@@ -52,7 +52,7 @@ tests:
       # LIS2MDL (auxiliary, offset not guaranteed by datasheet)
       from lis2mdl.device import LIS2MDL
       mag = LIS2MDL(i2c)
-      temps['LIS2MDL'] = mag.read_temperature_c()
+      temps['LIS2MDL'] = mag.temperature()
 
       # ISM330DL (auxiliary, offset not guaranteed by datasheet)
       from ism330dl.device import ISM330DL
@@ -152,7 +152,7 @@ tests:
       pads_t = pads.temperature()
 
       ref_t3 = ref.temperature()
-      mag_t = mag.read_temperature_c()
+      mag_t = mag.temperature()
 
       ref_t4 = ref.temperature()
       imu_t = imu.temperature_c()
@@ -178,7 +178,7 @@ tests:
       ref_t5 = ref.temperature()
       hts_t2 = hts.temperature()
       pads_t2 = pads.temperature()
-      mag_t2 = mag.read_temperature_c()
+      mag_t2 = mag.temperature()
       imu_t2 = imu.temperature_c()
 
       print('--- After offset alignment ---')

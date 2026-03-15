@@ -48,7 +48,7 @@ tests:
 
   - name: "Read pressure returns float"
     action: call
-    method: pressure
+    method: pressure_hpa
     expect_range: [1013.0, 1014.0]
     mode: [mock]
 
@@ -89,7 +89,7 @@ tests:
       dev.power_off()
       i2c._registers[0x27] = bytes([0x00])
       try:
-          dev.pressure()
+          dev.pressure_hpa()
           result = False
       except Exception:
           result = True
@@ -99,7 +99,7 @@ tests:
 
   - name: "Pressure in plausible range"
     action: call
-    method: pressure
+    method: pressure_hpa
     expect_range: [900.0, 1100.0]
     mode: [hardware]
 
@@ -112,7 +112,7 @@ tests:
   - name: "Pressure and temperature feel correct"
     action: manual
     display:
-      - method: pressure
+      - method: pressure_hpa
         label: "Pressure"
         unit: "hPa"
       - method: temperature

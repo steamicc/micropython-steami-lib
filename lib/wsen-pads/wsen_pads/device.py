@@ -259,7 +259,7 @@ class WSEN_PADS(object):
     # Converted data reading
     # ---------------------------------------------------------------------
 
-    def pressure(self):
+    def pressure_hpa(self):
         """
         Read and return pressure in hPa.
         """

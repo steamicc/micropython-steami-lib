@@ -169,7 +169,7 @@ class APDS9960(object):
         return val == APDS9960_BIT_GVALID
 
     # processes a gesture event and returns best guessed gesture
-    def read_gesture(self):
+    def gesture(self):
         fifo_level = 0
         fifo_data = []
 
@@ -258,7 +258,7 @@ class APDS9960(object):
             raise OSError("APDS9960 proximity data ready timeout")
 
     # reads the ambient (clear) light level as a 16-bit value
-    def read_ambient_light(self):
+    def ambient_light(self):
         self._ensure_light_enabled()
         # read value from clear channel, low byte register
         low = self._read_reg(APDS9960_REG_CDATAL)
@@ -269,7 +269,7 @@ class APDS9960(object):
         return low + (high << 8)
 
     # reads the red light level as a 16-bit value
-    def read_red_light(self):
+    def red_light(self):
         self._ensure_light_enabled()
         # read value from red channel, low byte register
         low = self._read_reg(APDS9960_REG_RDATAL)
@@ -280,7 +280,7 @@ class APDS9960(object):
         return low + (high << 8)
 
     # reads the green light level as a 16-bit value
-    def read_green_light(self):
+    def green_light(self):
         self._ensure_light_enabled()
         # read value from green channel, low byte register
         low = self._read_reg(APDS9960_REG_GDATAL)
@@ -291,7 +291,7 @@ class APDS9960(object):
         return low + (high << 8)
 
     # reads the blue light level as a 16-bit value
-    def read_blue_light(self):
+    def blue_light(self):
         self._ensure_light_enabled()
         # read value from blue channel, low byte register
         low = self._read_reg(APDS9960_REG_BDATAL)
@@ -306,7 +306,7 @@ class APDS9960(object):
     # *******************************************************************************
 
     # reads the proximity level as an 8-bit value
-    def read_proximity(self):
+    def proximity(self):
         self._ensure_proximity_enabled()
         return self._read_reg(APDS9960_REG_PDATA)
 
