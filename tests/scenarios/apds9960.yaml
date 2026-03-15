@@ -69,19 +69,19 @@ tests:
 
   - name: "Read ambient light returns expected value"
     action: call
-    method: read_ambient_light
+    method: ambient_light
     expect: 256
     mode: [mock]
 
   - name: "Read proximity returns expected value"
     action: call
-    method: read_proximity
+    method: proximity
     expect: 80
     mode: [mock]
 
   - name: "Read red light returns expected value"
     action: call
-    method: read_red_light
+    method: red_light
     expect: 128
     mode: [mock]
 
@@ -92,7 +92,7 @@ tests:
     script: |
       dev.disable_light_sensor()
       i2c.clear_write_log()
-      dev.read_ambient_light()
+      dev.ambient_light()
       log = i2c.get_write_log()
       wrote_enable = any(reg == 0x80 for reg, data in log)
       enable_val = dev.get_mode()
@@ -107,7 +107,7 @@ tests:
     script: |
       dev.disable_proximity_sensor()
       i2c.clear_write_log()
-      dev.read_proximity()
+      dev.proximity()
       log = i2c.get_write_log()
       wrote_enable = any(reg == 0x80 for reg, data in log)
       enable_val = dev.get_mode()
@@ -122,7 +122,7 @@ tests:
     script: |
       dev.power_off()
       i2c.clear_write_log()
-      dev.read_red_light()
+      dev.red_light()
       log = i2c.get_write_log()
       wrote_enable = any(reg == 0x80 for reg, data in log)
       enable_val = dev.get_mode()
@@ -137,7 +137,7 @@ tests:
     script: |
       dev.enable_light_sensor(False)
       i2c.clear_write_log()
-      dev.read_ambient_light()
+      dev.ambient_light()
       log = i2c.get_write_log()
       result = len(log) == 0
     expect_true: true
@@ -147,23 +147,23 @@ tests:
 
   - name: "Ambient light in plausible range"
     action: call
-    method: read_ambient_light
+    method: ambient_light
     expect_range: [1, 65535]
     mode: [hardware]
 
   - name: "Proximity in plausible range"
     action: call
-    method: read_proximity
+    method: proximity
     expect_range: [0, 255]
     mode: [hardware]
 
   - name: "Light and proximity values feel correct"
     action: manual
     display:
-      - method: read_ambient_light
+      - method: ambient_light
         label: "Ambient light"
         unit: ""
-      - method: read_proximity
+      - method: proximity
         label: "Proximity"
         unit: ""
     prompt: "Les valeurs de lumière ambiante et de proximité sont-elles cohérentes ?"

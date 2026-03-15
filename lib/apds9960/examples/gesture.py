@@ -36,5 +36,5 @@ apds.enable_gesture_sensor()
 while True:
     sleep(0.5)
     if apds.is_gesture_available():
-        motion = apds.read_gesture()
+        motion = apds.gesture()
         print("Gesture={}".format(dirs.get(motion, "unknown")))

@@ -54,19 +54,19 @@ tests:
 
   - name: "Read magnetic field returns tuple"
     action: call
-    method: read_magnet
+    method: magnetic_field
     expect_not_none: true
     mode: [mock]
 
   - name: "Read magnetic field in uT returns tuple"
     action: call
-    method: read_magnet_uT
+    method: magnetic_field_ut
     expect_not_none: true
     mode: [mock]
 
   - name: "Read temperature returns float"
     action: call
-    method: read_temperature_c
+    method: temperature
     expect: 25.0
     mode: [mock]
 
@@ -74,7 +74,7 @@ tests:
     action: script
     script: |
       dev.set_temp_offset(-2.0)
-      result = dev.read_temperature_c()
+      result = dev.temperature()
     expect_range: [22.0, 24.0]
     mode: [mock]
 
@@ -82,7 +82,7 @@ tests:
     action: script
     script: |
       dev.calibrate_temperature(20.0, 25.0, 30.0, 35.0)
-      result = dev.read_temperature_c()
+      result = dev.temperature()
     expect_range: [19.0, 21.0]
     mode: [mock]
 
@@ -92,7 +92,7 @@ tests:
     action: script
     script: |
       dev.power_off()
-      x, y, z = dev.read_magnet()
+      x, y, z = dev.magnetic_field()
       result = isinstance(x, int) and isinstance(y, int) and isinstance(z, int)
     expect_true: true
     mode: [mock]
@@ -101,7 +101,7 @@ tests:
     action: script
     script: |
       dev.power_off()
-      t = dev.read_temperature_c()
+      t = dev.temperature()
       result = isinstance(t, float)
     expect_true: true
     mode: [mock]
@@ -111,7 +111,7 @@ tests:
     script: |
       dev.power_off()
       i2c.clear_write_log()
-      dev.read_magnet()
+      dev.magnetic_field()
       log = i2c.get_write_log()
       wrote_cfg_a = any(reg == 0x60 for reg, data in log)
       result = wrote_cfg_a
@@ -121,9 +121,9 @@ tests:
   - name: "No auto-trigger when already active"
     action: script
     script: |
-      dev.read_magnet()
+      dev.magnetic_field()
       i2c.clear_write_log()
-      dev.read_magnet()
+      dev.magnetic_field()
       log = i2c.get_write_log()
       result = len(log) == 0
     expect_true: true
@@ -133,7 +133,7 @@ tests:
     action: script
     script: |
       dev.power_off()
-      mag = dev.magnitude_uT()
+      mag = dev.magnitude_ut()
       result = 10.0 < mag < 300.0
     expect_true: true
     mode: [hardware]
@@ -142,7 +142,7 @@ tests:
     action: script
     script: |
       dev.power_off()
-      t = dev.read_temperature_c()
+      t = dev.temperature()
       result = 10.0 < t < 45.0
     expect_true: true
     mode: [hardware]
@@ -151,13 +151,13 @@ tests:
 
   - name: "Magnitude in plausible range"
     action: call
-    method: magnitude_uT
+    method: magnitude_ut
     expect_range: [10.0, 300.0]
     mode: [hardware]
 
   - name: "Temperature in plausible range"
     action: call
-    method: read_temperature_c
+    method: temperature
     expect_range: [10.0, 45.0]
     mode: [hardware]
 
@@ -180,10 +180,10 @@ tests:
   - name: "Magnetic field values feel correct"
     action: manual
     display:
-      - method: magnitude_uT
+      - method: magnitude_ut
         label: "Magnitude"
         unit: "µT"
-      - method: read_temperature_c
+      - method: temperature
         label: "Temperature"
         unit: "°C"
       - method: heading_flat_only

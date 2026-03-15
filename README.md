@@ -84,7 +84,7 @@ bq = BQ27441(i2c)
 
 # Reading battery information
 bq.state_of_charge() # State of charge in %
-bq.voltage() # Voltage in mV
+bq.voltage_mv() # Voltage in mV
 bq.current_average() # Average current discharge in mA
 bq.capacity_full() # Full capacity in mAh
 bq.capacity_remaining() # Remaining capacity in mAh
@@ -250,7 +250,7 @@ i2c = machine.I2C(1)
 apds = APDS9960(i2c)
 
 apds.enable_light_sensor()
-light = apds.read_ambient_light()
+light = apds.ambient_light()
 
 ```
 
@@ -327,7 +327,7 @@ i2c = machine.I2C(1)
 pads = WSEN_PADS(i2c)
 
 # Reading values
-pressure = pads.pressure()       # Pressure in hPa
+pressure = pads.pressure_hpa()       # Pressure in hPa
 temperature = pads.temperature() # Temperature in °C
 ```
 
@@ -476,6 +476,7 @@ lib/<component>/
 - **Reset methods**: `reset()` for hardware reset (pin toggle), `soft_reset()` for software reset (register write), `reboot()` for memory reboot (reload trimming).
 - **Power methods**: `power_on()` / `power_off()`. All drivers must implement both.
 - **Status methods**: `_status()` returns the raw status register as an int (private), `data_ready()` returns True when all channels have new data, `<measurement>_ready()` for per-channel readiness (e.g. `temperature_ready()`, `pressure_ready()`).
+- **Measurement methods**: bare noun without unit suffix only for `temperature()` (°C) and `humidity()` (%RH). All others include the unit: `pressure_hpa()`, `distance_mm()`, `voltage_mv()`, `acceleration_g()`, etc. `read()` for combined reading returning a tuple, `<measurement>_raw()` for raw register values.
 
 ### Linting
 
