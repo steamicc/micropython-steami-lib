@@ -249,8 +249,8 @@ from apds9960 import APDS9960
 i2c = machine.I2C(1)
 apds = APDS9960(i2c)
 
-apds.enableLightSensor()
-light = apds.readAmbientLight()
+apds.enable_light_sensor()
+light = apds.read_ambient_light()
 
 ```
 
@@ -461,7 +461,7 @@ lib/<component>/
 ### Coding conventions
 
 - **Constants**: use `from micropython import const` wrapper in `const.py` files.
-- **Naming**: `snake_case` for new methods. Legacy `camelCase` is acceptable for I2C helpers to stay consistent with existing drivers.
+- **Naming**: `snake_case` for all methods and variables. Enforced by ruff (N802, N803, N806).
 - **Class inheritance**: `class Foo(object):` is the existing convention.
 - **Time**: use `from time import sleep_ms` (not `utime`, not `sleep()` with float seconds).
 - **Exceptions**: use `except Exception:` instead of bare `except:`.
@@ -471,7 +471,7 @@ lib/<component>/
 
 - **Constructor signature**: `def __init__(self, i2c, ..., address=DEFAULT_ADDR)` — first parameter is always `i2c` (not `bus`), address uses keyword argument with a default from `const.py`.
 - **Attributes**: `self.i2c` for the I2C bus, `self.address` for the device address (not `self.bus`, `self.addr`).
-- **I2C helpers**: use private snake_case methods `_read_reg()`, `_write_reg()` for register access. Legacy names (`setReg`, `getReg`, `i2cReadBytes`, etc.) are acceptable in existing drivers but new drivers must use the standard naming.
+- **I2C helpers**: use private snake_case methods `_read_reg()`, `_write_reg()` for register access.
 
 ### Linting
 
