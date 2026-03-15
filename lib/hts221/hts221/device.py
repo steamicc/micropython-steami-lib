@@ -52,9 +52,9 @@ class HTS221(object):
         return self.readbuffer[0]
 
     def _read_reg16(self, reg):
-        lowerByte = self._read_reg(reg)
-        higherByte = self._read_reg(reg + 1)
-        return (higherByte << 8) + lowerByte
+        lo = self._read_reg(reg)
+        hi = self._read_reg(reg + 1)
+        return (hi << 8) + lo
 
     # Device identification
     def who_am_i(self):
