@@ -55,6 +55,12 @@ tests:
     expect: 0xAB
     mode: [mock]
 
+  - name: "Read device ID via method"
+    action: call
+    method: device_id
+    expect: 0xAB
+    mode: [mock]
+
   - name: "Verify device ID register (hardware)"
     action: read_register
     register: 0x92

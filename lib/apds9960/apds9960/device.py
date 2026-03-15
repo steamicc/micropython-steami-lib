@@ -80,7 +80,7 @@ class APDS9960(object):
         self.set_gesture_int_enable(APDS9960_DEFAULT_GIEN)
 
     def device_id(self):
-        return self._read_reg(APDS9960_REG_ID)
+        return self.dev_id
 
     def get_mode(self):
         return self._read_reg(APDS9960_REG_ENABLE)
