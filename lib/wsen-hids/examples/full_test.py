@@ -118,10 +118,10 @@ def test_default_registers(sensor):
         return False
 
 
-def test_reboot_memory(sensor):
+def test_reboot(sensor):
     print_header("4) Reboot memory")
     try:
-        sensor.reboot_memory()
+        sensor.reboot()
         sleep(0.05)
         dump_registers(sensor)
 
@@ -466,7 +466,7 @@ def main():
 
     results.append(test_device_id(sensor))
     results.append(test_default_registers(sensor))
-    results.append(test_reboot_memory(sensor))
+    results.append(test_reboot(sensor))
     results.append(test_one_shot(sensor))
     results.append(test_one_shot_loop(sensor, count=5, delay_s=1))
     results.append(test_continuous_mode(sensor, ODR_1_HZ, "1 Hz", wait_ms=1500))

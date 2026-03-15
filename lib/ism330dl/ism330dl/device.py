@@ -22,7 +22,7 @@ class ISM330DL(object):
         self._temp_offset = 0.0
 
         self.check_device()
-        self.reset()
+        self.soft_reset()
         self.configure_accel(ACCEL_ODR_104HZ, ACCEL_FS_2G)
         self.configure_gyro(GYRO_ODR_104HZ, GYRO_FS_250DPS)
 
@@ -88,7 +88,7 @@ class ISM330DL(object):
     # Reset
     # --------------------------------------------------
 
-    def reset(self):
+    def soft_reset(self):
         self._write_u8(REG_CTRL3_C, CTRL3_C_SW_RESET)
         sleep_ms(50)
         self._write_u8(REG_CTRL3_C, CTRL3_C_BDU | CTRL3_C_IF_INC)

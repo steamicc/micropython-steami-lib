@@ -196,7 +196,7 @@ class WSEN_HIDS(object):
         value = CTRL_2_HEATER if enabled else 0
         self._update_reg(REG_CTRL_2, CTRL_2_HEATER, value)
 
-    def reboot_memory(self):
+    def reboot(self):
         self._update_reg(REG_CTRL_2, CTRL_2_BOOT, CTRL_2_BOOT)
         sleep_ms(self.DEFAULT_BOOT_TIME_MS)
         self._read_calibration()
