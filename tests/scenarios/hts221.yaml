@@ -82,7 +82,7 @@ tests:
   - name: "Status register returns int"
     action: script
     script: |
-      result = isinstance(dev.status(), int)
+      result = isinstance(dev._status(), int)
     expect_true: true
     mode: [mock]
 

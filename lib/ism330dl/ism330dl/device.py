@@ -251,20 +251,20 @@ class ISM330DL(object):
     # Status
     # --------------------------------------------------
 
-    def status(self):
+    def _status(self):
         return self._read_u8(REG_STATUS_REG)
 
     def accel_ready(self):
-        return bool(self.status() & STATUS_XLDA)
+        return bool(self._status() & STATUS_XLDA)
 
     def gyro_ready(self):
-        return bool(self.status() & STATUS_GDA)
+        return bool(self._status() & STATUS_GDA)
 
     def temperature_ready(self):
-        return bool(self.status() & STATUS_TDA)
+        return bool(self._status() & STATUS_TDA)
 
     def data_ready(self):
-        s = self._read_u8(REG_STATUS_REG)
+        s = self._status()
         return bool((s & STATUS_XLDA) and (s & STATUS_GDA) and (s & STATUS_TDA))
 
     # --------------------------------------------------

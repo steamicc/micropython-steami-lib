@@ -155,17 +155,17 @@ class WSEN_PADS(object):
         """Return the value of the DEVICE_ID register."""
         return self._read_reg(REG_DEVICE_ID)
 
-    def status(self):
+    def _status(self):
         """Return the raw STATUS register value."""
         return self._read_reg(REG_STATUS)
 
     def pressure_ready(self):
         """Return True when new pressure data is available."""
-        return bool(self.status() & STATUS_P_DA)
+        return bool(self._status() & STATUS_P_DA)
 
     def temperature_ready(self):
         """Return True when new temperature data is available."""
-        return bool(self.status() & STATUS_T_DA)
+        return bool(self._status() & STATUS_T_DA)
 
     def data_ready(self):
         """
@@ -173,7 +173,7 @@ class WSEN_PADS(object):
 
         This is mainly useful in continuous mode.
         """
-        status = self.status()
+        status = self._status()
         return bool((status & STATUS_P_DA) and (status & STATUS_T_DA))
 
     # ---------------------------------------------------------------------

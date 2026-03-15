@@ -31,12 +31,11 @@ def print_fail(name, err=None):
 def dump_registers(sensor):
     ctrl1 = sensor._read_u8(REG_CTRL_1)
     ctrl2 = sensor._read_u8(REG_CTRL_2)
-    status = sensor._read_u8(REG_STATUS)
     int_source = sensor._read_u8(REG_INT_SOURCE)
 
     print("CTRL_1     = 0x{:02X}".format(ctrl1))
     print("CTRL_2     = 0x{:02X}".format(ctrl2))
-    print("STATUS     = 0x{:02X}".format(status))
+    print("data_ready() =", sensor.data_ready())
     print("INT_SOURCE = 0x{:02X}".format(int_source))
 
 
@@ -136,13 +135,12 @@ def test_one_shot(sensor):
 
         raw_p = sensor.pressure_raw()
         raw_t = sensor.temperature_raw()
-        status = sensor.status()
 
         print("Raw pressure    :", raw_p)
         print("Raw temperature :", raw_t)
         print("Pressure        : {:.2f} hPa".format(pressure_hpa))
         print("Temperature     : {:.2f} °C".format(temperature_c))
-        print("STATUS          : 0x{:02X}".format(status))
+        print("data_ready()    :", sensor.data_ready())
 
         # Basic sanity checks
         MIN_PRESSURE = 260.0
@@ -190,16 +188,14 @@ def test_continuous_mode(sensor, odr, label, wait_s=2):
             temperature_c = sensor.temperature()
             raw_p = sensor.pressure_raw()
             raw_t = sensor.temperature_raw()
-            status = sensor.status()
-
             print(
-                "#{:d}  P={:.2f} hPa  T={:.2f} °C  rawP={}  rawT={}  STATUS=0x{:02X}".format(
+                "#{:d}  P={:.2f} hPa  T={:.2f} °C  rawP={}  rawT={}  ready={}".format(
                     i + 1,
                     pressure_hpa,
                     temperature_c,
                     raw_p,
                     raw_t,
-                    status,
+                    sensor.data_ready(),
                 )
             )
 
@@ -229,12 +225,10 @@ def test_status_flags(sensor):
         sensor.set_continuous(odr=ODR_1_HZ)
         sleep(1.5)
 
-        status = sensor.status()
         p_avail = sensor.pressure_ready()
         t_avail = sensor.temperature_ready()
         ready = sensor.data_ready()
 
-        print("STATUS                = 0x{:02X}".format(status))
         print("pressure_ready()      =", p_avail)
         print("temperature_ready()   =", t_avail)
         print("data_ready()          =", ready)
