@@ -27,14 +27,14 @@ dirs = {
     APDS9960_DIR_FAR: "far",
 }
 
-apds.setProximityIntLowThreshold(50)
+apds.set_proximity_int_low_threshold(50)
 
 print("Gesture Test")
 print("============")
-apds.enableGestureSensor()
+apds.enable_gesture_sensor()
 
 while True:
     sleep(0.5)
-    if apds.isGestureAvailable():
-        motion = apds.readGesture()
+    if apds.is_gesture_available():
+        motion = apds.read_gesture()
         print("Gesture={}".format(dirs.get(motion, "unknown")))

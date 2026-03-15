@@ -10,12 +10,12 @@ apds = APDS9960(i2c)
 
 print("Light Sensor Test")
 print("=================")
-apds.enableLightSensor()
+apds.enable_light_sensor()
 
 oval = -1
 while True:
     sleep(0.25)
-    val = apds.readAmbientLight()
+    val = apds.read_ambient_light()
     if val != oval:
         print("AmbientLight={}".format(val))
         oval = val

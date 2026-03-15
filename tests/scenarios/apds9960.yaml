@@ -10,8 +10,8 @@ i2c:
 hardware_init: |
   from time import sleep
   dev = uAPDS9960(i2c)
-  dev.enableLightSensor(False)
-  dev.enableProximitySensor(False)
+  dev.enable_light_sensor(False)
+  dev.enable_proximity_sensor(False)
   sleep(0.3)
 
 # Register values for mock tests
@@ -63,19 +63,19 @@ tests:
 
   - name: "Read ambient light returns expected value"
     action: call
-    method: readAmbientLight
+    method: read_ambient_light
     expect: 256
     mode: [mock]
 
   - name: "Read proximity returns expected value"
     action: call
-    method: readProximity
+    method: read_proximity
     expect: 80
     mode: [mock]
 
   - name: "Read red light returns expected value"
     action: call
-    method: readRedLight
+    method: read_red_light
     expect: 128
     mode: [mock]
 
@@ -84,12 +84,12 @@ tests:
   - name: "Auto-enable writes ENABLE register for light"
     action: script
     script: |
-      dev.disableLightSensor()
+      dev.disable_light_sensor()
       i2c.clear_write_log()
-      dev.readAmbientLight()
+      dev.read_ambient_light()
       log = i2c.get_write_log()
       wrote_enable = any(reg == 0x80 for reg, data in log)
-      enable_val = dev.getMode()
+      enable_val = dev.get_mode()
       has_pon = bool(enable_val & 0x01)
       has_aen = bool(enable_val & 0x02)
       result = wrote_enable and has_pon and has_aen
@@ -99,12 +99,12 @@ tests:
   - name: "Auto-enable writes ENABLE register for proximity"
     action: script
     script: |
-      dev.disableProximitySensor()
+      dev.disable_proximity_sensor()
       i2c.clear_write_log()
-      dev.readProximity()
+      dev.read_proximity()
       log = i2c.get_write_log()
       wrote_enable = any(reg == 0x80 for reg, data in log)
-      enable_val = dev.getMode()
+      enable_val = dev.get_mode()
       has_pon = bool(enable_val & 0x01)
       has_pen = bool(enable_val & 0x04)
       result = wrote_enable and has_pon and has_pen
@@ -114,12 +114,12 @@ tests:
   - name: "Auto-enable restores power for light read"
     action: script
     script: |
-      dev.disablePower()
+      dev.disable_power()
       i2c.clear_write_log()
-      dev.readRedLight()
+      dev.read_red_light()
       log = i2c.get_write_log()
       wrote_enable = any(reg == 0x80 for reg, data in log)
-      enable_val = dev.getMode()
+      enable_val = dev.get_mode()
       has_pon = bool(enable_val & 0x01)
       has_aen = bool(enable_val & 0x02)
       result = wrote_enable and has_pon and has_aen
@@ -129,9 +129,9 @@ tests:
   - name: "No re-enable when already active"
     action: script
     script: |
-      dev.enableLightSensor(False)
+      dev.enable_light_sensor(False)
       i2c.clear_write_log()
-      dev.readAmbientLight()
+      dev.read_ambient_light()
       log = i2c.get_write_log()
       result = len(log) == 0
     expect_true: true
@@ -141,23 +141,23 @@ tests:
 
   - name: "Ambient light in plausible range"
     action: call
-    method: readAmbientLight
+    method: read_ambient_light
     expect_range: [1, 65535]
     mode: [hardware]
 
   - name: "Proximity in plausible range"
     action: call
-    method: readProximity
+    method: read_proximity
     expect_range: [0, 255]
     mode: [hardware]
 
   - name: "Light and proximity values feel correct"
     action: manual
     display:
-      - method: readAmbientLight
+      - method: read_ambient_light
         label: "Ambient light"
         unit: ""
-      - method: readProximity
+      - method: read_proximity
         label: "Proximity"
         unit: ""
     prompt: "Les valeurs de lumière ambiante et de proximité sont-elles cohérentes ?"
