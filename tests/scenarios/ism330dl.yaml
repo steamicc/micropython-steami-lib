@@ -42,19 +42,26 @@ tests:
 
   # ----- Status -----
 
-  - name: "Status returns all ready flags"
+  - name: "Status returns raw register value"
     action: script
     script: |
-      s = dev.status()
-      result = s["temp_ready"] and s["gyro_ready"] and s["accel_ready"]
+      result = isinstance(dev.status(), int)
     expect_true: true
     mode: [mock]
 
-  - name: "Status returns dictionary"
-    action: call
-    method: status
-    expect_not_none: true
-    mode: [hardware]
+  - name: "Per-channel ready methods work"
+    action: script
+    script: |
+      result = dev.accel_ready() and dev.gyro_ready() and dev.temperature_ready()
+    expect_true: true
+    mode: [mock]
+
+  - name: "Data ready when all channels ready"
+    action: script
+    script: |
+      result = dev.data_ready()
+    expect_true: true
+    mode: [mock]
 
   # ----- Accelerometer -----
 

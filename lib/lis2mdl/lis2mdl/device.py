@@ -182,13 +182,13 @@ class LIS2MDL(object):
         """Reads the raw magnetic field (LSB). Same as read_magnet(), but more explicit."""
         return self.read_magnet()  # (x,y,z) int16 LSB
 
-    def read_status(self) -> int:
+    def status(self) -> int:
         """Reads STATUS_REG (0x67)."""
         return self._read_reg(LIS2MDL_STATUS_REG)
 
     def data_ready(self) -> bool:
         """True if a new XYZ triplet is ready (Zyxda bit)."""
-        return bool(self.read_status() & (1 << 3))
+        return bool(self.status() & (1 << 3))
 
     def read_int_source(self) -> int:
         """Reads INT_SOURCE_REG (0x64): source of the interrupt."""
@@ -331,7 +331,7 @@ class LIS2MDL(object):
         mag_ut = self.read_magnet_uT()
         cal = self.read_magnet_calibrated_norm()
         temp = self.read_temperature_c()
-        st = self.read_status()
+        st = self.status()
         return {"raw": raw, "uT": mag_ut, "cal_norm": cal, "tempC": temp, "status": st}
 
     ##

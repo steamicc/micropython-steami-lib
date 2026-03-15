@@ -147,7 +147,7 @@ class VL53L1X(object):
     def stop_ranging(self):
         self._write_reg(0x0087, 0x00)
 
-    def _is_data_ready(self):
+    def data_ready(self):
         polarity = self._read_reg(0x0030) & 0x10
         ready_val = 1 if polarity == 0 else 0
         return (self._read_reg(0x0031) & 0x01) == ready_val
@@ -156,10 +156,10 @@ class VL53L1X(object):
         self._write_reg(0x0086, 0x01)
 
     def _ensure_data(self):
-        if not self._is_data_ready():
+        if not self.data_ready():
             self.start_ranging()
             for _ in range(100):
-                if self._is_data_ready():
+                if self.data_ready():
                     return
                 machine.lightsleep(10)
             raise OSError("VL53L1X data ready timeout")

@@ -230,14 +230,14 @@ def test_status_flags(sensor):
         sleep(1.5)
 
         status = sensor.status()
-        p_avail = sensor.pressure_available()
-        t_avail = sensor.temperature_available()
-        ready = sensor.is_ready()
+        p_avail = sensor.pressure_ready()
+        t_avail = sensor.temperature_ready()
+        ready = sensor.data_ready()
 
         print("STATUS                = 0x{:02X}".format(status))
-        print("pressure_available()  =", p_avail)
-        print("temperature_available() =", t_avail)
-        print("is_ready()            =", ready)
+        print("pressure_ready()      =", p_avail)
+        print("temperature_ready()   =", t_avail)
+        print("data_ready()          =", ready)
 
         sensor.power_off()
 
