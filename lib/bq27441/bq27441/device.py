@@ -454,7 +454,11 @@ class BQ27441(object):
         # OpConfig register location: BQ27441_ID_REGISTERS id, offset 0
         return self.write_extended_data(BQ27441_ID_REGISTERS, 0, op_config_data, 2)
 
-    # Issue a soft - reset to the BQ27441 - G1A
+    # Full reset of the BQ27441-G1A
+    def reset(self):
+        return self.execute_control_word(BQ27441_CONTROL_RESET)
+
+    # Soft reset (resimulation) of the BQ27441-G1A
     def soft_reset(self):
         return self.execute_control_word(BQ27441_CONTROL_SOFT_RESET)
 
