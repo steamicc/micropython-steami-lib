@@ -239,7 +239,7 @@ def test_reads(dev):
     ok &= who == 0x40
 
     # STATUS & DATA READY
-    st1 = dev.status()
+    st1 = dev.data_ready()
     print(f"Initial STATUS=0x{st1:02X}")
     # wait a few ms to let a new frame arrive
     sleep_ms(50)

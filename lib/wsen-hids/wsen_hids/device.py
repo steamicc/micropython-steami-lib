@@ -215,17 +215,17 @@ class WSEN_HIDS(object):
     # Status
     # -------------------------------------------------------------------------
 
-    def status(self):
+    def _status(self):
         return self._read_reg(REG_STATUS)
 
     def humidity_ready(self):
-        return bool(self.status() & STATUS_H_DA)
+        return bool(self._status() & STATUS_H_DA)
 
     def temperature_ready(self):
-        return bool(self.status() & STATUS_T_DA)
+        return bool(self._status() & STATUS_T_DA)
 
     def data_ready(self):
-        status = self.status()
+        status = self._status()
         return bool((status & STATUS_H_DA) and (status & STATUS_T_DA))
 
     # -------------------------------------------------------------------------

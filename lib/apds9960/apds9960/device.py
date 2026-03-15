@@ -82,7 +82,7 @@ class APDS9960(object):
     def device_id(self):
         return self.dev_id
 
-    def status(self):
+    def _status(self):
         return self._read_reg(APDS9960_REG_STATUS)
 
     def data_ready(self):
@@ -230,18 +230,11 @@ class APDS9960(object):
     # ambient light and color sensor controls
     # *******************************************************************************
 
-    # check if there is new light data available
     def light_ready(self):
-        val = self._read_reg(APDS9960_REG_STATUS)
-
-        # mask out AVALID bit
-        val &= APDS9960_BIT_AVALID
-
-        return val == APDS9960_BIT_AVALID
+        return bool(self._status() & APDS9960_BIT_AVALID)
 
     def proximity_ready(self):
-        val = self._read_reg(APDS9960_REG_STATUS)
-        return (val & APDS9960_BIT_PVALID) == APDS9960_BIT_PVALID
+        return bool(self._status() & APDS9960_BIT_PVALID)
 
     def _ensure_light_enabled(self):
         enable = self.get_mode()

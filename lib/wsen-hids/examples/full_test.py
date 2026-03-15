@@ -143,7 +143,7 @@ def test_one_shot(sensor):
     try:
         humidity_rh, temperature_c = sensor.read_one_shot(timeout_ms=500)
 
-        status = sensor.status()
+        status = sensor.data_ready()
         h_ready = sensor.humidity_ready()
         t_ready = sensor.temperature_ready()
         ready = sensor.data_ready()
@@ -241,7 +241,7 @@ def test_continuous_mode(sensor, odr, label, wait_ms=1500, loops=5, delay_s=0.5)
 
         for i in range(loops):
             humidity_rh, temperature_c = sensor.read()
-            status = sensor.status()
+            status = sensor.data_ready()
 
             print(
                 "#{:d}  H={:.2f} %RH  T={:.2f} °C  STATUS=0x{:02X}".format(
@@ -290,7 +290,7 @@ def test_status_helpers(sensor):
         sensor.set_continuous_mode(odr=ODR_1_HZ)
         sleep(1.5)
 
-        status = sensor.status()
+        status = sensor.data_ready()
         h_avail = sensor.humidity_ready()
         t_avail = sensor.temperature_ready()
         ready = sensor.data_ready()
