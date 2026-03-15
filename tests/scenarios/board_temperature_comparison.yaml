@@ -33,9 +33,9 @@ tests:
       # HTS221
       from hts221.device import HTS221
       hts = HTS221(i2c)
-      hts.poweroff()
+      hts.power_off()
       sleep_ms(20)
-      hts.poweron()
+      hts.power_on()
       sleep_ms(50)
       temps['HTS221'] = hts.temperature()
 
@@ -92,9 +92,9 @@ tests:
 
       from hts221.device import HTS221
       hts = HTS221(i2c)
-      hts.poweroff()
+      hts.power_off()
       sleep_ms(20)
-      hts.poweron()
+      hts.power_on()
       sleep_ms(50)
       t_hts = hts.temperature()
 
@@ -129,9 +129,9 @@ tests:
 
       from hts221.device import HTS221
       hts = HTS221(i2c)
-      hts.poweroff()
+      hts.power_off()
       sleep_ms(20)
-      hts.poweron()
+      hts.power_on()
       sleep_ms(50)
 
       from wsen_pads.device import WSEN_PADS

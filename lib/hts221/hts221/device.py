@@ -23,9 +23,9 @@ class HTS221(object):
         self._read_humidity_calibration()
 
         # set av conf: T=4 H=8
-        self.setAv(0x81)
+        self.set_av(0x81)
         # set CTRL_REG1: PD=1 BDU=1 ODR=1
-        self.setODR(0x85)
+        self.set_odr(0x85)
 
     def _read_temperature_calibration(self):
         # HTS221 Temp Calibration registers
@@ -57,7 +57,7 @@ class HTS221(object):
         return (higherByte << 8) + lowerByte
 
     # Device identification
-    def whoAmI(self):
+    def who_am_i(self):
         return self._read_reg(HTS221_WHO_AM_I)
 
     # get STATUS register
@@ -65,27 +65,27 @@ class HTS221(object):
         return self._read_reg(HTS221_STATUS_REG)
 
     # power control
-    def poweroff(self):
+    def power_off(self):
         t = self._read_reg(HTS221_CTRL_REG1) & 0x7F
         self._write_reg(HTS221_CTRL_REG1, t)
 
-    def poweron(self):
+    def power_on(self):
         t = self._read_reg(HTS221_CTRL_REG1) | 0x80
         self._write_reg(HTS221_CTRL_REG1, t)
 
     # get/set Output data rate
-    def getODR(self):
+    def get_odr(self):
         return self._read_reg(HTS221_CTRL_REG1) & 0x03
 
-    def setODR(self, odr=0):
+    def set_odr(self, odr=0):
         t = self._read_reg(HTS221_CTRL_REG1) & 0xFC
         self._write_reg(HTS221_CTRL_REG1, t | odr)
 
     # get/set Humidity and temperature average configuration
-    def getAv(self):
+    def get_av(self):
         return self._read_reg(HTS221_AV_CONF)
 
-    def setAv(self, av=0):
+    def set_av(self, av=0):
         self._write_reg(HTS221_AV_CONF, av)
 
     # one-shot / auto-trigger helpers
