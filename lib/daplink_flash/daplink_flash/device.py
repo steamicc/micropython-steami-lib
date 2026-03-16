@@ -71,8 +71,9 @@ class DaplinkFlash(object):
     def set_filename(self, name, ext):
         """Set 8.3 filename. name: max 8 chars, ext: max 3 chars."""
         self._wait_busy()
-        padded = name.upper().ljust(FILENAME_LEN)[:FILENAME_LEN]
-        padded += ext.upper().ljust(EXT_LEN)[:EXT_LEN]
+        n = name.upper()[:FILENAME_LEN]
+        e = ext.upper()[:EXT_LEN]
+        padded = n + " " * (FILENAME_LEN - len(n)) + e + " " * (EXT_LEN - len(e))
         self._write_reg(CMD_SET_FILENAME, padded.encode())
 
     def get_filename(self):
