@@ -30,5 +30,6 @@ ERROR_CMD_FAILED = const(0x80)
 # Protocol limits
 MAX_WRITE_CHUNK = const(30)
 SECTOR_SIZE = const(256)
+MAX_SECTORS = const(32768)
 FILENAME_LEN = const(8)
 EXT_LEN = const(3)

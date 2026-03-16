@@ -75,18 +75,12 @@ for line in data_lines:
     hum_sum += h
     pres_sum += p
 
-    if t < temp_min:
-        temp_min = t
-    if t > temp_max:
-        temp_max = t
-    if h < hum_min:
-        hum_min = h
-    if h > hum_max:
-        hum_max = h
-    if p < pres_min:
-        pres_min = p
-    if p > pres_max:
-        pres_max = p
+    temp_min = min(temp_min, t)
+    temp_max = max(temp_max, t)
+    hum_min = min(hum_min, h)
+    hum_max = max(hum_max, h)
+    pres_min = min(pres_min, p)
+    pres_max = max(pres_max, p)
 
     count += 1
 
