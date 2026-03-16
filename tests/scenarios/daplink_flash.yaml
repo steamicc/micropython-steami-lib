@@ -1,0 +1,149 @@
+driver: daplink_flash
+driver_class: DaplinkFlash
+i2c_address: 0x3B
+
+# I2C config for hardware tests (STeaMi board - STM32WB55)
+i2c:
+  id: 1
+
+# Register values for mock tests
+# These simulate the STM32F103 DAPLink flash bridge
+mock_registers:
+  # WHO_AM_I (expected 0x4C)
+  0x01: 0x4C
+  # STATUS_REG (not busy)
+  0x80: 0x00
+  # ERROR_REG (no error)
+  0x81: 0x00
+  # GET_FILENAME (11 bytes: "TEST    CSV")
+  0x04: [0x54, 0x45, 0x53, 0x54, 0x20, 0x20, 0x20, 0x20, 0x43, 0x53, 0x56]
+
+tests:
+  - name: "Verify WHO_AM_I register"
+    action: read_register
+    register: 0x01
+    expect: 0x4C
+    mode: [mock, hardware]
+
+  - name: "Read WHO_AM_I via method"
+    action: call
+    method: device_id
+    expect: 0x4C
+    mode: [mock, hardware]
+
+  - name: "Read status register"
+    action: call
+    method: _status
+    expect: 0x00
+    mode: [mock]
+
+  - name: "Read error register"
+    action: call
+    method: _error
+    expect: 0x00
+    mode: [mock]
+
+  - name: "Not busy when status is 0"
+    action: script
+    script: |
+      result = dev.busy() == False
+    expect_true: true
+    mode: [mock]
+
+  - name: "Get filename returns tuple"
+    action: script
+    script: |
+      name, ext = dev.get_filename()
+      result = name == "TEST" and ext == "CSV"
+    expect_true: true
+    mode: [mock]
+
+  - name: "Set filename writes to register"
+    action: script
+    script: |
+      i2c.clear_write_log()
+      dev.set_filename("DATA", "CSV")
+      log = i2c.get_write_log()
+      wrote_filename = any(reg == 0x03 for reg, data in log)
+      result = wrote_filename
+    expect_true: true
+    mode: [mock]
+
+  - name: "Clear flash sends command"
+    action: script
+    script: |
+      i2c.clear_write_log()
+      dev.clear_flash()
+      log = i2c.get_write_log()
+      sent_clear = any(reg is None and 0x10 in data for reg, data in log)
+      result = sent_clear
+    expect_true: true
+    mode: [mock]
+
+  - name: "Write sends chunked data"
+    action: script
+    script: |
+      i2c.clear_write_log()
+      dev.write(b"Hello")
+      log = i2c.get_write_log()
+      sent_write = any(reg is None and data[0] == 0x11 for reg, data in log)
+      result = sent_write
+    expect_true: true
+    mode: [mock]
+
+  - name: "Write returns byte count"
+    action: script
+    script: |
+      n = dev.write(b"Test data")
+      result = n == 9
+    expect_true: true
+    mode: [mock]
+
+  - name: "Write string converts to bytes"
+    action: script
+    script: |
+      n = dev.write("Hello")
+      result = n == 5
+    expect_true: true
+    mode: [mock]
+
+  - name: "Write line appends newline"
+    action: script
+    script: |
+      n = dev.write_line("row")
+      result = n == 4
+    expect_true: true
+    mode: [mock]
+
+  # ----- Hardware -----
+
+  - name: "Status register readable"
+    action: call
+    method: _status
+    expect_not_none: true
+    mode: [hardware]
+
+  - name: "Error register readable"
+    action: call
+    method: _error
+    expect_not_none: true
+    mode: [hardware]
+
+  - name: "Set and get filename round-trip"
+    action: hardware_script
+    script: |
+      dev.set_filename("PYTEST", "TXT")
+      name, ext = dev.get_filename()
+      result = name == "PYTEST" and ext == "TXT"
+    expect_true: true
+    mode: [hardware]
+
+  - name: "Write and clear flash"
+    action: hardware_script
+    script: |
+      dev.set_filename("PYTEST", "TXT")
+      dev.clear_flash()
+      dev.write_line("test data")
+      result = True
+    expect_true: true
+    mode: [hardware]

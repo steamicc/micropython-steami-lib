@@ -14,7 +14,7 @@ micropython-steami-lib/
 │   │   ├── manifest.py # Manifest file for firmware inclusion
 │   │   ├── bq27441/    # Driver source code
 │   │   └── examples/   # Usage examples
-│   ├── w2564jv/        # SPI flash memory W2564JV-DTR
+│   ├── daplink_flash/  # DAPLink Flash bridge (I2C to W25Q64JV)
 │   ├── ssd1327/        # OLED display controller SSD1327ZB
 │   ├── mcp23009/       # I2C I/O expander MCP23009
 │   ├── vl53l1cx/       # Distance sensor VL53L1CX
@@ -90,31 +90,33 @@ bq.capacity_full() # Full capacity in mAh
 bq.capacity_remaining() # Remaining capacity in mAh
 ```
 
-### W2564JV-DTR (SPI Flash Memory)
+### DAPLink Flash (I2C Flash Bridge)
 
-The W2564JV-DTR is a 64 Mbit SPI flash memory.
+The STeaMi board has a W25Q64JV 64 Mbit SPI flash memory connected to the STM32F103 (DAPLink). The STM32WB55 accesses it via I2C through the DAPLink bridge.
 
 #### Mounting and Running an Example
 
 ```bash
 # Mount the driver and run the example
-mpremote mount lib/w2564jv run lib/w2564jv/examples/flash_read_write.py
+mpremote mount lib/daplink_flash run lib/daplink_flash/examples/write_csv.py
 ```
 
 #### Basic API
 
 ```python
-from w2564jv import W2564JV
+from daplink_flash import DaplinkFlash
 
-# Initialization with SPI
-spi = machine.SPI(0)
-cs = machine.Pin(5, machine.Pin.OUT)
-flash = W2564JV(spi, cs)
+# Initialization
+i2c = machine.I2C(1)
+flash = DaplinkFlash(i2c)
 
-# Reading and writing
-data = b'Hello, STeaMi!'
-flash.write(0, data)
-read_data = flash.read(0, len(data))
+# Write a CSV file
+flash.set_filename("DATA", "CSV")
+flash.write_line("temperature;humidity")
+flash.write_line("25.3;48.2")
+
+# Erase flash
+flash.clear_flash()
 ```
 
 ### SSD1327ZB (OLED Display Controller)
