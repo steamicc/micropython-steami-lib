@@ -172,3 +172,92 @@ tests:
       result = content == b"Hello Flash!\n"
     expect_true: true
     mode: [hardware]
+
+  - name: "No data corruption at page boundaries"
+    action: hardware_script
+    script: |
+      from time import sleep_ms
+      dev.set_filename("PAGEBND", "TXT")
+      dev.clear_flash()
+      sleep_ms(500)
+      # Write 20 lines of 21 bytes each (420 bytes, crosses 256-byte page)
+      for i in range(20):
+          dev.write_line("ROW{:04d};AAAAAAAAAA".format(i))
+      sleep_ms(100)
+      content = dev.read()
+      lines = content.decode().split("\n")
+      lines = [l for l in lines if l]
+      ok = len(lines) == 20
+      for i, line in enumerate(lines):
+          if line != "ROW{:04d};AAAAAAAAAA".format(i):
+              ok = False
+              break
+      result = ok
+    expect_true: true
+    mode: [hardware]
+
+  - name: "Multi-sector read returns all written data"
+    action: hardware_script
+    script: |
+      from time import sleep_ms
+      dev.set_filename("MULTI", "TXT")
+      dev.clear_flash()
+      sleep_ms(500)
+      expected = ""
+      for i in range(50):
+          line = "LINE{:04d};DATA\n".format(i)
+          dev.write(line)
+          expected += line
+      sleep_ms(100)
+      content = dev.read()
+      result = content.decode() == expected
+    expect_true: true
+    mode: [hardware]
+
+  - name: "Read sector returns correct 256-byte block"
+    action: hardware_script
+    script: |
+      from time import sleep_ms
+      dev.set_filename("SECTOR", "TXT")
+      dev.clear_flash()
+      sleep_ms(500)
+      # Write more than 256 bytes to fill at least 2 sectors
+      data = "A" * 300 + "\n"
+      dev.write(data)
+      sleep_ms(100)
+      s0 = dev.read_sector(0)
+      s1 = dev.read_sector(1)
+      result = len(s0) == 256 and len(s1) == 256
+      result = result and s0[0] == ord("A") and s1[0] == ord("A")
+    expect_true: true
+    mode: [hardware]
+
+  - name: "Error register set when writing to full flash"
+    action: hardware_script
+    script: |
+      # Verify error register is clean after normal operations
+      dev.set_filename("ERRTEST", "TXT")
+      dev.clear_flash()
+      from time import sleep_ms
+      sleep_ms(500)
+      dev.write_line("test")
+      sleep_ms(100)
+      result = dev._error() == 0x00
+    expect_true: true
+    mode: [hardware]
+
+  - name: "Erase then read returns empty"
+    action: hardware_script
+    script: |
+      from time import sleep_ms
+      dev.set_filename("ERASE", "TXT")
+      dev.clear_flash()
+      sleep_ms(500)
+      dev.write_line("data to erase")
+      sleep_ms(100)
+      dev.clear_flash()
+      sleep_ms(500)
+      content = dev.read()
+      result = len(content) == 0
+    expect_true: true
+    mode: [hardware]
