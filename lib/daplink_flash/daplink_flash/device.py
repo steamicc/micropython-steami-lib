@@ -135,8 +135,10 @@ class DaplinkFlash(object):
         """
         self._wait_busy()
         self._write_reg(CMD_READ_SECTOR, bytes([sector >> 8, sector & 0xFF]))
-        sleep_ms(100)
-        self._wait_busy()
+        # F103 processes the command in its 30ms hook, then sets up DMA.
+        # After DMA setup, the F103 is no longer in listen mode — only
+        # a plain readfrom() will work (no register-based status poll).
+        sleep_ms(200)
         return self.i2c.readfrom(self.address, SECTOR_SIZE)
 
     def read(self, length=None):
