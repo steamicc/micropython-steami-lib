@@ -76,6 +76,21 @@ class LIS2MDL(object):
         reg = (reg & ~(0b11 << 2)) | (odr_bits << 2)
         self._write_reg(LIS2MDL_CFG_REG_A, reg)
 
+    def set_continuous(self, hz=10):
+        self.set_odr(hz)
+        self.set_mode("continuous")
+
+    def trigger_one_shot(self):
+        self.set_mode("single")
+
+    def read_one_shot(self):
+        self.trigger_one_shot()
+        for _ in range(50):
+            if self.data_ready():
+                return self.magnetic_field()
+            sleep_ms(2)
+        raise OSError("LIS2MDL one-shot data ready timeout")
+
     def set_low_power(self, enabled: bool):
         # LP bit (bit4) : 0=High-Res, 1=Low-Power
         reg = self._read_reg(LIS2MDL_CFG_REG_A)

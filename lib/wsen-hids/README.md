@@ -121,7 +121,7 @@ This allows simple usage:
 ```python
 humidity, temperature = sensor.read()
 
-Continuous measurements can be enabled with sensor.set_continuous_mode().
+Continuous measurements can be enabled with sensor.set_continuous().
 
 # One-Shot Measurement
 
@@ -144,7 +144,7 @@ sensor.read_one_shot(timeout_ms=500)
 Start continuous measurements:
 
 ```python
-sensor.set_continuous_mode(WSEN_HIDS.ODR_1_HZ)
+sensor.set_continuous(WSEN_HIDS.ODR_1_HZ)
 ```
 
 Available output data rates:

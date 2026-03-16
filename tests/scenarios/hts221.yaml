@@ -108,6 +108,24 @@ tests:
     expect_not_none: true
     mode: [mock]
 
+  - name: "set_continuous enables sensor"
+    action: script
+    script: |
+      dev.power_off()
+      dev.set_continuous(1)
+      ctrl1 = i2c.readfrom_mem(dev.address, 0x20, 1)[0]
+      result = (ctrl1 & 0x80) != 0 and (ctrl1 & 0x03) != 0
+    expect_true: true
+    mode: [mock]
+
+  - name: "read_one_shot returns tuple"
+    action: script
+    script: |
+      h, t = dev.read_one_shot()
+      result = isinstance(h, float) and isinstance(t, float)
+    expect_true: true
+    mode: [mock]
+
   - name: "Auto-trigger humidity after power_off"
     action: call
     setup:

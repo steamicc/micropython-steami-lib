@@ -86,6 +86,36 @@ tests:
     expect_range: [19.0, 21.0]
     mode: [mock]
 
+  # ----- Continuous / one-shot -----
+
+  - name: "set_continuous writes CFG_REG_A"
+    action: script
+    script: |
+      i2c.clear_write_log()
+      dev.set_continuous(10)
+      log = i2c.get_write_log()
+      wrote_cfg = any(reg == 0x60 for reg, data in log)
+      result = wrote_cfg
+    expect_true: true
+    mode: [mock]
+
+  - name: "trigger_one_shot sets single mode"
+    action: script
+    script: |
+      dev.trigger_one_shot()
+      mode = dev.get_mode()
+      result = mode == "single"
+    expect_true: true
+    mode: [mock]
+
+  - name: "read_one_shot returns tuple of 3 ints"
+    action: script
+    script: |
+      x, y, z = dev.read_one_shot()
+      result = isinstance(x, int) and isinstance(y, int) and isinstance(z, int)
+    expect_true: true
+    mode: [mock]
+
   # ----- Auto-trigger -----
 
   - name: "Magnetic field readable after power down"
