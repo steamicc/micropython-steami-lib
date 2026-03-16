@@ -18,7 +18,7 @@ class WSEN_HIDS(object):
         - humidity()
         - temperature()
         - read_one_shot()
-        - set_continuous_mode()
+        - set_continuous()
         - set_one_shot_mode()
         - enable_bdu()
         - enable_heater()
@@ -182,7 +182,7 @@ class WSEN_HIDS(object):
         ctrl1 &= ~CTRL_1_ODR_MASK   # ODR = 00 => one-shot
         self._write_reg(REG_CTRL_1, ctrl1)
 
-    def set_continuous_mode(self, odr=ODR_1_HZ):
+    def set_continuous(self, odr=ODR_1_HZ):
         if odr not in (ODR_1_HZ, ODR_7_HZ, ODR_12_5_HZ):
             raise ValueError("Invalid ODR for continuous mode")
 

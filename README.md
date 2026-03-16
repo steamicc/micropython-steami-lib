@@ -477,6 +477,7 @@ lib/<component>/
 - **Power methods**: `power_on()` / `power_off()`. All drivers must implement both.
 - **Status methods**: `_status()` returns the raw status register as an int (private), `data_ready()` returns True when all channels have new data, `<measurement>_ready()` for per-channel readiness (e.g. `temperature_ready()`, `pressure_ready()`).
 - **Measurement methods**: bare noun without unit suffix only for `temperature()` (°C) and `humidity()` (%RH). All others include the unit: `pressure_hpa()`, `distance_mm()`, `voltage_mv()`, `acceleration_g()`, etc. `read()` for combined reading returning a tuple, `<measurement>_raw()` for raw register values.
+- **Mode methods**: `set_continuous(odr)` to start continuous measurements, `trigger_one_shot()` for a single conversion, `read_one_shot()` for trigger + wait + return data.
 
 ### Linting
 

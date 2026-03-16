@@ -7,7 +7,7 @@ i2c = I2C(1)
 
 sensor = WSEN_HIDS(i2c)
 
-sensor.set_continuous_mode(WSEN_HIDS.ODR_1_HZ)
+sensor.set_continuous(WSEN_HIDS.ODR_1_HZ)
 
 for _ in range(10):
     humidity, temperature = sensor.read()

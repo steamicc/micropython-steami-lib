@@ -211,13 +211,13 @@ def test_continuous_mode(sensor, odr, label, wait_ms=1500, loops=5, delay_s=0.5)
     print_header("7) Continuous mode - {}".format(label))
 
     try:
-        sensor.set_continuous_mode(odr=odr)
+        sensor.set_continuous(odr=odr)
 
         ctrl1 = read_reg(sensor, REG_CTRL_1)
         pd_ok = bool(ctrl1 & CTRL_1_PD)
         odr_ok = (ctrl1 & CTRL_1_ODR_MASK) == odr
 
-        print("CTRL_1 after set_continuous_mode = 0x{:02X}".format(ctrl1))
+        print("CTRL_1 after set_continuous = 0x{:02X}".format(ctrl1))
 
         if pd_ok:
             print_pass("PD bit set")
@@ -283,7 +283,7 @@ def test_status_helpers(sensor):
     print_header("8) STATUS helpers")
 
     try:
-        sensor.set_continuous_mode(odr=ODR_1_HZ)
+        sensor.set_continuous(odr=ODR_1_HZ)
         sleep(1.5)
 
         h_avail = sensor.humidity_ready()
@@ -312,7 +312,7 @@ def test_unitary_methods(sensor):
     print_header("9) humidity() and temperature()")
 
     try:
-        sensor.set_continuous_mode(odr=ODR_1_HZ)
+        sensor.set_continuous(odr=ODR_1_HZ)
         sleep(1.2)
 
         humidity_rh = sensor.humidity()

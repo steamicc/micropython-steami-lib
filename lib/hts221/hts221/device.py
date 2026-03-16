@@ -91,6 +91,12 @@ class HTS221(object):
         t = self._read_reg(HTS221_CTRL_REG1) & 0xFC
         self._write_reg(HTS221_CTRL_REG1, t | odr)
 
+    def set_continuous(self, odr=1):
+        if odr == 0:
+            raise ValueError("ODR 0 is one-shot mode, use trigger_one_shot()")
+        self.power_on()
+        self.set_odr(odr)
+
     # get/set Humidity and temperature average configuration
     def get_av(self):
         return self._read_reg(HTS221_AV_CONF)
@@ -116,6 +122,19 @@ class HTS221(object):
         ctrl2 = self._read_reg(HTS221_CTRL_REG2)
         self._write_reg(HTS221_CTRL_REG2, ctrl2 | HTS221_CTRL2_ONE_SHOT)
         sleep_ms(15)
+
+    def read_one_shot(self):
+        self.trigger_one_shot()
+        h = self._read_reg16(HTS221_HUMIDITY_OUT_L)
+        t = self._read_reg16(HTS221_TEMP_OUT_L)
+        humidity = self.H0_rH + (self.H1_rH - self.H0_rH) * (h - self.H0_OUT) / (
+            self.H1_OUT - self.H0_OUT
+        )
+        factory = self.T0_degC + (self.T1_degC - self.T0_degC) * (t - self.T0_OUT) / (
+            self.T1_OUT - self.T0_OUT
+        )
+        temperature = self._temp_gain * factory + self._temp_offset
+        return humidity, temperature
 
     def reboot(self):
         ctrl2 = self._read_reg(HTS221_CTRL_REG2)
