@@ -119,3 +119,43 @@ class DaplinkFlash(object):
     def write_line(self, text):
         """Append text + newline to current file."""
         return self.write(text + "\n")
+
+    # --------------------------------------------------
+    # Read operations
+    # --------------------------------------------------
+
+    def read_sector(self, sector):
+        """Read a 256-byte sector from flash.
+
+        Args:
+            sector: sector number (0-32767).
+
+        Returns:
+            bytes: 256 bytes of data.
+        """
+        self._wait_busy()
+        self._write_reg(CMD_READ_SECTOR, bytes([sector >> 8, sector & 0xFF]))
+        sleep_ms(100)
+        self._wait_busy()
+        return self.i2c.readfrom(self.address, SECTOR_SIZE)
+
+    def read(self, length=None):
+        """Read file content from flash.
+
+        Args:
+            length: max bytes to read. If None, reads until first 0xFF.
+
+        Returns:
+            bytes: file content.
+        """
+        result = bytearray()
+        sector = 0
+        while True:
+            data = self.read_sector(sector)
+            for i in range(SECTOR_SIZE):
+                if data[i] == 0xFF:
+                    return bytes(result)
+                result.append(data[i])
+                if length is not None and len(result) >= length:
+                    return bytes(result)
+            sector += 1

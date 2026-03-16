@@ -115,6 +115,17 @@ tests:
     expect_true: true
     mode: [mock]
 
+  - name: "Read sector sends command"
+    action: script
+    script: |
+      i2c.clear_write_log()
+      dev.read_sector(0)
+      log = i2c.get_write_log()
+      sent_read = any(reg == 0x20 for reg, data in log)
+      result = sent_read
+    expect_true: true
+    mode: [mock]
+
   # ----- Hardware -----
 
   - name: "Status register readable"
@@ -145,5 +156,19 @@ tests:
       dev.clear_flash()
       dev.write_line("test data")
       result = True
+    expect_true: true
+    mode: [hardware]
+
+  - name: "Write and read back file content"
+    action: hardware_script
+    script: |
+      from time import sleep_ms
+      dev.set_filename("RDBACK", "TXT")
+      dev.clear_flash()
+      sleep_ms(500)
+      dev.write_line("Hello Flash!")
+      sleep_ms(100)
+      content = dev.read()
+      result = content == b"Hello Flash!\n"
     expect_true: true
     mode: [hardware]
