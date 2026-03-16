@@ -55,7 +55,7 @@ class DaplinkFlash(object):
         """Return True if flash is busy."""
         return bool(self._status() & STATUS_BUSY)
 
-    def _wait_busy(self, timeout_ms=1000):
+    def _wait_busy(self, timeout_ms=30000):
         """Poll busy bit until clear. Raises OSError on timeout."""
         elapsed = 0
         while self.busy():
@@ -114,6 +114,10 @@ class DaplinkFlash(object):
                 buf[i] = 0
             self.i2c.writeto(self.address, buf)
             offset += chunk_len
+        self._wait_busy()
+        err = self._error()
+        if err:
+            raise OSError("DAPLink Flash write error: 0x{:02X}".format(err))
         return length
 
     def write_line(self, text):
@@ -152,12 +156,16 @@ class DaplinkFlash(object):
         """
         result = bytearray()
         sector = 0
-        while True:
+        while sector < MAX_SECTORS:
             data = self.read_sector(sector)
             for i in range(SECTOR_SIZE):
-                if data[i] == 0xFF:
-                    return bytes(result)
-                result.append(data[i])
-                if length is not None and len(result) >= length:
-                    return bytes(result)
+                if length is not None:
+                    result.append(data[i])
+                    if len(result) >= length:
+                        return bytes(result)
+                else:
+                    if data[i] == 0xFF:
+                        return bytes(result)
+                    result.append(data[i])
             sector += 1
+        return bytes(result)
