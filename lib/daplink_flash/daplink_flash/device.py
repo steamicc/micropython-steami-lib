@@ -71,10 +71,10 @@ class DaplinkFlash(object):
     def set_filename(self, name, ext):
         """Set 8.3 filename. name: max 8 chars, ext: max 3 chars."""
         self._wait_busy()
-        n = name.upper()[:FILENAME_LEN]
-        e = ext.upper()[:EXT_LEN]
-        padded = n + " " * (FILENAME_LEN - len(n)) + e + " " * (EXT_LEN - len(e))
-        self._write_reg(CMD_SET_FILENAME, padded.encode())
+        n = name.upper().encode("ascii")[:FILENAME_LEN]
+        e = ext.upper().encode("ascii")[:EXT_LEN]
+        padded = n + b" " * (FILENAME_LEN - len(n)) + e + b" " * (EXT_LEN - len(e))
+        self._write_reg(CMD_SET_FILENAME, padded)
 
     def get_filename(self):
         """Read current filename. Returns (name, ext) tuple, stripped."""
@@ -154,6 +154,8 @@ class DaplinkFlash(object):
         Returns:
             bytes: file content.
         """
+        if length is not None and length <= 0:
+            return b""
         result = bytearray()
         sector = 0
         while sector < MAX_SECTORS:
