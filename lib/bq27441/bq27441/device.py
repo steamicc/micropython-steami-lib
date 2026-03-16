@@ -530,7 +530,7 @@ class BQ27441(object):
         for i in range(32):
             csum += data[i]
 
-        csum = 255 - csum
+        csum = (255 - (csum & 0xFF)) & 0xFF
         return csum
 
     # Use the block_data_checksum command to write a checksum value
