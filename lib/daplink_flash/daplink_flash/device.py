@@ -171,3 +171,65 @@ class DaplinkFlash(object):
                     result.append(data[i])
             sector += 1
         return bytes(result)
+
+    # --------------------------------------------------
+    # Config zone (1 KB persistent storage in F103 internal flash)
+    # --------------------------------------------------
+
+    def clear_config(self):
+        """Erase the 1 KB config zone."""
+        self._wait_busy()
+        self._write_cmd(CMD_CLEAR_CONFIG)
+        sleep_ms(100)
+        self._wait_busy()
+
+    def write_config(self, data, offset=0):
+        """Write data to the config zone at the given offset.
+
+        The firmware performs a read-modify-write cycle so existing
+        data outside the written range is preserved.
+
+        Args:
+            data: bytes or str to store.
+            offset: byte offset within the config zone (0-1023).
+        """
+        if isinstance(data, str):
+            data = data.encode()
+        length = len(data)
+        buf = bytearray(MAX_WRITE_CHUNK + 2)
+        buf[0] = CMD_WRITE_CONFIG
+        pos = 0
+        while pos < length:
+            self._wait_busy()
+            chunk_len = min(MAX_WRITE_CHUNK - 3, length - pos)
+            cur_offset = offset + pos
+            buf[1] = (cur_offset >> 8) & 0xFF
+            buf[2] = cur_offset & 0xFF
+            buf[3] = chunk_len
+            buf[4 : 4 + chunk_len] = data[pos : pos + chunk_len]
+            for i in range(4 + chunk_len, len(buf)):
+                buf[i] = 0
+            self.i2c.writeto(self.address, buf)
+            sleep_ms(50)
+            pos += chunk_len
+        self._wait_busy()
+
+    def read_config(self):
+        """Read config zone content.
+
+        Returns:
+            bytes: config data up to first 0xFF, or b'' if empty.
+        """
+        result = bytearray()
+        for page_offset in range(0, CONFIG_SIZE, SECTOR_SIZE):
+            self._wait_busy()
+            hi = (page_offset >> 8) & 0xFF
+            lo = page_offset & 0xFF
+            self._write_reg(CMD_READ_CONFIG, bytes([hi, lo]))
+            sleep_ms(100)
+            data = self.i2c.readfrom(self.address, SECTOR_SIZE)
+            for i in range(SECTOR_SIZE):
+                if data[i] == 0xFF:
+                    return bytes(result)
+                result.append(data[i])
+        return bytes(result)
