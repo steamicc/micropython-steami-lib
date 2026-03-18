@@ -148,7 +148,7 @@ tests:
     expect_true: true
     mode: [mock]
 
-  - name: "Write config sends clear then write"
+  - name: "Write config sends write without prior clear"
     action: script
     script: |
       i2c.clear_write_log()
@@ -156,7 +156,7 @@ tests:
       log = i2c.get_write_log()
       sent_clear = any(reg is None and 0x32 in data for reg, data in log)
       sent_write = any(reg is None and data[0] == 0x30 for reg, data in log)
-      result = sent_clear and sent_write
+      result = sent_write and not sent_clear
     expect_true: true
     mode: [mock]
 
