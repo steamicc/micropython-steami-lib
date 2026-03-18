@@ -182,6 +182,9 @@ class DaplinkFlash(object):
         self._write_cmd(CMD_CLEAR_CONFIG)
         sleep_ms(100)
         self._wait_busy()
+        err = self._error()
+        if err:
+            raise OSError("DAPLink config clear error: 0x{:02X}".format(err))
 
     def write_config(self, data, offset=0):
         """Write data to the config zone at the given offset.
@@ -196,12 +199,18 @@ class DaplinkFlash(object):
         if isinstance(data, str):
             data = data.encode()
         length = len(data)
+        if offset < 0 or offset >= CONFIG_SIZE:
+            raise ValueError("offset out of range: {}".format(offset))
+        if offset + length > CONFIG_SIZE:
+            raise ValueError("data exceeds config zone boundary")
+        # Frame: cmd(1) + offset(2) + len(1) + data(N) + padding
         buf = bytearray(MAX_WRITE_CHUNK + 2)
+        max_payload = len(buf) - 4
         buf[0] = CMD_WRITE_CONFIG
         pos = 0
         while pos < length:
             self._wait_busy()
-            chunk_len = min(MAX_WRITE_CHUNK - 3, length - pos)
+            chunk_len = min(max_payload, length - pos)
             cur_offset = offset + pos
             buf[1] = (cur_offset >> 8) & 0xFF
             buf[2] = cur_offset & 0xFF
@@ -213,6 +222,9 @@ class DaplinkFlash(object):
             sleep_ms(50)
             pos += chunk_len
         self._wait_busy()
+        err = self._error()
+        if err:
+            raise OSError("DAPLink config write error: 0x{:02X}".format(err))
 
     def read_config(self):
         """Read config zone content.

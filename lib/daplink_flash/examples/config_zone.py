@@ -54,6 +54,8 @@ def read_config(offset=0):
 
 
 def write_config(offset, data):
+    if len(data) > 28:
+        raise ValueError("data too long (max 28 bytes per frame)")
     wait_busy()
     payload = bytearray([0x30, offset >> 8, offset & 0xFF, len(data)]) + data
     while len(payload) < 32:

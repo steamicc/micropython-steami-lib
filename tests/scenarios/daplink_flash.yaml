@@ -321,6 +321,7 @@ tests:
     action: hardware_script
     script: |
       from time import sleep_ms
+      dev.clear_config()
       dev.write_config("preserved")
       dev.clear_flash()
       sleep_ms(500)
@@ -332,6 +333,7 @@ tests:
     action: hardware_script
     script: |
       from time import sleep_ms
+      dev.clear_config()
       dev.write_config('{"cal": true}')
       dev.set_filename("TEST", "CSV")
       dev.clear_flash()
