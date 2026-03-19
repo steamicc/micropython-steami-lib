@@ -1,0 +1,211 @@
+driver: steami_config
+driver_class: SteamiConfig
+module_name: steami_config
+i2c:
+  id: 1
+i2c_address: 0x3B
+dependencies:
+  - daplink_flash
+mock_init: |
+  class FakeFlash(object):
+      def __init__(self):
+          self._data = b""
+      def read_config(self):
+          return self._data
+      def write_config(self, data):
+          if isinstance(data, str):
+              data = data.encode()
+          self._data = data
+      def clear_config(self):
+          self._data = b""
+      def clear_flash(self):
+          pass
+  dev = SteamiConfig(FakeFlash())
+hardware_init: |
+  from daplink_flash import DaplinkFlash
+  dev = SteamiConfig(DaplinkFlash(i2c))
+
+tests:
+  # ----- Mock -----
+
+  - name: "Load empty config returns empty data"
+    action: script
+    script: |
+      dev._flash._data = b""
+      dev.load()
+      result = dev.board_revision is None and dev.board_name is None
+    expect_true: true
+    mode: [mock]
+
+  - name: "Save and load round-trip"
+    action: script
+    script: |
+      dev._data = {}
+      dev.board_revision = 3
+      dev.board_name = "STeaMi-01"
+      dev.save()
+      dev2 = SteamiConfig(dev._flash)
+      dev2.load()
+      result = dev2.board_revision == 3 and dev2.board_name == "STeaMi-01"
+    expect_true: true
+    mode: [mock]
+
+  - name: "Set and get temperature calibration"
+    action: script
+    script: |
+      dev._data = {}
+      dev.set_temperature_calibration("hts221", gain=1.02, offset=-0.5)
+      cal = dev.get_temperature_calibration("hts221")
+      result = cal["gain"] == 1.02 and cal["offset"] == -0.5
+    expect_true: true
+    mode: [mock]
+
+  - name: "Get calibration returns None when not set"
+    action: script
+    script: |
+      dev._data = {}
+      result = dev.get_temperature_calibration("hts221") is None
+    expect_true: true
+    mode: [mock]
+
+  - name: "Unknown sensor raises ValueError"
+    action: script
+    script: |
+      try:
+          dev.set_temperature_calibration("unknown_sensor", gain=1.0, offset=0.0)
+          result = False
+      except ValueError:
+          result = True
+    expect_true: true
+    mode: [mock]
+
+  - name: "All five sensors accepted"
+    action: script
+    script: |
+      dev._data = {}
+      sensors = ["hts221", "lis2mdl", "ism330dl", "wsen_hids", "wsen_pads"]
+      for s in sensors:
+          dev.set_temperature_calibration(s, gain=1.0, offset=0.0)
+      result = len(dev._data.get("tc", {})) == 5
+    expect_true: true
+    mode: [mock]
+
+  - name: "Apply calibration sets gain and offset"
+    action: script
+    script: |
+      dev._data = {"tc": {"hts": {"g": 1.05, "o": -1.2}}}
+
+      class FakeSensor(object):
+          def __init__(self):
+              self._temp_gain = 1.0
+              self._temp_offset = 0.0
+
+      class HTS221(FakeSensor):
+          pass
+
+      sensor = HTS221()
+      dev.apply_temperature_calibration(sensor)
+      result = sensor._temp_gain == 1.05 and sensor._temp_offset == -1.2
+    expect_true: true
+    mode: [mock]
+
+  - name: "Apply calibration does nothing when not set"
+    action: script
+    script: |
+      dev._data = {}
+
+      class FakeSensor(object):
+          def __init__(self):
+              self._temp_gain = 1.0
+              self._temp_offset = 0.0
+
+      class HTS221(FakeSensor):
+          pass
+
+      sensor = HTS221()
+      dev.apply_temperature_calibration(sensor)
+      result = sensor._temp_gain == 1.0 and sensor._temp_offset == 0.0
+    expect_true: true
+    mode: [mock]
+
+  - name: "Board revision property"
+    action: script
+    script: |
+      dev._data = {}
+      dev.board_revision = 5
+      result = dev.board_revision == 5
+    expect_true: true
+    mode: [mock]
+
+  - name: "Board name property"
+    action: script
+    script: |
+      dev._data = {}
+      dev.board_name = "Test-Board"
+      result = dev.board_name == "Test-Board"
+    expect_true: true
+    mode: [mock]
+
+  # ----- Hardware -----
+
+  - name: "Save and load config on hardware"
+    action: script
+    script: |
+      dev._flash.clear_config()
+      dev._data = {}
+      dev.board_revision = 3
+      dev.board_name = "STeaMi-Test"
+      dev.set_temperature_calibration("hts221", gain=1.02, offset=-0.5)
+      dev.save()
+      from time import sleep_ms
+      sleep_ms(200)
+      dev2 = SteamiConfig(dev._flash)
+      dev2.load()
+      result = (
+          dev2.board_revision == 3
+          and dev2.board_name == "STeaMi-Test"
+          and dev2.get_temperature_calibration("hts221")["gain"] == 1.02
+      )
+    expect_true: true
+    mode: [hardware]
+
+  - name: "Config survives clear_flash"
+    action: script
+    script: |
+      from time import sleep_ms
+      dev._flash.clear_config()
+      dev._data = {}
+      dev.board_name = "Persist"
+      dev.save()
+      sleep_ms(200)
+      dev._flash.clear_flash()
+      sleep_ms(500)
+      dev2 = SteamiConfig(dev._flash)
+      dev2.load()
+      result = dev2.board_name == "Persist"
+    expect_true: true
+    mode: [hardware]
+
+  - name: "Apply calibration to real sensor"
+    action: script
+    script: |
+      from time import sleep_ms
+      from wsen_hids import WSEN_HIDS
+      from hts221 import HTS221
+      hids = WSEN_HIDS(i2c)
+      hts = HTS221(i2c)
+      ref = hids.temperature()
+      raw = hts.temperature()
+      offset = ref - raw
+      dev._flash.clear_config()
+      dev._data = {}
+      dev.set_temperature_calibration("hts221", gain=1.0, offset=offset)
+      dev.save()
+      sleep_ms(200)
+      dev2 = SteamiConfig(dev._flash)
+      dev2.load()
+      dev2.apply_temperature_calibration(hts)
+      calibrated = hts.temperature()
+      result = abs(calibrated - ref) < 1.0
+    expect_true: true
+    mode: [hardware]
