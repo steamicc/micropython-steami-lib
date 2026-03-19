@@ -110,6 +110,7 @@ class MpremoteBridge:
     def run_script(
         self, driver_name, driver_class, i2c_config, script,
         module_name=None, hardware_init=None, i2c_address=None,
+        mount_dir=None,
     ):
         """Run a custom MicroPython script with driver context.
 
@@ -139,7 +140,16 @@ class MpremoteBridge:
             f"{script}\n"
             f"print(json.dumps(result))"
         )
-        output = self._run(code, mount_dir=self._driver_dir(driver_name))
+        if mount_dir is None:
+            mount_dir = self._driver_dir(driver_name)
+        else:
+            # When mounting lib/, add sub-paths for each dependency
+            extra_paths = f"import sys\n"
+            for child in mount_dir.iterdir():
+                if child.is_dir() and not child.name.startswith("."):
+                    extra_paths += f"sys.path.insert(0, '/remote/{child.name}')\n"
+            code = extra_paths + code
+        output = self._run(code, mount_dir=mount_dir)
         # Parse only the last non-empty line as JSON to ignore stray output
         last_line = output.strip().rsplit("\n", 1)[-1]
         return json.loads(last_line)

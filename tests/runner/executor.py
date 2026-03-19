@@ -154,7 +154,9 @@ def run_action(action, driver_instance):
         return method(*args)
 
     if action_type == "script":
-        script_vars = {"dev": driver_instance, "i2c": driver_instance.i2c}
+        script_vars = {"dev": driver_instance, "i2c": getattr(driver_instance, "i2c", None)}
+        # Expose the driver class so scripts can create new instances
+        script_vars[type(driver_instance).__name__] = type(driver_instance)
         exec(action["script"], script_vars, script_vars)
         if "result" not in script_vars:
             raise ValueError("Script must set a 'result' variable")

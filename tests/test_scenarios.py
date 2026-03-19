@@ -69,6 +69,13 @@ def make_mock_instance(scenario):
     fake_i2c = FakeI2C(registers=registers, address=address)
     driver_module, _ = load_driver_mock(driver_name, fake_i2c, module_name=module_name)
 
+    mock_init = scenario.get("mock_init")
+    if mock_init is not None:
+        ns = {"i2c": fake_i2c}
+        ns.update(vars(driver_module))
+        exec(mock_init, ns)
+        return ns["dev"], driver_name
+
     # Build extra constructor kwargs from mock_pins
     extra_kwargs = {}
     for pin_name, pin_id in scenario.get("mock_pins", {}).items():
@@ -128,6 +135,9 @@ def test_scenario(scenario, test, mode, port):
                     "Board scenarios do not support 'script' action; "
                     "use 'hardware_script' instead"
                 )
+            mount_dir = None
+            if scenario.get("dependencies"):
+                mount_dir = Path(__file__).parent.parent / "lib"
             result = bridge.run_script(
                 scenario["driver"],
                 scenario["driver_class"],
@@ -136,6 +146,7 @@ def test_scenario(scenario, test, mode, port):
                 module_name=scenario.get("module_name"),
                 hardware_init=scenario.get("hardware_init"),
                 i2c_address=scenario.get("i2c_address"),
+                mount_dir=mount_dir,
             )
         elif action in ("call", "read_register", "interactive"):
             if is_board:
