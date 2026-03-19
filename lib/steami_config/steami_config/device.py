@@ -33,10 +33,16 @@ class SteamiConfig(object):
     # --------------------------------------------------
 
     def load(self):
-        """Load configuration from the config zone."""
+        """Load configuration from the config zone.
+
+        Falls back to empty config if the zone contains invalid JSON.
+        """
         raw = self._flash.read_config()
         if raw:
-            self._data = json.loads(raw)
+            try:
+                self._data = json.loads(raw)
+            except (ValueError, TypeError):
+                self._data = {}
         else:
             self._data = {}
 
@@ -56,7 +62,10 @@ class SteamiConfig(object):
 
     @board_revision.setter
     def board_revision(self, value):
-        self._data["rev"] = int(value)
+        if value is None:
+            self._data.pop("rev", None)
+        else:
+            self._data["rev"] = int(value)
 
     @property
     def board_name(self):
@@ -65,7 +74,10 @@ class SteamiConfig(object):
 
     @board_name.setter
     def board_name(self, value):
-        self._data["name"] = str(value)
+        if value is None:
+            self._data.pop("name", None)
+        else:
+            self._data["name"] = str(value)
 
     # --------------------------------------------------
     # Temperature calibration
@@ -116,6 +128,8 @@ class SteamiConfig(object):
             sensor_instance: a driver instance (e.g. ``HTS221``).
         """
         class_name = type(sensor_instance).__name__.lower()
+        if class_name not in _SENSOR_KEYS:
+            return
         cal = self.get_temperature_calibration(class_name)
         if cal is None:
             return
