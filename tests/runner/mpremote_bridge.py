@@ -144,7 +144,7 @@ class MpremoteBridge:
             mount_dir = self._driver_dir(driver_name)
         else:
             # When mounting lib/, add sub-paths for each dependency
-            extra_paths = f"import sys\n"
+            extra_paths = "import sys\n"
             for child in mount_dir.iterdir():
                 if child.is_dir() and not child.name.startswith("."):
                     extra_paths += f"sys.path.insert(0, '/remote/{child.name}')\n"
