@@ -116,10 +116,7 @@ class MpremoteBridge:
 
         The script has access to ``i2c`` and ``dev`` variables and must
         set a ``result`` variable.  The method returns the JSON-decoded
-        value of ``result``.
-
-        The script must not print anything: any additional output on
-        stdout will cause JSON parsing to fail.
+        value of ``result`` (only the last line of stdout is parsed).
 
         When ``hardware_init`` is provided it takes precedence over
         ``i2c_address`` for device construction.
@@ -143,9 +140,9 @@ class MpremoteBridge:
         if mount_dir is None:
             mount_dir = self._driver_dir(driver_name)
         else:
-            # When mounting lib/, add sub-paths for each dependency
+            # When mounting lib/, add sub-paths for all driver directories
             extra_paths = "import sys\n"
-            for child in mount_dir.iterdir():
+            for child in sorted(mount_dir.iterdir()):
                 if child.is_dir() and not child.name.startswith("."):
                     extra_paths += f"sys.path.insert(0, '/remote/{child.name}')\n"
             code = extra_paths + code

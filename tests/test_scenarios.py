@@ -74,6 +74,10 @@ def make_mock_instance(scenario):
         ns = {"i2c": fake_i2c}
         ns.update(vars(driver_module))
         exec(mock_init, ns)
+        if "dev" not in ns:
+            raise ValueError(
+                f"mock_init for '{driver_name}' must define a 'dev' variable"
+            )
         return ns["dev"], driver_name
 
     # Build extra constructor kwargs from mock_pins

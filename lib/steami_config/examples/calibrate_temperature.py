@@ -6,6 +6,7 @@ persistent config zone and survive power cycles.
 """
 
 import gc
+import sys
 from machine import I2C
 from time import sleep_ms
 
@@ -23,6 +24,7 @@ ref_temp = WSEN_HIDS(i2c).temperature()
 print("Reference (WSEN-HIDS): {:.2f} C".format(ref_temp))
 config.set_temperature_calibration("wsen_hids", gain=1.0, offset=0.0)
 del WSEN_HIDS
+sys.modules.pop("wsen_hids.device", None)
 gc.collect()
 
 # Calibrate each sensor one at a time to save RAM
@@ -44,6 +46,7 @@ for config_name, module, class_name, method in SENSORS:
     config.set_temperature_calibration(config_name, gain=1.0, offset=offset)
     print("  {:10s}: {:6.2f} C -> offset {:+.2f}".format(config_name, raw, offset))
     del sensor, cls, mod
+    sys.modules.pop(module, None)
     gc.collect()
 
 config.save()
@@ -64,4 +67,5 @@ for config_name, module, class_name, method in SENSORS:
     config2.apply_temperature_calibration(sensor)
     print("  {:10s}: {:6.2f} C".format(config_name, getattr(sensor, method)()))
     del sensor, cls, mod
+    sys.modules.pop(module, None)
     gc.collect()
