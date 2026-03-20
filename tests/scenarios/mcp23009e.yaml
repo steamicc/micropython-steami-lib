@@ -100,6 +100,117 @@ tests:
     expect_true: true
     mode: [hardware]
 
+  - name: "Set IODIR register"
+    action: script
+    script: |
+      dev.set_iodir(0xF0)
+      result = dev.get_iodir() == 0xF0
+    expect_true: true
+    mode: [mock]
+
+  - name: "Set and read full GPIO port"
+    action: script
+    script: |
+      dev.set_iodir(0x00)
+      dev.set_gpio(0x5A)
+      result = dev.get_gpio() == 0x5A
+    expect_true: true
+    mode: [mock]
+
+  - name: "Setup configures pin as input with pull-up"
+    action: script
+    script: |
+      dev.set_iodir(0x00)
+      dev.set_gppu(0x00)
+      dev.set_ipol(0x00)
+      dev.setup(2, 1, pullup=1, polarity=0)
+      result = (
+        dev.get_iodir() == 0x04 and
+        dev.get_gppu() == 0x04 and
+        dev.get_ipol() == 0x00
+      )
+    expect_true: true
+    mode: [mock]
+
+  - name: "Setup configures pin as output without pull-up"
+    action: script
+    script: |
+      dev.set_iodir(0xFF)
+      dev.set_gppu(0xFF)
+      dev.set_ipol(0x00)
+      dev.setup(3, 0, pullup=0, polarity=0)
+      result = (
+        dev.get_iodir() == 0xF7 and
+        dev.get_gppu() == 0xF7 and
+        dev.get_ipol() == 0x00
+      )
+    expect_true: true
+    mode: [mock]
+
+  - name: "Setup configures polarity inversion"
+    action: script
+    script: |
+      dev.set_iodir(0x00)
+      dev.set_gppu(0x00)
+      dev.set_ipol(0x00)
+      dev.setup(1, 1, pullup=1, polarity=1)
+      result = (
+        dev.get_iodir() == 0x02 and
+        dev.get_gppu() == 0x02 and
+        dev.get_ipol() == 0x02
+      )
+    expect_true: true
+    mode: [mock]
+
+  - name: "Set and get individual output level high"
+    action: script
+    script: |
+      dev.set_iodir(0xFE)
+      dev.set_gpio(0x00)
+      dev.set_level(0, 1)
+      result = dev.get_level(0) == 1 and dev.get_gpio() == 0x01
+    expect_true: true
+    mode: [mock]
+
+  - name: "Set and get individual output level low"
+    action: script
+    script: |
+      dev.set_iodir(0xFE)
+      dev.set_gpio(0x01)
+      dev.set_level(0, 0)
+      result = dev.get_level(0) == 0 and dev.get_gpio() == 0x00
+    expect_true: true
+    mode: [mock]
+
+  - name: "Set level does not modify input pin"
+    action: script
+    script: |
+      dev.set_iodir(0xFF)
+      dev.set_gpio(0xF0)
+      dev.set_level(4, 0)
+      result = dev.get_gpio() == 0xF0 and dev.get_level(4) == 1
+    expect_true: true
+    mode: [mock]
+
+  - name: "Get GPPU register after write"
+    action: script
+    script: |
+      dev.set_gppu(0xA5)
+      result = dev.get_gppu() == 0xA5
+    expect_true: true
+    mode: [mock]
+
+  - name: "Power cycle toggles reset pin"
+    action: script
+    script: |
+      dev.power_off()
+      off_state = dev.reset_pin.value()
+      dev.power_on()
+      on_state = dev.reset_pin.value()
+      result = off_state == 0 and on_state == 1
+    expect_true: true
+    mode: [mock]
+
   # --- Polling tests (one per D-PAD button) ---
   # LED_GREEN signals when the board is ready to read the button.
 
