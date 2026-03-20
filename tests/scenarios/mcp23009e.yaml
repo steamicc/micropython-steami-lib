@@ -17,7 +17,7 @@ hardware_init: |
 
 # Register values for mock tests
 mock_registers:
-  # IODIR (0x00): all inputs by default (0xFF)
+  # IODIR (0x00): all inputs by default
   0x00: 0xFF
   # IPOL (0x01): no inversion
   0x01: 0x00
@@ -35,12 +35,14 @@ mock_registers:
   0x07: 0x00
   # INTCAP (0x08): default
   0x08: 0x00
-  # GPIO (0x09): D-PAD buttons (bits 4-7 as inputs with pull-ups)
+  # GPIO (0x09): D-PAD buttons (bits 4-7 high)
   0x09: 0xF0
   # OLAT (0x0A): default
   0x0A: 0x00
 
 tests:
+  # --- Default state / constructor tests ---
+
   - name: "Read IODIR default value"
     action: call
     method: get_iodir
@@ -50,8 +52,24 @@ tests:
   - name: "Read GPIO register"
     action: call
     method: get_gpio
+    expect: 0xF0
+    mode: [mock]
+
+  - name: "Constructor leaves reset pin high"
+    action: script
+    script: |
+      result = dev.reset_pin.value() == 1
+    expect_true: true
+    mode: [mock]
+
+  - name: "Read individual GPIO level"
+    action: call
+    method: get_level
+    args: [0]
     expect_not_none: true
-    mode: [mock, hardware]
+    mode: [mock]
+
+  # --- Power / reset tests ---
 
   - name: "Power off holds reset pin low"
     action: script
@@ -70,41 +88,57 @@ tests:
     expect_true: true
     mode: [mock]
 
-  - name: "Read individual GPIO level"
-    action: call
-    method: get_level
-    args: [0]
-    expect_not_none: true
+  - name: "Power cycle toggles reset pin"
+    action: script
+    script: |
+      dev.power_off()
+      off_state = dev.reset_pin.value()
+      dev.power_on()
+      on_state = dev.reset_pin.value()
+      result = off_state == 0 and on_state == 1
+    expect_true: true
     mode: [mock]
 
-  - name: "D-PAD buttons state"
-    action: manual
-    display:
-      - method: get_level
-        args: [7]
-        label: "UP (GP7)"
-        unit: "(1=relâché, 0=appuyé)"
-      - method: get_level
-        args: [5]
-        label: "DOWN (GP5)"
-        unit: "(1=relâché, 0=appuyé)"
-      - method: get_level
-        args: [6]
-        label: "LEFT (GP6)"
-        unit: "(1=relâché, 0=appuyé)"
-      - method: get_level
-        args: [4]
-        label: "RIGHT (GP4)"
-        unit: "(1=relâché, 0=appuyé)"
-    prompt: "Tous les boutons sont-ils relâchés (valeur 1) ?"
+  - name: "Soft reset restores default registers"
+    action: script
+    script: |
+      dev.set_iodir(0x00)
+      dev.set_gppu(0xFF)
+      dev.set_iocon(0x27)
+      dev.set_gpinten(0xFF)
+      dev._soft_reset()
+      result = (
+        dev.get_iodir() == 0xFF and
+        dev.get_gppu() == 0x00 and
+        dev.get_iocon().get_register_value() == 0x00 and
+        dev.get_gpinten() == 0x00
+      )
     expect_true: true
-    mode: [hardware]
+    mode: [mock]
+
+  # --- Register access tests ---
 
   - name: "Set IODIR register"
     action: script
     script: |
       dev.set_iodir(0xF0)
       result = dev.get_iodir() == 0xF0
+    expect_true: true
+    mode: [mock]
+
+  - name: "Get GPPU register after write"
+    action: script
+    script: |
+      dev.set_gppu(0xA5)
+      result = dev.get_gppu() == 0xA5
+    expect_true: true
+    mode: [mock]
+
+  - name: "Set and get OLAT register"
+    action: script
+    script: |
+      dev.set_olat(0x3C)
+      result = dev.get_olat() == 0x3C
     expect_true: true
     mode: [mock]
 
@@ -116,6 +150,8 @@ tests:
       result = dev.get_gpio() == 0x5A
     expect_true: true
     mode: [mock]
+
+  # --- Setup / pin configuration tests ---
 
   - name: "Setup configures pin as input with pull-up"
     action: script
@@ -162,6 +198,8 @@ tests:
     expect_true: true
     mode: [mock]
 
+  # --- GPIO level tests ---
+
   - name: "Set and get individual output level high"
     action: script
     script: |
@@ -182,7 +220,7 @@ tests:
     expect_true: true
     mode: [mock]
 
-  - name: "Set level does not modify input pin"
+  - name: "Set level ignored on input pin; GP4 remains high from GPIO (0xF0)"
     action: script
     script: |
       dev.set_iodir(0xFF)
@@ -192,24 +230,71 @@ tests:
     expect_true: true
     mode: [mock]
 
-  - name: "Get GPPU register after write"
+  - name: "Set level ignores invalid pin index"
     action: script
     script: |
-      dev.set_gppu(0xA5)
-      result = dev.get_gppu() == 0xA5
+      dev.set_iodir(0x00)
+      dev.set_gpio(0xAA)
+      dev.set_level(8, 1)
+      result = dev.get_gpio() == 0xAA
     expect_true: true
     mode: [mock]
 
-  - name: "Power cycle toggles reset pin"
+  - name: "Get level returns low for invalid pin index"
     action: script
     script: |
-      dev.power_off()
-      off_state = dev.reset_pin.value()
-      dev.power_on()
-      on_state = dev.reset_pin.value()
-      result = off_state == 0 and on_state == 1
+      result = dev.get_level(8) == 0
     expect_true: true
     mode: [mock]
+
+  # --- Interrupt configuration tests ---
+
+  - name: "Interrupt on change configures GPINTEN and INTCON"
+    action: script
+    script: |
+      dev.set_gpinten(0x00)
+      dev.set_intcon(0x00)
+      dev.interrupt_on_change(2, lambda level: None)
+      result = (
+        dev.get_gpinten() == 0x04 and
+        dev.get_intcon() == 0x00
+      )
+    expect_true: true
+    mode: [mock]
+
+  - name: "Disable interrupt clears GPINTEN bit"
+    action: script
+    script: |
+      dev.interrupt_on_change(2, lambda level: None)
+      dev.disable_interrupt(2)
+      result = (dev.get_gpinten() & 0x04) == 0
+    expect_true: true
+    mode: [mock]
+
+  # --- Manual hardware check ---
+
+  - name: "D-PAD buttons state"
+    action: manual
+    display:
+      - method: get_level
+        args: [7]
+        label: "UP (GP7)"
+        unit: "(1=relâché, 0=appuyé)"
+      - method: get_level
+        args: [5]
+        label: "DOWN (GP5)"
+        unit: "(1=relâché, 0=appuyé)"
+      - method: get_level
+        args: [6]
+        label: "LEFT (GP6)"
+        unit: "(1=relâché, 0=appuyé)"
+      - method: get_level
+        args: [4]
+        label: "RIGHT (GP4)"
+        unit: "(1=relâché, 0=appuyé)"
+    prompt: "Tous les boutons sont-ils relâchés (valeur 1) ?"
+    expect_true: true
+    mode: [hardware]
 
   # --- Polling tests (one per D-PAD button) ---
   # LED_GREEN signals when the board is ready to read the button.
