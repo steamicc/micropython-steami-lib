@@ -8,15 +8,15 @@ It provides low-level register access, automatic calibration, heading computatio
 
 ## Features
 
-* ✅ Full **I²C driver** for LIS2MDL
-* ✅ Supports **10 / 20 / 50 / 100 Hz** output data rates
-* ✅ **Temperature-compensated** and **low-power** modes
-* ✅ Read **raw**, **scaled**, or **calibrated** magnetic field data
-* ✅ **2D and 3D calibration** routines (auto min/max method)
-* ✅ **Heading computation** (flat or tilt-compensated)
-* ✅ **Compass direction labels** (N, NE, E, …)
-* ✅ Built-in **digital low-pass filter** and **offset cancellation** control
-* ✅ Diagnostic utilities:
+* Full **I²C driver** for LIS2MDL
+* Supports **10 / 20 / 50 / 100 Hz** output data rates
+* **Temperature-compensated** and **low-power** modes
+* Read **raw**, **scaled**, or **calibrated** magnetic field data
+* **2D and 3D calibration** routines (auto min/max method)
+* **Heading computation** (flat or tilt-compensated)
+* **Compass direction labels** (N, NE, E, …)
+* Built-in **digital low-pass filter** and **offset cancellation** control
+* Diagnostic utilities:
 
   * Register dump
   * Calibration quality metrics
