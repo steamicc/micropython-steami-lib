@@ -10,6 +10,14 @@ This library provides a complete driver to control the MCP23009E I/O expander on
 - ✅ **Pin-compatible API**: `MCP23009Pin` class compatible with `machine.Pin`
 - ✅ **Register access**: Low-level register access for advanced usage
 
+## I²C Address
+
+The default I²C address is:
+
+- `0x20`
+
+The STeaMi board uses this default address. :contentReference[oaicite:3]{index=3}
+
 ## Quick Start
 
 ### Basic Usage with MCP23009E class
@@ -85,62 +93,50 @@ def callback(pin):
 btn.irq(handler=callback, trigger=MCP23009Pin.IRQ_FALLING | MCP23009Pin.IRQ_RISING)
 ```
 
-## Examples
-
-The library includes several examples:
-
-- `buttons.py` - Simple button reading with polling
-- `test_basic.py` - Basic driver functionality tests
-- `test_interrupts.py` - Interrupt system demonstration
-- `test_pin.py` - MCP23009Pin class usage examples
-- `test_pin_irq.py` - Pin-compatible interrupt examples
-
-Run examples with [mpremote](https://docs.micropython.org/en/latest/reference/mpremote.html):
-
-```sh
-mpremote mount . run examples/buttons.py
-mpremote mount . run examples/test_pin.py
-```
-
 ## API Reference
 
 ### MCP23009E Class
 
 #### Constructor
+
 ```python
 MCP23009E(i2c, address, reset_pin, interrupt_pin=None)
 ```
 
 #### Main Methods
-- `setup(gpx, direction, pullup, polarity)` - Configure a GPIO
-- `set_level(gpx, level)` - Set output level
-- `get_level(gpx)` - Read input level
-- `interrupt_on_change(gpx, callback)` - Register change callback
-- `interrupt_on_falling(gpx, callback)` - Register falling edge callback
-- `interrupt_on_raising(gpx, callback)` - Register rising edge callback
-- `disable_interrupt(gpx)` - Disable interrupts on a GPIO
+
+* `setup(gpx, direction, pullup, polarity)` - Configure a GPIO
+* `set_level(gpx, level)` - Set output level
+* `get_level(gpx)` - Read input level
+* `interrupt_on_change(gpx, callback)` - Register change callback
+* `interrupt_on_falling(gpx, callback)` - Register falling edge callback
+* `interrupt_on_raising(gpx, callback)` - Register rising edge callback
+* `disable_interrupt(gpx)` - Disable interrupts on a GPIO
 
 ### MCP23009Pin Class
 
 #### Constructor
+
 ```python
 MCP23009Pin(mcp, pin_number, mode=-1, pull=-1, value=None)
 ```
 
 #### Methods (machine.Pin compatible)
-- `init(mode, pull, value)` - (Re)configure the pin
-- `value(x=None)` - Get or set pin value
-- `on()` - Set pin high
-- `off()` - Set pin low
-- `toggle()` - Toggle pin state
-- `irq(handler, trigger)` - Configure interrupt
-- `mode(mode=None)` - Get or set mode
-- `pull(pull=None)` - Get or set pull configuration
+
+* `init(mode, pull, value)` - (Re)configure the pin
+* `value(x=None)` - Get or set pin value
+* `on()` - Set pin high
+* `off()` - Set pin low
+* `toggle()` - Toggle pin state
+* `irq(handler, trigger)` - Configure interrupt
+* `mode(mode=None)` - Get or set mode
+* `pull(pull=None)` - Get or set pull configuration
 
 #### Constants
-- `MCP23009Pin.IN` / `MCP23009Pin.OUT` - Pin modes
-- `MCP23009Pin.PULL_UP` - Pull-up configuration
-- `MCP23009Pin.IRQ_FALLING` / `MCP23009Pin.IRQ_RISING` - Interrupt triggers
+
+* `MCP23009Pin.IN` / `MCP23009Pin.OUT` - Pin modes
+* `MCP23009Pin.PULL_UP` - Pull-up configuration
+* `MCP23009Pin.IRQ_FALLING` / `MCP23009Pin.IRQ_RISING` - Interrupt triggers
 
 ### MCP23009ActiveLowPin Class
 
@@ -153,8 +149,9 @@ The MCP23009E can sink more current (25mA) than it can source (~1mA). For LEDs a
 ```
 
 With `MCP23009ActiveLowPin`, the logic is automatically inverted:
-- `led.on()` → GPIO LOW → LED lights up
-- `led.off()` → GPIO HIGH → LED turns off
+
+* `led.on()` → GPIO LOW → LED lights up
+* `led.off()` → GPIO HIGH → LED turns off
 
 #### Example
 
@@ -170,4 +167,42 @@ led.off()  # LED turns off (GPIO goes HIGH)
 led.toggle()  # Toggle LED state
 ```
 
-The API is identical to `MCP23009Pin` - just use `MCP23009ActiveLowPin` instead!
+The API is identical to `MCP23009Pin` - just use `MCP23009ActiveLowPin` instead.
+
+## Power Management
+
+The driver provides simple hardware power management helpers through the reset pin:
+
+### Power off
+
+```python
+mcp.power_off()
+```
+
+Holds the reset pin low.
+
+### Power on
+
+```python
+mcp.power_on()
+```
+
+Releases the reset pin.
+
+### Reset
+
+```python
+mcp.reset()
+```
+
+Toggles the reset pin to perform a hardware reset. 
+
+## Examples
+
+The library includes several examples:
+
+* `buttons.py` - Simple button reading with polling
+* `test_basic.py` - Basic driver functionality tests
+* `test_interrupts.py` - Interrupt system demonstration
+* `test_pin.py` - MCP23009Pin class usage examples
+* `test_pin_irq.py` - Pin-compatible interrupt examples
