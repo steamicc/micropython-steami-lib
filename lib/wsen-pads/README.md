@@ -1,220 +1,288 @@
-# WSEN-PADS MicroPython Driver
+# WSEN-HIDS MicroPython Driver
 
-MicroPython driver for the **Würth Elektronik WSEN-PADS** absolute pressure sensor.
+MicroPython driver for the **Würth Elektronik WSEN-HIDS** humidity and temperature sensor.
 
-This driver provides an easy-to-use API to read **pressure** and **temperature** using the I²C interface.
+The driver provides an easy-to-use API for reading **relative humidity** and **temperature** using the sensor’s **I²C interface**.
 
-The WSEN-PADS is a high-resolution digital pressure sensor with integrated temperature measurement, designed for applications such as weather monitoring, altimetry, and environmental sensing.
+The implementation is designed for **MicroPython** and integrates with the **STeaMi ecosystem**.
 
 ---
 
 # Features
 
 * I²C communication
-* Pressure measurement
+* Relative humidity measurement
 * Temperature measurement
-* One-shot acquisition
+* One-shot measurement mode
 * Continuous measurement mode
-* Configurable Output Data Rate (ODR)
-* Low-noise mode support
-* Optional low-pass filter
-* Soft reset and device reboot
-* Raw data access
+* Configurable internal averaging
+* Heater control
+* Calibration handling
+* Data-ready status helpers
 
 ---
 
-# Sensor Overview
+# Supported Sensor
 
-| Feature                 | Value                  |
-| ----------------------- | ---------------------- |
-| Pressure range          | 26 kPa – 126 kPa       |
-| Pressure resolution     | 24-bit                 |
-| Temperature resolution  | 16-bit                 |
-| Pressure sensitivity    | 1 / 4096 hPa per digit |
-| Temperature sensitivity | 0.01 °C per digit      |
-| Interface               | I²C / SPI              |
-| Maximum ODR             | 200 Hz                 |
+This driver targets:
 
----
+**WSEN-HIDS – 2525020210001**
 
-# Hardware Connection
+Main characteristics:
 
-The driver currently supports **I²C mode**.
-
-## Pins
-
-| Sensor Pin | Description          |
-| ---------- | -------------------- |
-| VDD        | Power supply         |
-| VDD_IO     | Interface supply     |
-| GND        | Ground               |
-| SDA        | I²C data             |
-| SCL        | I²C clock            |
-| CS         | Must be HIGH for I²C |
-| SAO        | Selects I²C address  |
-
-## I²C Address
-
-| SAO  | Address |
-| ---- | ------- |
-| LOW  | `0x5C`  |
-| HIGH | `0x5D`  |
-
-Recommended configuration for a single device on the bus:
-
-```
-SAO = HIGH
-I2C address = 0x5D
-```
+| Parameter            | Value             |
+| -------------------- | ----------------- |
+| Interface            | I²C               |
+| Humidity range       | 0–100 %RH         |
+| Temperature range    | −40 °C to +120 °C |
+| Humidity accuracy    | ±1.8 %RH          |
+| Temperature accuracy | ±0.2 °C           |
 
 ---
 
-# Installation
+# I²C Address
 
-Clone the repository and copy the driver to your MicroPython device.
-
-Example using **mpremote**:
-
-```bash
-mpremote mount lib/wsen-pads
-```
-
-The driver will then be available as:
+The default I²C address of the WSEN-HIDS sensor is:
 
 ```python
-from wsen_pads import WSEN_PADS
+0x5F
 ```
+
+This value is defined in the driver constants. 
 
 ---
 
-# Basic Usage
+# Quick Example
 
 ```python
 from machine import I2C, Pin
 from time import sleep
-from wsen_pads import WSEN_PADS
+from wsen_hids import WSEN_HIDS
 
-i2c = I2C(
-    1,
-    scl=Pin(7),
-    sda=Pin(6),
-)
+i2c = I2C(1)
 
-sensor = WSEN_PADS(i2c)
+sensor = WSEN_HIDS(i2c)
 
 while True:
-    pressure, temperature = sensor.read()
+    humidity, temperature = sensor.read()
 
-    print("Pressure:", pressure, "hPa")
-    print("Temperature:", temperature, "°C")
-    print()
+    print("Humidity: {:.2f} %RH".format(humidity))
+    print("Temperature: {:.2f} °C".format(temperature))
 
     sleep(1)
 ```
 
 ---
 
-# One-shot Measurement
+# API Overview
+
+## Initialization
 
 ```python
-pressure, temperature = sensor.read_one_shot()
+sensor = WSEN_HIDS(i2c)
 ```
 
-This triggers a single conversion and returns the measurement.
+Optional parameters:
+
+```python
+sensor = WSEN_HIDS(i2c)
+```
 
 ---
 
-# Continuous Mode
+# Reading Measurements
+
+### Combined reading
 
 ```python
-from wsen_pads.const import ODR_10_HZ
+humidity, temperature = sensor.read()
+```
 
-sensor.set_continuous(odr=ODR_10_HZ)
+### Humidity only
 
-pressure = sensor.pressure_hpa()
+```python
+humidity = sensor.humidity()
+```
+
+### Temperature only
+
+```python
 temperature = sensor.temperature()
 ```
 
-Available ODR values:
+---
 
+### Measurement behavior
+
+After initialization, the sensor operates in **one-shot mode** (ODR = 00).
+If `read()`, `humidity()`, or `temperature()` are called while the sensor is not in continuous mode, the driver **automatically triggers a one-shot conversion** to ensure fresh data is returned.
+
+```python
+humidity, temperature = sensor.read()
 ```
-ODR_1_HZ
-ODR_10_HZ
-ODR_25_HZ
-ODR_50_HZ
-ODR_75_HZ
-ODR_100_HZ
-ODR_200_HZ
+
+Continuous measurements can be enabled with:
+
+```python
+sensor.set_continuous(WSEN_HIDS.ODR_1_HZ)
 ```
 
 ---
 
-# Raw Data Access
+# One-Shot Measurement
 
-Raw values from the sensor can also be read:
+Trigger a single conversion:
 
 ```python
-raw_pressure = sensor.pressure_raw()
-raw_temperature = sensor.temperature_raw()
+humidity, temperature = sensor.read_one_shot()
 ```
 
-Conversions:
+You can specify a timeout:
 
-```
-pressure_hpa = raw_pressure / 4096
-temperature_c = raw_temperature * 0.01
+```python
+sensor.read_one_shot(timeout_ms=500)
 ```
 
 ---
 
-# Status Helpers
+# Continuous Measurement Mode
 
-The driver provides helper functions for checking data availability.
+Start continuous measurements:
 
 ```python
-sensor.pressure_available()
-sensor.temperature_available()
-sensor.is_ready()
+sensor.set_continuous(WSEN_HIDS.ODR_1_HZ)
+```
+
+Available output data rates:
+
+```python
+WSEN_HIDS.ODR_1_HZ
+WSEN_HIDS.ODR_7_HZ
+WSEN_HIDS.ODR_12_5_HZ
+```
+
+Return to one-shot mode:
+
+```python
+sensor.set_one_shot_mode()
 ```
 
 ---
 
-# Device Control
+# Averaging Configuration
 
-## Soft Reset
+Configure internal measurement averaging:
 
 ```python
-sensor.soft_reset()
+sensor.set_average(avg_t=WSEN_HIDS.AVG_16, avg_h=WSEN_HIDS.AVG_16)
 ```
 
-## Reboot Sensor
+Available options:
+
+```
+AVG_2
+AVG_4
+AVG_8
+AVG_16
+AVG_32
+AVG_64
+AVG_128
+AVG_256
+```
+
+Higher averaging improves noise performance but increases conversion time.
+
+---
+
+# Power Management
+
+The driver provides basic power control methods:
+
+```python
+sensor.power_off()
+```
+
+Disables the sensor by clearing the PD bit.
+
+```python
+sensor.power_on()
+```
+
+Re-enables the sensor (restores active mode).
 
 ```python
 sensor.reboot()
 ```
 
+Reloads internal memory and calibration data from non-volatile memory. 
+
+---
+
+# Heater Control
+
+The sensor contains an internal heater to help remove condensation.
+
+Enable heater:
+
+```python
+sensor.enable_heater(True)
+```
+
+Disable heater:
+
+```python
+sensor.enable_heater(False)
+```
+
+⚠️ Measurements should **not be taken while the heater is active**.
+
+---
+
+# Status Helpers
+
+Check measurement readiness:
+
+```python
+sensor.data_ready()
+sensor.humidity_ready()
+sensor.temperature_ready()
+```
+
+These helpers read the **STATUS register** and indicate when fresh data is available.
+
+---
+
+# Calibration
+
+The driver automatically reads the sensor’s **factory calibration coefficients** during initialization and applies the conversion formulas internally.
+
+Additional calibration methods are available:
+
+```python
+sensor.set_temp_offset(offset_c)
+sensor.calibrate_temperature(ref_low, measured_low, ref_high, measured_high)
+```
+
+No calibration is required for basic usage.
+
 ---
 
 # Examples
 
-Examples are available in the `examples` directory.
-
----
-
-# Driver Structure
+Example scripts are located in:
 
 ```
-wsen-pads/
-│
-├── README.md
-├── manifest.py
-├── examples/
-│
-└── wsen_pads/
-    ├── __init__.py
-    ├── const.py
-    ├── device.py
-    └── exceptions.py
+examples/
 ```
 
----
+Examples include:
+
+* basic one-shot measurements
+* continuous measurement mode
+* driver validation tests
+
+Run an example using:
+
+```bash
+mpremote mount lib/wsen-hids run lib/wsen-hids/examples/continuous_mode.py
+```
