@@ -47,7 +47,7 @@ This mounts the driver temporarily and executes an example directly on the STeaM
 Use this method during development to run drivers without copying them to the board. (recommended for development)
 
 ```bash
-mpremote mount lib/<driver>/<driver_folder> run lib/<driver>/examples/<driver_example>
+mpremote mount lib/<driver_folder>/<driver> run lib/<driver_folder>/examples/<driver_example>
 ```
 
 ### Method 2: Permanent installation (copy to board)
@@ -55,7 +55,7 @@ mpremote mount lib/<driver>/<driver_folder> run lib/<driver>/examples/<driver_ex
 Install a driver permanently by copying it into the board’s /lib directory.
 
 ```bash
-mpremote cp -r lib/<driver>/<driver_folder> :lib/
+mpremote cp -r lib/<driver_folder>/<driver> :lib/
 ```
 
 Example:
@@ -68,14 +68,13 @@ Once copied, the driver can be imported normally without mounting.
 
 ## Testing
 
-Run the full test suite (mock + hardware):
+Run the full mock test suite:
 
 ```bash
-pytest
+python -m pytest tests/ -v -k mock
 ```
 
-See full details in [tests/TESTING.md](tests/TESTING.md)
-
+See full details in [tests/TESTING.md](tests/TESTING.MD)
 ## Contributing
 
 Contributions are welcome! Please follow the project guidelines.

@@ -9,8 +9,8 @@ Each driver must follow this layout:
 
 ```
 lib/
-├── <driver_name>/
-|    ├── <driver_name>
+├── <driver_folder>/
+|    ├── <driver>
 |    |    ├── __init__.py
 |    |    ├── device.py
 |    |    ├── exceptions.py
@@ -83,9 +83,9 @@ Use the following format:
 
 ```
 hts221: Fix missing self parameter in getAv method.
-feat: add ism330dl driver
-fix: correct pressure conversion in wsen-pads
-docs: update README driver table
+feat: Add ism330dl driver.
+fix: Correct pressure conversion in wsen-pads.
+docs: Update README driver table.
 ```
 
 ## Workflow
