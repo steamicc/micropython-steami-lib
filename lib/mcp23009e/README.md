@@ -4,19 +4,15 @@ This library provides a complete driver to control the MCP23009E I/O expander on
 
 ## Features
 
-- ✅ **Full GPIO control**: Configure pins as input/output, read/write levels
-- ✅ **Pull-up resistors**: Built-in pull-up support
-- ✅ **Interrupt support**: Hardware interrupts with callback system
-- ✅ **Pin-compatible API**: `MCP23009Pin` class compatible with `machine.Pin`
-- ✅ **Register access**: Low-level register access for advanced usage
+- **Full GPIO control**: Configure pins as input/output, read/write levels
+- **Pull-up resistors**: Built-in pull-up support
+- **Interrupt support**: Hardware interrupts with callback system
+- **Pin-compatible API**: `MCP23009Pin` class compatible with `machine.Pin`
+- **Register access**: Low-level register access for advanced usage
 
 ## I²C Address
 
-The default I²C address is:
-
-- `0x20`
-
-The STeaMi board uses this default address. :contentReference[oaicite:3]{index=3}
+The base I²C address is \`0x20\` (A0=A1=A2=LOW). On the STeaMi board, the address is \`0x20\`.
 
 ## Quick Start
 
@@ -194,15 +190,25 @@ Releases the reset pin.
 ```python
 mcp.reset()
 ```
-
-Toggles the reset pin to perform a hardware reset. 
+Toggles the reset pin to perform a hardware reset.
 
 ## Examples
 
 The library includes several examples:
 
 * `buttons.py` - Simple button reading with polling
+* `i2c_scan.py` - Scan I2C buses for connected devices
 * `test_basic.py` - Basic driver functionality tests
 * `test_interrupts.py` - Interrupt system demonstration
+* `test_led_simple.py` - Basic active-low LED control example
+* `test_output_active_low.py` - Active-low output tests with inverted logic
+* `test_output.py` - GPIO output tests using low-level and Pin APIs
 * `test_pin.py` - MCP23009Pin class usage examples
 * `test_pin_irq.py` - Pin-compatible interrupt examples
+
+
+### How to run 
+
+```python
+mpremote mount lib/mcp23009e run lib/mcp23009e/examples/test_basic.py
+```
