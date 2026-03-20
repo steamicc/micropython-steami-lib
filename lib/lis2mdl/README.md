@@ -6,7 +6,7 @@ It provides low-level register access, automatic calibration, heading computatio
 
 ---
 
-## 🧭 Features
+## Features
 
 * ✅ Full **I²C driver** for LIS2MDL
 * ✅ Supports **10 / 20 / 50 / 100 Hz** output data rates
@@ -24,7 +24,7 @@ It provides low-level register access, automatic calibration, heading computatio
 
 ---
 
-## ⚙️ Hardware Requirements
+## Hardware Requirements
 
 * **LIS2MDL** 3-axis magnetometer (STMicroelectronics)
 * **MicroPython/CircuitPython board**, e.g.:
@@ -37,7 +37,7 @@ It provides low-level register access, automatic calibration, heading computatio
 
 ---
 
-## 🔌 Wiring Example (ESP32)
+## Wiring Example (ESP32)
 
 | LIS2MDL Pin | ESP32 Pin | Description  |
 | ----------- | --------- | ------------ |
@@ -58,7 +58,7 @@ mag = LIS2MDL(i2c)
 
 ---
 
-## 🚀 Quick Start
+## Quick Start
 
 ### Read magnetic field
 
@@ -87,7 +87,7 @@ heading = mag.heading_with_tilt_compensation(read_accel)
 
 ---
 
-## ⚖️ Calibration
+## Calibration
 
 Calibration is essential to obtain accurate compass readings.
 The driver provides **automated routines** for both 2D (flat) and 3D calibration.
@@ -124,7 +124,7 @@ mag.calibrate_reset()
 
 ---
 
-## 🧰 Configuration Examples
+## Configuration Examples
 
 ### Output rate and power
 
@@ -154,7 +154,7 @@ mag.set_bdu(True)
 
 ---
 
-## 🧮 Heading Filtering
+## Heading Filtering
 
 You can apply a **smoothing filter** on the heading angle to stabilize the readings:
 
@@ -168,7 +168,7 @@ mag.set_heading_filter(alpha=0.2)  # Light smoothing
 
 ---
 
-## 🔍 Diagnostics & Debug
+## Diagnostics & Debug
 
 ### Read sensor ID
 
@@ -200,7 +200,7 @@ print("Register dump:", regs)
 
 ---
 
-## 🧠 Internal Methods Overview
+## Internal Methods Overview
 
 | Method                             | Description                    |
 | ---------------------------------- | ------------------------------ |
@@ -215,7 +215,7 @@ print("Register dump:", regs)
 
 ---
 
-## 🧪 Example: Continuous Compass Loop
+## Example: Continuous Compass Loop
 
 ```python
 from machine import I2C, Pin
@@ -234,7 +234,7 @@ while True:
 
 ---
 
-## 📚 References
+## References
 
 * [STMicroelectronics LIS2MDL Datasheet](https://www.st.com/resource/en/datasheet/lis2mdl.pdf)
 * [MicroPython Documentation](https://docs.micropython.org/en/latest/library/machine.I2C.html)
