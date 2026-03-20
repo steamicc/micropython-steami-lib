@@ -2,24 +2,34 @@
 
 MicroPython driver for the **Würth Elektronik WSEN-PADS** absolute pressure sensor.
 
-This driver provides an easy-to-use API to read **pressure** and **temperature** using the I²C interface.
+This driver provides a simple API to read **pressure** and **temperature** over **I²C**.
 
-The WSEN-PADS is a high-resolution digital pressure sensor with integrated temperature measurement, designed for applications such as weather monitoring, altimetry, and environmental sensing.
+The WSEN-PADS is a high-resolution digital pressure sensor with integrated temperature measurement, suitable for applications such as:
+
+* weather monitoring
+* barometric measurements
+* altimetry support
+* environmental sensing
 
 ---
 
 # Features
 
 * I²C communication
-* Pressure measurement
-* Temperature measurement
-* One-shot acquisition
-* Continuous measurement mode
-* Configurable Output Data Rate (ODR)
-* Low-noise mode support
-* Optional low-pass filter
-* Soft reset and device reboot
-* Raw data access
+* device identification
+* pressure measurement
+* temperature measurement
+* one-shot acquisition
+* continuous measurement mode
+* configurable output data rate (ODR)
+* optional low-noise mode
+* optional low-pass filter
+* raw pressure and temperature access
+* data-ready status helpers
+* power-down mode
+* soft reset and reboot
+* temperature offset calibration
+* two-point temperature calibration
 
 ---
 
@@ -37,53 +47,16 @@ The WSEN-PADS is a high-resolution digital pressure sensor with integrated tempe
 
 ---
 
-# Hardware Connection
+# I²C Address
 
-The driver currently supports **I²C mode**.
-
-## Pins
-
-| Sensor Pin | Description          |
-| ---------- | -------------------- |
-| VDD        | Power supply         |
-| VDD_IO     | Interface supply     |
-| GND        | Ground               |
-| SDA        | I²C data             |
-| SCL        | I²C clock            |
-| CS         | Must be HIGH for I²C |
-| SAO        | Selects I²C address  |
-
-## I²C Address
+The sensor can use two I²C addresses depending on the **SAO pin**:
 
 | SAO  | Address |
 | ---- | ------- |
 | LOW  | `0x5C`  |
 | HIGH | `0x5D`  |
 
-Recommended configuration for a single device on the bus:
-
-```
-SAO = HIGH
-I2C address = 0x5D
-```
-
----
-
-# Installation
-
-Clone the repository and copy the driver to your MicroPython device.
-
-Example using **mpremote**:
-
-```bash
-mpremote mount lib/wsen-pads
-```
-
-The driver will then be available as:
-
-```python
-from wsen_pads import WSEN_PADS
-```
+The default address used by the driver is **0x5D**.
 
 ---
 
@@ -94,11 +67,7 @@ from machine import I2C, Pin
 from time import sleep
 from wsen_pads import WSEN_PADS
 
-i2c = I2C(
-    1,
-    scl=Pin(7),
-    sda=Pin(6),
-)
+i2c = I2C(1)
 
 sensor = WSEN_PADS(i2c)
 
@@ -114,30 +83,162 @@ while True:
 
 ---
 
-# One-shot Measurement
+# API Reference
+
+## Initialization
 
 ```python
-pressure, temperature = sensor.read_one_shot()
+sensor = WSEN_PADS(i2c)
 ```
 
-This triggers a single conversion and returns the measurement.
+Optional custom address:
+
+```python
+sensor = WSEN_PADS(i2c, address=0x5C)
+```
 
 ---
 
-# Continuous Mode
+## Measurements
+
+### Read pressure and temperature together
+
+```python
+sensor.read()
+```
+
+Returns:
+
+```python
+(pressure_hpa, temperature_c)
+```
+
+Example:
+
+```python
+pressure, temperature = sensor.read()
+print(pressure, temperature)
+```
+
+---
+
+### Pressure in hPa
+
+```python
+sensor.pressure_hpa()
+```
+
+Returns the pressure in **hPa**.
+
+---
+
+### Pressure in Pa
+
+```python
+sensor.pressure_pa()
+```
+
+Returns the pressure in **Pa**.
+
+---
+
+### Pressure in kPa
+
+```python
+sensor.pressure_kpa()
+```
+
+Returns the pressure in **kPa**.
+
+---
+
+### Temperature in °C
+
+```python
+sensor.temperature()
+```
+
+Returns the temperature in **degrees Celsius**.
+
+---
+
+## Raw Data
+
+### Raw pressure
+
+```python
+sensor.pressure_raw()
+```
+
+Returns a signed 24-bit raw pressure value.
+
+---
+
+### Raw temperature
+
+```python
+sensor.temperature_raw()
+```
+
+Returns a signed 16-bit raw temperature value.
+
+---
+
+## One-shot Measurement
+
+### Trigger one conversion
+
+```python
+sensor.trigger_one_shot()
+```
+
+Optional low-noise conversion:
+
+```python
+sensor.trigger_one_shot(low_noise=True)
+```
+
+---
+
+### Read one-shot measurement
+
+```python
+sensor.read_one_shot()
+```
+
+Returns:
+
+```python
+(pressure_hpa, temperature_c)
+```
+
+Optional low-noise mode:
+
+```python
+sensor.read_one_shot(low_noise=True)
+```
+
+---
+
+## Continuous Mode and Configuration
+
+### Enable continuous mode
+
+```python
+sensor.set_continuous(odr)
+```
+
+Example:
 
 ```python
 from wsen_pads.const import ODR_10_HZ
 
 sensor.set_continuous(odr=ODR_10_HZ)
-
-pressure = sensor.pressure_hpa()
-temperature = sensor.temperature()
 ```
 
 Available ODR values:
 
-```
+```python
 ODR_1_HZ
 ODR_10_HZ
 ODR_25_HZ
@@ -149,61 +250,216 @@ ODR_200_HZ
 
 ---
 
-# Raw Data Access
-
-Raw values from the sensor can also be read:
+### Continuous mode with options
 
 ```python
-raw_pressure = sensor.pressure_raw()
-raw_temperature = sensor.temperature_raw()
+sensor.set_continuous(
+    odr=ODR_25_HZ,
+    low_noise=False,
+    low_pass=False,
+    low_pass_strong=False,
+)
 ```
 
-Conversions:
+Parameters:
 
+* `odr`: one of the `ODR_*` constants
+* `low_noise`: enables low-noise mode
+* `low_pass`: enables the pressure low-pass filter
+* `low_pass_strong`: selects stronger low-pass filtering
+
+---
+
+### Enable low-pass filter
+
+```python
+sensor.enable_low_pass()
 ```
-pressure_hpa = raw_pressure / 4096
-temperature_c = raw_temperature * 0.01
+
+Strong filtering:
+
+```python
+sensor.enable_low_pass(strong=True)
 ```
 
 ---
 
-# Status Helpers
-
-The driver provides helper functions for checking data availability.
+### Disable low-pass filter
 
 ```python
-sensor.pressure_available()
-sensor.temperature_available()
-sensor.is_ready()
+sensor.disable_low_pass()
 ```
 
 ---
 
-# Device Control
+## Status
 
-## Soft Reset
+### Check if pressure data is ready
+
+```python
+sensor.pressure_ready()
+```
+
+Returns `True` when new pressure data is available.
+
+---
+
+### Check if temperature data is ready
+
+```python
+sensor.temperature_ready()
+```
+
+Returns `True` when new temperature data is available.
+
+---
+
+### Check if both pressure and temperature are ready
+
+```python
+sensor.data_ready()
+```
+
+Returns `True` when both measurements are available.
+
+---
+
+## Identification
+
+### Read device ID
+
+```python
+sensor.device_id()
+```
+
+Returns the value of the sensor `DEVICE_ID` register.
+
+---
+
+## Power and Reset
+
+### Power down
+
+```python
+sensor.power_off()
+```
+
+Puts the sensor in power-down mode.
+
+---
+
+### Power on
+
+```python
+sensor.power_on()
+```
+
+By default, resumes continuous measurements at `ODR_1_HZ`.
+
+Custom ODR:
+
+```python
+sensor.power_on(odr=ODR_10_HZ)
+```
+
+---
+
+### Soft reset
 
 ```python
 sensor.soft_reset()
 ```
 
-## Reboot Sensor
+Resets user registers and restores the driver default configuration.
+
+---
+
+### Reboot
 
 ```python
 sensor.reboot()
 ```
 
+Reloads internal trimming parameters and restores the driver default configuration.
+
 ---
+
+# Calibration
+
+The driver supports software temperature calibration.
+
+## Temperature offset calibration
+
+Use this method when the sensor temperature is consistently shifted by a fixed offset.
+
+```python
+sensor.set_temp_offset(offset_c)
+```
+
+Example:
+
+```python
+sensor.set_temp_offset(-1.2)
+```
+
+This applies a simple correction in °C while keeping the gain at `1.0`.
+
+---
+
+## Two-point temperature calibration
+
+Use this method when you want to correct both offset and slope from two reference measurements.
+
+```python
+sensor.calibrate_temperature(ref_low, measured_low, ref_high, measured_high)
+```
+
+Parameters:
+
+* `ref_low`: reference temperature at the low point in °C
+* `measured_low`: sensor reading at the low point in °C
+* `ref_high`: reference temperature at the high point in °C
+* `measured_high`: sensor reading at the high point in °C
+
+Example:
+
+```python
+sensor.calibrate_temperature(
+    ref_low=0.0,
+    measured_low=0.8,
+    ref_high=50.0,
+    measured_high=48.7,
+)
+```
+
+This computes a corrected gain and offset so that the measured temperature better matches the reference values.
+
+---
+
+# Notes
+
+* If the sensor is in power-down mode, raw and converted read helpers automatically trigger a one-shot conversion before reading.
+* In continuous mode, `pressure_ready()`, `temperature_ready()`, and `data_ready()` can be used to know when fresh data is available.
+* Low-noise mode is not available at `ODR_100_HZ` or `ODR_200_HZ`.
+
+---
+
+sensor = WSEN_PADS(i2c)
+
 
 # Examples
 
 Examples are available in the `examples` directory.
 
+| Example       | Description                         |
+| ------------- | ----------------------------------- |
+| `pressure.py` | Basic pressure and temperature read |
+
 ---
 
 # Driver Structure
 
-```
+```text
 wsen-pads/
 │
 ├── README.md
@@ -216,5 +472,3 @@ wsen-pads/
     ├── device.py
     └── exceptions.py
 ```
-
----
