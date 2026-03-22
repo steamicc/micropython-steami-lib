@@ -13,7 +13,7 @@ while True:
 
     ax, ay, az = imu.acceleration_g()
     gx, gy, gz = imu.gyroscope_dps()
-    temp = imu.temperature_c()
+    temp = imu.temperature()
 
     print(
         "A[g]=({:+.2f},{:+.2f},{:+.2f})  "

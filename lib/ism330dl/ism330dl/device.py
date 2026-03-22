@@ -182,7 +182,7 @@ class ISM330DL(object):
         dps = self.gyroscope_dps()
         return tuple(v * pi / 180.0 for v in dps)
 
-    def temperature_c(self):
+    def temperature(self):
         factory = TEMP_OFFSET + self.temperature_raw() / TEMP_SENSITIVITY
         return self._temp_gain * factory + self._temp_offset
 

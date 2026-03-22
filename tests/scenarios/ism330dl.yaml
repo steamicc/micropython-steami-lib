@@ -141,7 +141,7 @@ tests:
 
   - name: "Temperature returns 25.0 from mock data"
     action: call
-    method: temperature_c
+    method: temperature
     expect_range: [24.9, 25.1]
     mode: [mock]
 
@@ -156,7 +156,7 @@ tests:
     action: script
     script: |
       dev.set_temp_offset(-2.5)
-      result = abs(dev.temperature_c() - 22.5) < 0.1
+      result = abs(dev.temperature() - 22.5) < 0.1
     expect_true: true
     mode: [mock]
 
@@ -164,7 +164,7 @@ tests:
     action: script
     script: |
       dev.calibrate_temperature(20.0, 25.0, 30.0, 35.0)
-      result = dev.temperature_c()
+      result = dev.temperature()
     expect_range: [19.0, 21.0]
     mode: [mock]
 
@@ -181,7 +181,7 @@ tests:
 
   - name: "Temperature in plausible range"
     action: call
-    method: temperature_c
+    method: temperature
     expect_range: [10.0, 50.0]
     mode: [hardware]
 
@@ -328,7 +328,7 @@ tests:
     action: script
     script: |
       dev.power_off()
-      t = dev.temperature_c()
+      t = dev.temperature()
       result = isinstance(t, float)
     expect_true: true
     mode: [mock]
@@ -410,7 +410,7 @@ tests:
     action: script
     script: |
       dev.power_off()
-      t = dev.temperature_c()
+      t = dev.temperature()
       result = 10.0 < t < 50.0
     expect_true: true
     mode: [hardware]
@@ -426,7 +426,7 @@ tests:
       - method: gyroscope_dps
         label: "Gyroscope (dps)"
         unit: ""
-      - method: temperature_c
+      - method: temperature
         label: "Temperature"
         unit: "°C"
       - method: orientation

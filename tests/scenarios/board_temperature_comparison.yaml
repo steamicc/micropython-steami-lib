@@ -58,7 +58,7 @@ tests:
       from ism330dl.device import ISM330DL
       imu = ISM330DL(i2c)
       sleep_ms(200)  # stabilize after reset
-      temps['ISM330DL'] = imu.temperature_c()
+      temps['ISM330DL'] = imu.temperature()
 
       # Print comparison table
       print('--- Temperature Comparison ---')
@@ -155,7 +155,7 @@ tests:
       mag_t = mag.temperature()
 
       ref_t4 = ref.temperature()
-      imu_t = imu.temperature_c()
+      imu_t = imu.temperature()
 
       print('--- Before offset alignment ---')
       print('  WSEN-HIDS (ref): ' + str(round(ref_t, 2)) + ' C')
@@ -179,7 +179,7 @@ tests:
       hts_t2 = hts.temperature()
       pads_t2 = pads.temperature()
       mag_t2 = mag.temperature()
-      imu_t2 = imu.temperature_c()
+      imu_t2 = imu.temperature()
 
       print('--- After offset alignment ---')
       print('  WSEN-HIDS (ref): ' + str(round(ref_t5, 2)) + ' C')

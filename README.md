@@ -224,7 +224,7 @@ imu = ISM330DL(i2c)
 # Reading values
 ax, ay, az = imu.acceleration_g()
 gx, gy, gz = imu.gyroscope_dps()
-temp = imu.temperature_c()
+temp = imu.temperature()
 
 # Configuration
 from ism330dl.const import ACCEL_ODR_104HZ, ACCEL_FS_4G

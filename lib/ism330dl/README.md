@@ -62,7 +62,7 @@ imu = ISM330DL(i2c)
 
 ax, ay, az = imu.acceleration_g()
 gx, gy, gz = imu.gyroscope_dps()
-temp = imu.temperature_c()
+temp = imu.temperature()
 
 print("Accel:", ax, ay, az)
 print("Gyro :", gx, gy, gz)
@@ -168,7 +168,7 @@ imu.motion()
 ## Temperature
 
 ```python
-imu.temperature_c()
+imu.temperature()
 ```
 
 Example:
