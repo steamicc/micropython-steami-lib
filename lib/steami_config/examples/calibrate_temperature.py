@@ -32,7 +32,7 @@ SENSORS = [
     ("hts221", "hts221.device", "HTS221", "temperature"),
     ("wsen_pads", "wsen_pads.device", "WSEN_PADS", "temperature"),
     ("lis2mdl", "lis2mdl.device", "LIS2MDL", "temperature"),
-    ("ism330dl", "ism330dl.device", "ISM330DL", "temperature_c"),
+    ("ism330dl", "ism330dl.device", "ISM330DL", "temperature"),
 ]
 
 for config_name, module, class_name, method in SENSORS:
