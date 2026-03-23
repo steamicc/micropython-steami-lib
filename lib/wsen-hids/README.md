@@ -229,7 +229,7 @@ Re-enables the sensor (restores active mode).
 sensor.reboot()
 ```
 
-Reloads internal memory and calibration data from non-volatile memory. 
+Reloads internal memory and calibration data from non-volatile memory.
 
 ---
 
