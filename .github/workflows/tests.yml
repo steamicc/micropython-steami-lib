@@ -28,3 +28,6 @@ jobs:
 
       - name: "🧪 Run mock tests"
         run: python -m pytest tests/ -v -k mock
+
+      - name: "📋 Validate examples"
+        run: python -m pytest tests/test_examples.py -v
