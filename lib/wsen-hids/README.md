@@ -186,7 +186,7 @@ sensor.set_one_shot_mode()
 
 # Averaging Configuration
 
-Configure internal measurement averaging:
+Configure internal measurement averaging for **temperature and humidity**:
 
 ```python
 sensor.set_average(avg_t=WSEN_HIDS.AVG_16, avg_h=WSEN_HIDS.AVG_16)
@@ -205,7 +205,18 @@ AVG_128
 AVG_256
 ```
 
-Higher averaging improves noise performance but increases conversion time.
+**Defaults:**
+
+```python
+AVG_T_DEFAULT = AVG_16
+AVG_H_DEFAULT = AVG_16
+```
+
+**Notes:**
+
+* The same averaging constants (`AVG_*`) are used for both temperature and humidity
+* Internally, temperature and humidity are configured in separate registers, but they share identical averaging values
+* Higher averaging improves noise performance but increases conversion time
 
 ---
 
