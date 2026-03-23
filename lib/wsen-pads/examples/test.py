@@ -29,9 +29,9 @@ def print_fail(name, err=None):
 
 
 def dump_registers(sensor):
-    ctrl1 = sensor._read_u8(REG_CTRL_1)
-    ctrl2 = sensor._read_u8(REG_CTRL_2)
-    int_source = sensor._read_u8(REG_INT_SOURCE)
+    ctrl1 = sensor._read_reg(REG_CTRL_1)
+    ctrl2 = sensor._read_reg(REG_CTRL_2)
+    int_source = sensor._read_reg(REG_INT_SOURCE)
 
     print("CTRL_1     = 0x{:02X}".format(ctrl1))
     print("CTRL_2     = 0x{:02X}".format(ctrl2))
@@ -69,8 +69,8 @@ def test_default_registers(sensor):
     print_header("3) Default driver configuration")
     dump_registers(sensor)
 
-    ctrl1 = sensor._read_u8(REG_CTRL_1)
-    ctrl2 = sensor._read_u8(REG_CTRL_2)
+    ctrl1 = sensor._read_reg(REG_CTRL_1)
+    ctrl2 = sensor._read_reg(REG_CTRL_2)
 
     # BDU should be enabled by the driver
     bdu_ok = bool(ctrl1 & 0x02)
