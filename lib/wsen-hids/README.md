@@ -249,7 +249,7 @@ Disable heater:
 sensor.enable_heater(False)
 ```
 
-⚠️ Measurements should **not be taken while the heater is active**.
+Measurements should **not be taken while the heater is active**.
 
 ---
 
