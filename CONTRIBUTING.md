@@ -35,7 +35,6 @@ lib/
 - **Exceptions**: use `except Exception:` instead of bare `except:`.
 - **No debug `print()`** in production driver code.
 
-
 ## Driver API conventions
 
 - **Constructor signature**: `def __init__(self, i2c, ..., address=DEFAULT_ADDR)` — first parameter is always `i2c` (not `bus`), address uses keyword argument with a default from `const.py`.
@@ -105,7 +104,6 @@ All pull requests must pass these checks:
 | Commit messages | `check-commits.yml` | Validates commit message format |
 | Linting | `python-linter.yml` | Runs `ruff check` |
 | Mock tests | `tests.yml` | Runs mock driver tests |
-
 
 ## Notes
 
