@@ -74,7 +74,7 @@ Run the full mock test suite:
 python -m pytest tests/ -v -k mock
 ```
 
-See full details in [tests/TESTING.md](tests/TESTING.MD)
+See full details in [tests/TESTING.md](tests/TESTING.md)
 ## Contributing
 
 Contributions are welcome! Please follow the project guidelines.
