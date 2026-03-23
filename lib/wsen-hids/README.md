@@ -149,6 +149,7 @@ sensor.set_continuous(WSEN_HIDS.ODR_1_HZ)
 Available output data rates:
 
 ```python
+WSEN_HIDS.ODR_ONE_SHOT
 WSEN_HIDS.ODR_1_HZ
 WSEN_HIDS.ODR_7_HZ
 WSEN_HIDS.ODR_12_5_HZ
