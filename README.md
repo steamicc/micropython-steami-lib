@@ -31,14 +31,43 @@ This repository contains all the drivers for the main components of the [STeaMi]
 
 
 ## Quick start
-Use mpremote to quickly run a driver example without installing anything on the board.
+
+Run a driver example on your STeaMi board without installing anything permanently.
+
+### Prerequisites
+
+* A STeaMi board running MicroPython
+* A USB cable to connect the board to your computer
+* Python installed on your computer
+
+### 1. Install `mpremote`
+
+`mpremote` is the official MicroPython tool to interact with your board.
 
 ```bash
 pip install mpremote
-mpremote mount lib/ism330dl run lib/ism330dl/examples/basic_read.py
 ```
 
-This mounts the driver temporarily and executes an example directly on the STeaMi board.
+### 2. Connect your board
+
+Plug your STeaMi board via USB.
+
+To verify that it is detected:
+
+```bash
+mpremote connect list
+```
+
+You should see a serial device (e.g. `/dev/ttyUSB0` on Linux or `COM3` on Windows).
+
+
+### 3. Run an example
+
+You can run a driver example directly on the board without copying files:
+
+```bash
+mpremote mount lib/ism330dl run lib/ism330dl/examples/basic_read.py
+```
 
 ## Installation
 
