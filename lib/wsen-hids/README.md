@@ -39,26 +39,19 @@ Main characteristics:
 | Humidity accuracy    | ±1.8 %RH          |
 | Temperature accuracy | ±0.2 °C           |
 
----
-
 # Quick Example
 
 ```python
-from machine import I2C, Pin
+from machine import I2C
 from time import sleep
 from wsen_hids import WSEN_HIDS
 
-i2c = I2C(
-    0,
-    scl=Pin(9),
-    sda=Pin(8),
-    freq=100000,
-)
+i2c = I2C(1)
 
 sensor = WSEN_HIDS(i2c)
 
 while True:
-    humidity, temperature = sensor.read_one_shot()
+    humidity, temperature = sensor.read()
 
     print("Humidity: {:.2f} %RH".format(humidity))
     print("Temperature: {:.2f} °C".format(temperature))
@@ -87,6 +80,27 @@ sensor = WSEN_HIDS(
 )
 ```
 
+### `device_id()`
+
+Read the device identification register.
+
+```python
+sensor.device_id()
+```
+
+**Returns:** `int` — Device ID (`WHO_AM_I` register value)
+
+
+### `enable_bdu(enable=True)`
+
+Enable or disable Block Data Update (BDU).
+
+```python
+sensor.enable_bdu(enable=True)
+```
+
+When enabled, output registers are not updated until both high and low bytes are read. Recommended to avoid reading inconsistent data.
+
 ---
 
 # Reading Measurements
@@ -113,21 +127,27 @@ temperature = sensor.temperature()
 
 ### Measurement behavior
 
-After initialization, the sensor operates in **one-shot mode** (ODR = 00).  
+After initialization, the sensor operates in **one-shot mode** (ODR = 00).
 If `read()`, `humidity()`, or `temperature()` are called while the sensor is not in continuous mode, the driver **automatically triggers a one-shot conversion** to ensure fresh data is returned.
-
-This allows simple usage:
 
 ```python
 humidity, temperature = sensor.read()
+```
 
-Continuous measurements can be enabled with sensor.set_continuous().
+Continuous measurements can be enabled with:
+
+```python
+sensor.set_continuous(WSEN_HIDS.ODR_1_HZ)
+```
+
+---
 
 # One-Shot Measurement
 
 Trigger a single conversion:
 
 ```python
+# Default timeout (100 ms)
 humidity, temperature = sensor.read_one_shot()
 ```
 
@@ -150,6 +170,7 @@ sensor.set_continuous(WSEN_HIDS.ODR_1_HZ)
 Available output data rates:
 
 ```python
+WSEN_HIDS.ODR_ONE_SHOT
 WSEN_HIDS.ODR_1_HZ
 WSEN_HIDS.ODR_7_HZ
 WSEN_HIDS.ODR_12_5_HZ
@@ -165,7 +186,7 @@ sensor.set_one_shot_mode()
 
 # Averaging Configuration
 
-Configure internal measurement averaging:
+Configure internal measurement averaging for **temperature and humidity**:
 
 ```python
 sensor.set_average(avg_t=WSEN_HIDS.AVG_16, avg_h=WSEN_HIDS.AVG_16)
@@ -184,7 +205,42 @@ AVG_128
 AVG_256
 ```
 
-Higher averaging improves noise performance but increases conversion time.
+**Defaults:**
+
+```python
+AVG_T_DEFAULT = AVG_16
+AVG_H_DEFAULT = AVG_16
+```
+
+**Notes:**
+
+* The same averaging constants (`AVG_*`) are used for both temperature and humidity
+* Internally, temperature and humidity are configured in separate registers, but they share identical averaging values
+* Higher averaging improves noise performance but increases conversion time
+
+---
+
+# Power Management
+
+The driver provides basic power control methods:
+
+```python
+sensor.power_off()
+```
+
+Disables the sensor by clearing the PD bit.
+
+```python
+sensor.power_on()
+```
+
+Re-enables the sensor (restores active mode).
+
+```python
+sensor.reboot()
+```
+
+Reloads internal memory and calibration data from non-volatile memory.
 
 ---
 
@@ -204,7 +260,7 @@ Disable heater:
 sensor.enable_heater(False)
 ```
 
-⚠️ Measurements should **not be taken while the heater is active**.
+Measurements should **not be taken while the heater is active**.
 
 ---
 
@@ -213,10 +269,9 @@ sensor.enable_heater(False)
 Check measurement readiness:
 
 ```python
-sensor.status()
+sensor.data_ready()
 sensor.humidity_ready()
 sensor.temperature_ready()
-sensor.data_ready()
 ```
 
 These helpers read the **STATUS register** and indicate when fresh data is available.
@@ -227,7 +282,14 @@ These helpers read the **STATUS register** and indicate when fresh data is avail
 
 The driver automatically reads the sensor’s **factory calibration coefficients** during initialization and applies the conversion formulas internally.
 
-No user calibration is required.
+Additional calibration methods are available:
+
+```python
+sensor.set_temp_offset(offset_c)
+sensor.calibrate_temperature(ref_low, measured_low, ref_high, measured_high)
+```
+
+No calibration is required for basic usage.
 
 ---
 
@@ -244,9 +306,3 @@ Examples include:
 * basic one-shot measurements
 * continuous measurement mode
 * driver validation tests
-
-Run an example using:
-
-```bash
-mpremote mount lib/wsen-hids run lib/wsen-hids/examples/continuous_mode.py
-```
