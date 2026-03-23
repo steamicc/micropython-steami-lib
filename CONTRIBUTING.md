@@ -8,16 +8,15 @@ The goal is to maintain a consistent, reliable, and maintainable codebase across
 Each driver must follow this layout:
 
 ```
-lib/
-├── <driver_folder>/
-|    ├── <driver>
-|    |    ├── __init__.py
-|    |    ├── device.py
-|    |    └── const.py
-|    ├── examples/
-|    │   └── *.py
-|    ├── manifest.py
-|    └── README.md
+lib/<component>/
+├── README.md
+├── manifest.py
+├── <module_name>/
+│   ├── __init__.py
+│   ├── const.py
+│   └── device.py
+└── examples/
+    └── *.py
 ```
 
 ### Requirements
@@ -69,26 +68,21 @@ Use the following format:
 <scope>: <Description starting with a capital letter ending with a period.>
 ```
 
-### Types
-
-* `feat`: new feature or driver
-* `fix`: bug fix
-* `docs`: documentation changes
-* `refactor`: code improvement
-* `test`: test-related changes
+The scope is the driver name or domain (`hts221`, `ism330dl`, `docs`, `tests`, `ci`...). There is no predefined list of types — the scope is free-form.
 
 ### Examples
 
 ```
-hts221: Fix missing self parameter in getAv method.
-ism330dl: Add driver.
-fix: Correct pressure conversion in wsen-pads.
+hts221: Fix missing self parameter in get_av method.
+ism330dl: Add driver support for temperature reading.
+wsen-pads: Correct pressure conversion formula.
 docs: Update README driver table.
+tests: Add mock scenarios for mcp23009e driver.
 ```
 
 ## Workflow
 
-1. Create a branch from main (`git checkout -b feat/my-new-feature`)
+1. Create a branch from main (`git checkout -b my-new-feature`)
 2. Write your code and add tests in `tests/scenarios/<driver>.yaml`
 3. Run `ruff check` and `python -m pytest tests/ -v -k mock locally`
 4. Commit your changes following the commit message format

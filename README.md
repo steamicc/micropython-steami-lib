@@ -24,9 +24,9 @@ This repository contains all the drivers for the main components of the [STeaMi]
 | WSEN-PADS     | [`wsen-pads`](lib/wsen-pads/README.md)         | `0x5D`      | Pressure + temperature                |
 | ISM330DL      | [`ism330dl`](lib/ism330dl/README.md)           | `0x6B`      | 6-axis IMU (accel + gyro)             |
 | LIS2MDL       | [`lis2mdl`](lib/lis2mdl/README.md)             | `0x1E`      | 3-axis magnetometer                   |
-| IM34DT05      | [`im34dt05`](lib/im34dt05/README.md)           | — (PDM)     | Digital microphone                    |
-| BME280        | [`bme280`](lib/bme280/README.md)               | `0x76`      | Pressure + humidity + temperature     |
-| GC9A01        | [`gc9a01`](lib/gc9a01/README.md)               | — (SPI)     | Round color LCD display               |
+| IM34DT05      | `im34dt05` *(not yet implemented)*              | — (PDM)     | Digital microphone                    |
+| BME280        | `bme280` *(not yet implemented)*                | `0x76`      | Pressure + humidity + temperature     |
+| GC9A01        | `gc9a01` *(not yet implemented)*                | — (SPI)     | Round color LCD display               |
 | STeaMi Config | [`steami_config`](lib/steami_config/README.md) | —           | Persistent board configuration        |
 
 
@@ -71,13 +71,9 @@ mpremote mount lib/ism330dl run lib/ism330dl/examples/basic_read.py
 
 ## Installation
 
-### Method 1: Using mpremote (temporary)
+### Method 1: Using mpremote (recommended for development)
 
-Use this method during development to run drivers without copying them to the board. (recommended for development)
-
-```bash
-mpremote mount lib/<driver_folder>/<driver> run lib/<driver_folder>/examples/<driver_example>
-```
+The Quick start section above shows how to run examples temporarily. The `mount` command makes the driver available without copying it to the board.
 
 ### Method 2: Permanent installation (copy to board)
 
