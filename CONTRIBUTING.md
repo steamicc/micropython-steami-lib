@@ -13,7 +13,6 @@ lib/
 |    ├── <driver>
 |    |    ├── __init__.py
 |    |    ├── device.py
-|    |    ├── exceptions.py
 |    |    └── const.py
 |    ├── examples/
 |    │   └── *.py
