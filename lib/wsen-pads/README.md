@@ -22,7 +22,6 @@ The WSEN-PADS is a high-resolution digital pressure sensor with integrated tempe
 * one-shot acquisition
 * continuous measurement mode
 * configurable output data rate (ODR)
-* optional low-noise mode
 * optional low-pass filter
 * raw pressure and temperature access
 * data-ready status helpers
@@ -63,7 +62,7 @@ The default address used by the driver is **0x5D**.
 # Basic Usage
 
 ```python
-from machine import I2C, Pin
+from machine import I2C
 from time import sleep
 from wsen_pads import WSEN_PADS
 
@@ -102,6 +101,8 @@ sensor = WSEN_PADS(i2c, address=0x5C)
 ## Measurements
 
 ### Read pressure and temperature together
+
+`read()` triggers a one-shot conversion internally. In continuous mode, prefer using `pressure_hpa()` and `temperature()` to avoid interrupting measurements.
 
 ```python
 sensor.read()
@@ -210,12 +211,6 @@ Returns:
 
 ```python
 (pressure_hpa, temperature_c)
-```
-
-Optional low-noise mode:
-
-```python
-sensor.read_one_shot(low_noise=True)
 ```
 
 ---
@@ -444,16 +439,18 @@ This computes a corrected gain and offset so that the measured temperature bette
 
 ---
 
-sensor = WSEN_PADS(i2c)
-
-
 # Examples
 
 Examples are available in the `examples` directory.
 
 | Example       | Description                         |
 | ------------- | ----------------------------------- |
-| `pressure.py` | Basic pressure and temperature read |
+| `basic_reader.py`      | Basic pressure and temperature read |
+| `continuous_reader.py` | Continuous measurement example      |
+| `one_shot_reader.py`   | One-shot measurement example        |
+| `altitude.py`          | Altitude estimation from pressure   |
+| `test.py`              | Driver test script                  |
+
 
 ---
 
@@ -472,3 +469,13 @@ wsen-pads/
     ├── device.py
     └── exceptions.py
 ```
+
+# Hardware Connection
+
+| Pin     | Description |
+|--------|------------|
+| VDD    | Power supply |
+| GND    | Ground |
+| SDA    | I²C data |
+| SCL    | I²C clock |
+| SAO    | I²C address selection |
