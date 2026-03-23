@@ -2,529 +2,109 @@
 
 This repository contains all the drivers for the main components of the [STeaMi](https://www.steami.cc/) board. These drivers are written for MicroPython and are designed to be used either in the construction of the official MicroPython firmware for the STeaMi board or independently for custom projects.
 
-## Repository Contents
+## Repository contents
 
-The repository is organized as follows:
+* Ready-to-use **MicroPython drivers**
+* Consistent **API design across all components**
+* Full **mock + hardware test suite**
+* CI integration for reliability
 
+## Board components
+
+| Component     | Driver                                         | I2C Address | Description                           |
+| ------------- | ---------------------------------------------- | ----------- | ------------------------------------- |
+| BQ27441-G1    | [`bq27441`](lib/bq27441/README.md)             | `0x55`      | Battery fuel gauge                    |
+| DAPLink Flash | [`daplink_flash`](lib/daplink_flash/README.md) | `0x3B`      | I2C-to-SPI flash bridge + config zone |
+| SSD1327       | [`ssd1327`](lib/ssd1327/README.md)             | — (SPI)     | 128x128 greyscale OLED display        |
+| MCP23009E     | [`mcp23009e`](lib/mcp23009e/README.md)         | `0x20`      | 8-bit I/O expander (D-PAD)            |
+| VL53L1X       | [`vl53l1x`](lib/vl53l1x/README.md)             | `0x29`      | Time-of-Flight distance sensor        |
+| APDS-9960     | [`apds9960`](lib/apds9960/README.md)           | `0x39`      | Proximity, gesture, color, light      |
+| HTS221        | [`hts221`](lib/hts221/README.md)               | `0x5F`      | Humidity + temperature                |
+| WSEN-HIDS     | [`wsen-hids`](lib/wsen-hids/README.md)         | `0x5F`      | Humidity + temperature                |
+| WSEN-PADS     | [`wsen-pads`](lib/wsen-pads/README.md)         | `0x5D`      | Pressure + temperature                |
+| ISM330DL      | [`ism330dl`](lib/ism330dl/README.md)           | `0x6B`      | 6-axis IMU (accel + gyro)             |
+| LIS2MDL       | [`lis2mdl`](lib/lis2mdl/README.md)             | `0x1E`      | 3-axis magnetometer                   |
+| IM34DT05      | `im34dt05` *(not yet implemented)*              | — (PDM)     | Digital microphone                    |
+| BME280        | `bme280` *(not yet implemented)*                | `0x76`      | Pressure + humidity + temperature     |
+| GC9A01        | `gc9a01` *(not yet implemented)*                | — (SPI)     | Round color LCD display               |
+| STeaMi Config | [`steami_config`](lib/steami_config/README.md) | —           | Persistent board configuration        |
+
+
+## Quick start
+
+Run a driver example on your STeaMi board without installing anything permanently.
+
+### Prerequisites
+
+* A STeaMi board running MicroPython
+* A USB cable to connect the board to your computer
+* Python installed on your computer
+
+### 1. Install `mpremote`
+
+`mpremote` is the official MicroPython tool to interact with your board.
+
+```bash
+pip install mpremote
 ```
-micropython-steami-lib/
-├── lib/                # Drivers for the different components
-│   ├── bq27441/        # Battery gauge BQ27441-G1
-│   │   ├── README.md   # Component-specific documentation
-│   │   ├── manifest.py # Manifest file for firmware inclusion
-│   │   ├── bq27441/    # Driver source code
-│   │   └── examples/   # Usage examples
-│   ├── daplink_flash/  # DAPLink Flash bridge (I2C to W25Q64JV)
-│   ├── ssd1327/        # OLED display controller SSD1327ZB
-│   ├── mcp23009/       # I2C I/O expander MCP23009
-│   ├── vl53l1cx/       # Distance sensor VL53L1CX
-│   ├── apds9960/       # Gesture and color sensor APDS-9960
-│   ├── wsen_hids/      # Humidity sensor WSEN-HIDS 2525020210001
-│   ├── ism330dl/       # Accelerometer and gyroscope ISM330DL
-│   ├── lis2mdl/        # Magnetometer LIS2MDLTR
-│   ├── wsen_pads/      # Pressure sensor WSEN-PADS 25110202133011
-│   ├── im34dt05/       # Digital microphone IM34DT05
-├── LICENSE             # Project license
-└── README.md           # This file
+
+### 2. Connect your board
+
+Plug your STeaMi board via USB.
+
+To verify that it is detected:
+
+```bash
+mpremote connect list
+```
+
+You should see a serial device (e.g. `/dev/ttyUSB0` on Linux or `COM3` on Windows).
+
+
+### 3. Run an example
+
+You can run a driver example directly on the board without copying files:
+
+```bash
+mpremote mount lib/ism330dl run lib/ism330dl/examples/basic_read.py
 ```
 
 ## Installation
 
-### Method 1: Using mpremote
+### Method 1: Using mpremote (recommended for development)
 
-To use the drivers without permanent installation, you can use `mpremote` to mount the desired driver on your STeaMi board and run examples.
+The Quick start section above shows how to run examples temporarily. The `mount` command makes the driver available without copying it to the board.
 
-1. Make sure you have installed `mpremote`:
+### Method 2: Permanent installation (copy to board)
 
-   ```bash
-   pip install mpremote
-   ```
-
-2. Connect your STeaMi board to your computer via USB.
-
-3. Mount the driver and run an example (see the specific section for each driver below).
-
-### Method 2: Permanent Installation
-
-If you want to permanently install the drivers on your board:
+Install a driver permanently by copying it into the board’s /lib directory.
 
 ```bash
-mpremote cp -r lib/<driver>/<driver_folder> :lib/
+mpremote cp -r lib/<driver_folder>/<driver> :lib/
 ```
 
-For example, to install the SSD1327 display driver:
+Example:
 
 ```bash
 mpremote cp -r lib/ssd1327/ssd1327 :lib/
 ```
 
-## Using the Drivers
-
-Here's the documentation for each driver available in this repository:
-
-### BQ27441-G1 (Battery Gauge)
-
-The BQ27441-G1 is a precision battery gauge that monitors battery status.
-
-#### Mounting and Running an Example
-
-```bash
-# Mount the driver and run the example
-mpremote mount lib/bq27441 run lib/bq27441/examples/fuel_gauge.py
-```
-
-#### Basic API
-
-```python
-from bq27441 import BQ27441
-
-# Initialization with default I2C
-i2c = machine.I2C(0)
-bq = BQ27441(i2c)
-
-# Reading battery information
-bq.state_of_charge() # State of charge in %
-bq.voltage_mv() # Voltage in mV
-bq.current_average() # Average current discharge in mA
-bq.capacity_full() # Full capacity in mAh
-bq.capacity_remaining() # Remaining capacity in mAh
-```
-
-### DAPLink Flash (I2C Flash Bridge)
-
-The STeaMi board has a W25Q64JV 64 Mbit SPI flash memory connected to the STM32F103 (DAPLink). The STM32WB55 accesses it via I2C through the DAPLink bridge.
-
-#### Mounting and Running an Example
-
-```bash
-# Mount the driver and run the example
-mpremote mount lib/daplink_flash run lib/daplink_flash/examples/write_csv.py
-```
-
-#### Basic API
-
-```python
-from daplink_flash import DaplinkFlash
-
-# Initialization
-i2c = machine.I2C(1)
-flash = DaplinkFlash(i2c)
-
-# Write a CSV file
-flash.set_filename("DATA", "CSV")
-flash.write_line("temperature;humidity")
-flash.write_line("25.3;48.2")
-
-# Erase flash
-flash.clear_flash()
-```
-
-### SSD1327ZB (OLED Display Controller)
-
-The SSD1327ZB is a monochrome OLED display controller.
-
-#### Mounting and Running an Example
-
-```bash
-# Mount the driver and run the example
-mpremote mount lib/ssd1327 run lib/ssd1327/examples/helloworld.py
-```
-
-#### Basic API
-
-```python
-from ssd1327 import SSD1327
-
-# Initialization
-spi = SPI(1)
-dc = Pin("DATA_COMMAND_DISPLAY")
-res = Pin("RST_DISPLAY")
-cs = Pin("CS_DISPLAY")
-
-display = ssd1327.WS_OLED_128X128_SPI(spi, dc, res, cs)
-
-# Display
-display.fill(0)                # Clear the screen
-display.text("STeaMi", 0, 0)   # Display text
-display.show()                 # Update the display
-```
-
-### MCP23009 (I2C I/O Expander)
-
-The MCP23009 is an 8-bit I/O expander with I2C interface.
-
-#### Mounting and Running an Example
-
-```bash
-# Mount the driver and run the example
-mpremote mount lib/mcp23009 run lib/mcp23009/examples/gpio_control.py
-```
-
-#### Basic API
-
-```python
-from mcp23009 import MCP23009
-
-# Initialization
-i2c = machine.I2C(1)
-mcp = MCP23009(i2c)
-
-# Pin configuration and control
-mcp.setup(0, MCP23009.OUT)     # Configure pin 0 as output
-mcp.output(0, 1)               # Set pin 0 high
-mcp.setup(1, MCP23009.IN)      # Configure pin 1 as input
-value = mcp.input(1)           # Read pin 1 state
-```
-
-### VL53L1CX (ToF Distance Sensor)
-
-The VL53L1CX is a precision time-of-flight (ToF) distance sensor.
-
-#### Mounting and Running an Example
-
-```bash
-# Mount the driver and run the example
-mpremote mount lib/vl53l1cx run lib/vl53l1cx/examples/distance.py
-```
-
-#### Basic API
-
-```python
-from vl53l1cx import VL53L1CX
-
-# Initialization
-i2c = machine.I2C(1)
-tof = VL53L1CX(i2c)
-
-# Configuration and measurement
-distance = tof.read()  # Distance in mm
-
-```
-
-### ISM330DL (Accelerometer and Gyroscope)
-
-The ISM330DL is a 6DOF inertial module integrating accelerometer and gyroscope.
-
-#### Mounting and Running an Example
-
-```bash
-# Mount the driver and run the example
-mpremote mount lib/ism330dl run lib/ism330dl/examples/basic_read.py
-```
-
-#### Basic API
-
-```python
-from ism330dl import ISM330DL
-
-# Initialization
-i2c = machine.I2C(1)
-imu = ISM330DL(i2c)
-
-# Reading values
-ax, ay, az = imu.acceleration_g()
-gx, gy, gz = imu.gyroscope_dps()
-temp = imu.temperature()
-
-# Configuration
-from ism330dl.const import ACCEL_ODR_104HZ, ACCEL_FS_4G
-imu.configure_accel(ACCEL_ODR_104HZ, ACCEL_FS_4G)
-```
-
-### APDS-9960 (Gesture and Color Sensor)
-
-The APDS-9960 is a proximity, gesture, color, and ambient light sensor.
-
-#### Mounting and Running an Example
-
-```bash
-# Mount the driver and run the example
-mpremote mount lib/apds9960 run lib/apds9960/examples/ambient_light.py
-```
-
-#### Basic API
-
-```python
-from apds9960 import APDS9960
-
-# Initialization
-i2c = machine.I2C(1)
-apds = APDS9960(i2c)
-
-apds.enable_light_sensor()
-light = apds.ambient_light()
-
-```
-
-### WSEN-HIDS (Humidity Sensor)
-
-The WSEN-HIDS 2525020210001 is a high-precision humidity and temperature sensor.
-
-#### Mounting and Running an Example
-
-```bash
-# Mount the driver and run the example
-mpremote mount lib/wsen_hids run lib/wsen_hids/examples/humidity.py
-```
-
-#### Basic API
-
-```python
-from wsen_hids import WSEN_HIDS
-
-# Initialization
-i2c = machine.I2C(1)
-hids = WSEN_HIDS(i2c)
-
-# Reading values
-humidity = hids.humidity()      # Relative humidity in %
-temperature = hids.temperature() # Temperature in °C
-```
-
-### LIS2MDLTR (Magnetometer)
-
-The LIS2MDLTR is a high-precision 3-axis magnetometer.
-
-#### Mounting and Running an Example
-
-```bash
-# Mount the driver and run the example
-mpremote mount lib/lis2mdl run lib/lis2mdl/examples/compass.py
-```
-
-#### Basic API
-
-```python
-from lis2mdl import LIS2MDL
-
-# Initialization
-i2c = machine.I2C(1)
-mag = LIS2MDL(i2c)
-
-# Reading values
-mag_x, mag_y, mag_z = mag.read_mag()
-
-# Configuration
-mag.set_data_rate(LIS2MDL.DATA_RATE_10HZ)
-```
-
-### WSEN-PADS (Pressure Sensor)
-
-The WSEN-PADS 25110202133011 is a high-precision pressure and temperature sensor.
-
-#### Mounting and Running an Example
-
-```bash
-# Mount the driver and run the example
-mpremote mount lib/wsen_pads run lib/wsen_pads/examples/pressure.py
-```
-
-#### Basic API
-
-```python
-from wsen_pads import WSEN_PADS
-
-# Initialization
-i2c = machine.I2C(1)
-pads = WSEN_PADS(i2c)
-
-# Reading values
-pressure = pads.pressure_hpa()       # Pressure in hPa
-temperature = pads.temperature() # Temperature in °C
-```
-
-### IM34DT05 (Digital Microphone)
-
-The IM34DT05 is a MEMS digital microphone with PDM interface.
-
-#### Mounting and Running an Example
-
-```bash
-# Mount the driver and run the example
-mpremote mount lib/im34dt05 run lib/im34dt05/examples/sound_level.py
-```
-
-#### Basic API
-
-```python
-from im34dt05 import IM34DT05
-
-# Initialization
-clock_pin = machine.Pin(MIC_CLK, machine.Pin.OUT)
-data_pin = machine.Pin(MIC_IN, machine.Pin.IN)
-mic = IM34DT05(clock_pin, data_pin)
-
-# Audio acquisition
-mic.start()
-samples = mic.read_samples(1024)
-mic.stop()
-
-# Audio processing
-level = mic.sound_level(samples)  # Sound level in dB
-```
+Once copied, the driver can be imported normally without mounting.
 
 ## Testing
 
-The project includes a test framework that supports both mock tests (without hardware) and hardware tests (with a STeaMi board connected).
-
-### Install test dependencies
-
-```bash
-pip install pytest pyyaml
-```
-
-### Run mock tests (no hardware needed)
+Run the full mock test suite:
 
 ```bash
 python -m pytest tests/ -v -k mock
 ```
 
-### Run hardware tests (STeaMi board connected)
-
-```bash
-python -m pytest tests/ -v --port /dev/ttyACM0
-```
-
-### Run tests for a specific driver
-
-```bash
-python -m pytest tests/ -v --driver hts221 --port /dev/ttyACM0
-```
-
-### Run interactive tests (with manual validation)
-
-```bash
-python -m pytest tests/ -v --port /dev/ttyACM0 -s
-```
-
-### Generate a test report
-
-Reports are saved as Markdown files in the `reports/` directory, with a summary and a detailed sub-report per driver.
-
-```bash
-# Timestamped report
-python -m pytest tests/ -v --port /dev/ttyACM0 --report auto
-
-# Named report (e.g. before a release)
-python -m pytest tests/ -v --port /dev/ttyACM0 --report v1.0-validation
-```
-
-### Add tests for a new driver
-
-Create a YAML scenario file in `tests/scenarios/<driver>.yaml`:
-
-```yaml
-driver: hts221
-driver_class: HTS221
-i2c_address: 0x5F
-
-i2c:
-  id: 1
-
-mock_registers:
-  0x0F: 0xBC
-
-tests:
-  - name: "Verify device ID"
-    action: read_register
-    register: 0x0F
-    expect: 0xBC
-    mode: [mock, hardware]
-
-  - name: "Temperature in plausible range"
-    action: call
-    method: temperature
-    expect_range: [10.0, 45.0]
-    mode: [hardware]
-```
-
-The test runner automatically discovers new YAML files.
-
+See full details in [tests/TESTING.md](tests/TESTING.md)
 ## Contributing
 
-Contributions are welcome! Please follow the guidelines below.
+Contributions are welcome! Please follow the project guidelines.
 
-### Driver structure
-
-Each driver must follow this structure:
-
-```
-lib/<component>/
-├── README.md
-├── manifest.py          # metadata() + package("<module_name>")
-├── <module_name>/
-│   ├── __init__.py      # exports main class
-│   ├── const.py         # register constants using micropython.const()
-│   └── device.py        # main driver class
-└── examples/
-    └── *.py
-```
-
-### Coding conventions
-
-- **Constants**: use `from micropython import const` wrapper in `const.py` files.
-- **Naming**: `snake_case` for all methods and variables. Enforced by ruff (N802, N803, N806).
-- **Class inheritance**: `class Foo(object):` is the existing convention.
-- **Time**: use `from time import sleep_ms` (not `utime`, not `sleep()` with float seconds).
-- **Exceptions**: use `except Exception:` instead of bare `except:`.
-- **No debug `print()`** in production driver code.
-
-### Driver API conventions
-
-- **Constructor signature**: `def __init__(self, i2c, ..., address=DEFAULT_ADDR)` — first parameter is always `i2c` (not `bus`), address uses keyword argument with a default from `const.py`.
-- **Attributes**: `self.i2c` for the I2C bus, `self.address` for the device address (not `self.bus`, `self.addr`).
-- **I2C helpers**: use private snake_case methods `_read_reg()`, `_write_reg()` for register access.
-- **Device identification**: `device_id()` — returns the device/WHO_AM_I register value. All I2C drivers with an ID register must implement this method.
-- **Reset methods**: `reset()` for hardware reset (pin toggle), `soft_reset()` for software reset (register write), `reboot()` for memory reboot (reload trimming).
-- **Power methods**: `power_on()` / `power_off()`. All drivers must implement both.
-- **Status methods**: `_status()` returns the raw status register as an int (private), `data_ready()` returns True when all channels have new data, `<measurement>_ready()` for per-channel readiness (e.g. `temperature_ready()`, `pressure_ready()`).
-- **Measurement methods**: bare noun without unit suffix only for `temperature()` (°C) and `humidity()` (%RH). All others include the unit: `pressure_hpa()`, `distance_mm()`, `voltage_mv()`, `acceleration_g()`, etc. `read()` for combined reading returning a tuple, `<measurement>_raw()` for raw register values.
-- **Mode methods**: `set_continuous(odr)` to start continuous measurements, `trigger_one_shot()` for a single conversion, `read_one_shot()` for trigger + wait + return data.
-
-### Linting
-
-The project uses [ruff](https://docs.astral.sh/ruff/) (config in `pyproject.toml`).
-
-```bash
-# Check for linting errors
-ruff check
-
-# Auto-format code
-ruff format
-```
-
-### Commit messages
-
-Commit messages are validated by CI with the following pattern:
-
-```
-<scope>: <Description starting with a capital letter ending with a period.>
-```
-
-- Max 78 characters.
-- Examples:
-  - `hts221: Fix missing self parameter in getAv method.`
-  - `docs: Fix typos in README files.`
-  - `bq27441: Remove debug print statements from driver.`
-
-### CI checks
-
-All pull requests must pass these checks:
-
-| Check | Workflow | Description |
-|-------|----------|-------------|
-| Commit messages | `check-commits.yml` | Validates commit message format |
-| Linting | `python-linter.yml` | Runs `ruff check` |
-| Mock tests | `tests.yml` | Runs mock driver tests |
-
-### Workflow
-
-1. Fork the repository
-2. Create a branch for your feature (`git checkout -b feat/my-new-feature`)
-3. Write your code and add tests in `tests/scenarios/<driver>.yaml`
-4. Run `ruff check` and `python -m pytest tests/ -v -k mock` locally
-5. Commit your changes following the commit message format
-6. Push to the branch and create a Pull Request
+See [CONTRIBUTING.md](CONTRIBUTING.md)
 
 ## License
 
