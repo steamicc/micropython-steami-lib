@@ -1,21 +1,11 @@
 """Validate example files: syntax, method names, and basic consistency."""
 
 import ast
-import re
-import importlib
-import inspect
 from pathlib import Path
 
 import pytest
 
 LIB_DIR = Path(__file__).parent.parent / "lib"
-
-# Modules that exist only in MicroPython — skip import resolution for these.
-MICROPYTHON_MODULES = {
-    "machine", "micropython", "utime", "ustruct", "ubinascii",
-    "framebuf", "gc", "sys", "os", "struct", "time", "math",
-    "neopixel", "network", "bluetooth", "ubluetooth",
-}
 
 
 def _discover_examples():
@@ -29,7 +19,7 @@ def _discover_examples():
 
 
 def _discover_driver_methods(driver_dir):
-    """Return the set of public method names from a driver's device.py."""
+    """Return the set of all method names from a driver's Python files."""
     # Find the module directory (may differ from driver dir name)
     module_dirs = [
         d for d in driver_dir.iterdir()
@@ -38,18 +28,26 @@ def _discover_driver_methods(driver_dir):
     if not module_dirs:
         return set()
 
-    device_py = module_dirs[0] / "device.py"
-    try:
-        tree = ast.parse(device_py.read_text(encoding="utf-8"))
-    except SyntaxError:
-        return set()
+    # Prefer module dir matching driver name, else first alphabetically.
+    driver_module = driver_dir.name.replace("-", "_")
+    preferred = next((d for d in module_dirs if d.name == driver_module), None)
+    module_dir = preferred or sorted(module_dirs, key=lambda d: d.name)[0]
 
     methods = set()
-    for node in ast.walk(tree):
-        if isinstance(node, ast.ClassDef):
-            for item in node.body:
-                if isinstance(item, (ast.FunctionDef, ast.AsyncFunctionDef)):
-                    methods.add(item.name)
+    # Scan all .py files in the module (device.py, pin.py, etc.)
+    for py_file in module_dir.glob("*.py"):
+        if py_file.name == "__init__.py" or py_file.name == "const.py":
+            continue
+        try:
+            tree = ast.parse(py_file.read_text(encoding="utf-8"))
+        except SyntaxError as e:
+            pytest.fail(f"Syntax error in driver {py_file}: {e}")
+
+        for node in ast.walk(tree):
+            if isinstance(node, ast.ClassDef):
+                for item in node.body:
+                    if isinstance(item, (ast.FunctionDef, ast.AsyncFunctionDef)):
+                        methods.add(item.name)
     return methods
 
 
@@ -104,29 +102,19 @@ class TestExampleValidation:
 
         # Only check methods that look like driver calls:
         # exclude Python builtins and common MicroPython methods
-        builtins_and_common = {
-            "print", "format", "range", "len", "int", "float", "str",
-            "bytes", "bytearray", "list", "tuple", "dict", "set",
-            "abs", "min", "max", "round", "hex", "type", "isinstance",
-            "append", "extend", "join", "split", "strip", "encode",
-            "decode", "replace", "startswith", "endswith", "find",
-            "upper", "lower", "keys", "values", "items", "get", "pop",
-            "update", "write", "read", "close", "open", "sleep",
+        # Methods that are NOT from the driver but may appear on
+        # driver variables due to MicroPython patterns or inheritance.
+        # Keep this list minimal — only names that cause false positives.
+        non_driver_methods = {
             "sleep_ms", "sleep_us", "ticks_ms", "ticks_us", "ticks_diff",
-            "init", "value", "on", "off", "irq", "const",
-            "I2C", "SPI", "Pin", "ADC", "PWM", "UART", "Timer",
-            "fill", "text", "show", "pixel", "line", "rect",
-            "fill_rect", "scroll", "blit", "hline", "vline",
-            "framebuf", "FrameBuffer",
             "collect", "mem_free", "mem_alloc",
-            "scan", "readfrom_mem", "writeto_mem", "readfrom",
-            "writeto", "readfrom_mem_into",
-            # Common method names shared across drivers
-            "toggle", "mode", "pull", "freq",
         }
 
         # Find the driver class name to identify which variable holds it
-        tree = ast.parse(source)
+        try:
+            tree = ast.parse(source)
+        except SyntaxError:
+            return  # Covered by test_syntax_valid
         driver_imports = set()
         for node in ast.walk(tree):
             if isinstance(node, ast.ImportFrom):
@@ -169,7 +157,7 @@ class TestExampleValidation:
                 obj = node.func.value
                 if isinstance(obj, ast.Name) and obj.id in driver_vars:
                     method = node.func.attr
-                    if method not in driver_methods and method not in builtins_and_common:
+                    if method not in driver_methods and method not in non_driver_methods:
                         missing.append((node.lineno, method))
 
         if missing:
