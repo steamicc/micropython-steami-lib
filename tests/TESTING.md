@@ -12,8 +12,6 @@ Install the required dependencies:
 pip install pytest pyyaml
 ```
 
----
-
 ## Running tests
 
 ### Run mock tests
@@ -24,8 +22,6 @@ python -m pytest tests/ -v -k mock
 
 Executes tests using simulated registers. No hardware is required.
 
----
-
 ### Run hardware tests
 
 ```bash
@@ -34,8 +30,6 @@ python -m pytest tests/ -v --port /dev/ttyACM0
 
 Runs tests on a connected STeaMi board.
 
----
-
 ### Run tests for a specific driver
 
 ```bash
@@ -43,8 +37,6 @@ python -m pytest tests/ -v --driver hts221 --port /dev/ttyACM0
 ```
 
 Limits execution to a single driver.
-
----
 
 ### Run interactive tests
 
