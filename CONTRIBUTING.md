@@ -82,7 +82,7 @@ Use the following format:
 
 ```
 hts221: Fix missing self parameter in getAv method.
-feat: Add ism330dl driver.
+ism330dl: Add driver.
 fix: Correct pressure conversion in wsen-pads.
 docs: Update README driver table.
 ```
