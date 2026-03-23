@@ -33,24 +33,11 @@ Main characteristics:
 | Parameter            | Value             |
 | -------------------- | ----------------- |
 | Interface            | I²C               |
+| Default I²C address  | `0x5F`            |
 | Humidity range       | 0–100 %RH         |
 | Temperature range    | −40 °C to +120 °C |
 | Humidity accuracy    | ±1.8 %RH          |
 | Temperature accuracy | ±0.2 °C           |
-
----
-
-# I²C Address
-
-The default I²C address of the WSEN-HIDS sensor is:
-
-```python
-0x5F
-```
-
-This value is defined in the driver constants. 
-
----
 
 # Quick Example
 
