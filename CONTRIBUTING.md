@@ -89,12 +89,12 @@ docs: Update README driver table.
 
 ## Workflow
 
-1. Fork the repository
-2. Create a branch for your feature (`git checkout -b feat/my-new-feature`)
-3. Write your code and add tests in `tests/scenarios/<driver>.yaml`
-4. Run `ruff check` and `python -m pytest tests/ -v -k mock` locally
-5. Commit your changes following the commit message format
-6. Push to the branch and create a Pull Request
+1. Create a branch from main (`git checkout -b feat/my-new-feature`)
+2. Write your code and add tests in `tests/scenarios/<driver>.yaml`
+3. Run `ruff check` and `python -m pytest tests/ -v -k mock locally`
+4. Commit your changes following the commit message format
+5. Push your branch to the repository
+6. Open a Pull Request
 
 ## Continuous Integration
 
