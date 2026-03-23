@@ -31,7 +31,7 @@ def test_sets(dev):
 
     # --- MODE ---
     dev.set_mode("continuous")
-    r = dev.read_reg(LIS2MDL_CFG_REG_A)
+    r = dev._read_reg(LIS2MDL_CFG_REG_A)
     exp = 0b00
     print(
         "set_mode(continuous): MD=",
@@ -44,7 +44,7 @@ def test_sets(dev):
     ok &= _bits(r, 1, 0) == exp
 
     dev.set_mode("single")
-    r = dev.read_reg(LIS2MDL_CFG_REG_A)
+    r = dev._read_reg(LIS2MDL_CFG_REG_A)
     exp = 0b01
     print(
         "set_mode(single):      MD=",
@@ -57,7 +57,7 @@ def test_sets(dev):
     ok &= _bits(r, 1, 0) == exp
 
     dev.set_mode("idle")
-    r = dev.read_reg(LIS2MDL_CFG_REG_A)
+    r = dev._read_reg(LIS2MDL_CFG_REG_A)
     exp = 0b11
     print(
         "set_mode(idle):        MD=",
@@ -71,7 +71,7 @@ def test_sets(dev):
 
     # --- ODR ---
     dev.set_odr(50)
-    r = dev.read_reg(LIS2MDL_CFG_REG_A)
+    r = dev._read_reg(LIS2MDL_CFG_REG_A)
     exp = 0b10
     print(
         "set_odr(50):         ODR=",
@@ -84,7 +84,7 @@ def test_sets(dev):
     ok &= _bits(r, 3, 2) == exp
 
     dev.set_odr(100)
-    r = dev.read_reg(LIS2MDL_CFG_REG_A)
+    r = dev._read_reg(LIS2MDL_CFG_REG_A)
     exp = 0b11
     print(
         "set_odr(100):        ODR=",
@@ -98,7 +98,7 @@ def test_sets(dev):
 
     # --- Low power ---
     dev.set_low_power(True)
-    r = dev.read_reg(LIS2MDL_CFG_REG_A)
+    r = dev._read_reg(LIS2MDL_CFG_REG_A)
     print(
         "set_low_power(True):  LP=",
         (r >> 4) & 1,
@@ -107,7 +107,7 @@ def test_sets(dev):
     )
     ok &= ((r >> 4) & 1) == 1
     dev.set_low_power(False)
-    r = dev.read_reg(LIS2MDL_CFG_REG_A)
+    r = dev._read_reg(LIS2MDL_CFG_REG_A)
     print(
         "set_low_power(False): LP=",
         (r >> 4) & 1,
@@ -118,7 +118,7 @@ def test_sets(dev):
 
     # --- LPF ---
     dev.set_low_pass(True)
-    r = dev.read_reg(LIS2MDL_CFG_REG_B)
+    r = dev._read_reg(LIS2MDL_CFG_REG_B)
     print(
         "set_low_pass(True):  LPF=",
         r & 1,
@@ -127,7 +127,7 @@ def test_sets(dev):
     )
     ok &= (r & 1) == 1
     dev.set_low_pass(False)
-    r = dev.read_reg(LIS2MDL_CFG_REG_B)
+    r = dev._read_reg(LIS2MDL_CFG_REG_B)
     print(
         "set_low_pass(False): LPF=",
         r & 1,
@@ -138,7 +138,7 @@ def test_sets(dev):
 
     # --- Offset cancellation ---
     dev.set_offset_cancellation(True, oneshot=False)
-    r = dev.read_reg(LIS2MDL_CFG_REG_B)
+    r = dev._read_reg(LIS2MDL_CFG_REG_B)
     print(
         "set_offset_cancellation(True,False): OFF_CANC(bit1)=",
         (r >> 1) & 1,
@@ -150,7 +150,7 @@ def test_sets(dev):
     ok &= ((r >> 1) & 1) == 1 and ((r >> 4) & 1) == 0
 
     dev.set_offset_cancellation(True, oneshot=True)
-    r = dev.read_reg(LIS2MDL_CFG_REG_B)
+    r = dev._read_reg(LIS2MDL_CFG_REG_B)
     print(
         "set_offset_cancellation(True,True):  OFF_CANC(bit1)=",
         (r >> 1) & 1,
@@ -163,7 +163,7 @@ def test_sets(dev):
 
     # --- BDU / Endianness / SPI4 ---
     dev.set_bdu(True)
-    r = dev.read_reg(LIS2MDL_CFG_REG_C)
+    r = dev._read_reg(LIS2MDL_CFG_REG_C)
     print(
         "set_bdu(True):     BDU(bit4)=",
         (r >> 4) & 1,
@@ -173,7 +173,7 @@ def test_sets(dev):
     ok &= ((r >> 4) & 1) == 1
 
     dev.set_endianness(True)
-    r = dev.read_reg(LIS2MDL_CFG_REG_C)
+    r = dev._read_reg(LIS2MDL_CFG_REG_C)
     print(
         "set_endianness(True): BLE(bit3)=",
         (r >> 3) & 1,
@@ -183,7 +183,7 @@ def test_sets(dev):
     ok &= ((r >> 3) & 1) == 1
 
     dev.use_spi_4wire(True)
-    r = dev.read_reg(LIS2MDL_CFG_REG_C)
+    r = dev._read_reg(LIS2MDL_CFG_REG_C)
     print(
         "use_spi_4wire(True): 4WSPI(bit2)=",
         (r >> 2) & 1,
@@ -216,8 +216,8 @@ def test_sets(dev):
     # If you want to push the correction into the sensor:
     dev.set_hw_offsets(0, 0, 0)  # e.g., reset to 0
     # You can read the registers to verify (optional)
-    oxL = dev.read_reg(LIS2MDL_OFFSET_X_REG_L)
-    oxH = dev.read_reg(LIS2MDL_OFFSET_X_REG_L + 1)
+    oxL = dev._read_reg(LIS2MDL_OFFSET_X_REG_L)
+    oxH = dev._read_reg(LIS2MDL_OFFSET_X_REG_L + 1)
     print(
         "set_hw_offsets(...): OFFSET_X* =", (oxH << 8) | oxL, "expected written value"
     )
@@ -516,7 +516,7 @@ def test_power_modes(dev):
 
     # Wake in continuous
     dev.power_on("continuous")
-    r = dev.read_reg(LIS2MDL_CFG_REG_A)
+    r = dev._read_reg(LIS2MDL_CFG_REG_A)
     md = _bits(r, 1, 0)
     print(
         "wake('continuous') => MD=",
@@ -528,7 +528,7 @@ def test_power_modes(dev):
 
     # Wake in single
     dev.power_on("single")
-    r = dev.read_reg(LIS2MDL_CFG_REG_A)
+    r = dev._read_reg(LIS2MDL_CFG_REG_A)
     md = _bits(r, 1, 0)
     print(
         "wake('single')      => MD=",
@@ -540,7 +540,7 @@ def test_power_modes(dev):
 
     # Power down
     dev.power_off()
-    r = dev.read_reg(LIS2MDL_CFG_REG_A)
+    r = dev._read_reg(LIS2MDL_CFG_REG_A)
     md = _bits(r, 1, 0)
     print(
         "power_off()        => MD=",
@@ -559,7 +559,7 @@ def test_power_modes(dev):
 
     # Back to continuous
     dev.power_on("continuous")
-    r = dev.read_reg(LIS2MDL_CFG_REG_A)
+    r = dev._read_reg(LIS2MDL_CFG_REG_A)
     md = _bits(r, 1, 0)
     print(
         "wake('continuous') => MD=",
@@ -582,9 +582,9 @@ def test_soft_reset(dev):
     dev.set_low_pass(True)  # CFG_B bit0 = 1
     dev.set_bdu(True)  # CFG_C bit4 = 1
 
-    ra_before = dev.read_reg(LIS2MDL_CFG_REG_A)
-    rb_before = dev.read_reg(LIS2MDL_CFG_REG_B)
-    rc_before = dev.read_reg(LIS2MDL_CFG_REG_C)
+    ra_before = dev._read_reg(LIS2MDL_CFG_REG_A)
+    rb_before = dev._read_reg(LIS2MDL_CFG_REG_B)
+    rc_before = dev._read_reg(LIS2MDL_CFG_REG_C)
     print(
         f"Before reset:  CFG_A=0x{ra_before:02X} CFG_B=0x{rb_before:02X} CFG_C=0x{rc_before:02X}"
     )
@@ -593,9 +593,9 @@ def test_soft_reset(dev):
     dev.soft_reset(wait_ms=15)
 
     # Read after reset
-    ra = dev.read_reg(LIS2MDL_CFG_REG_A)
-    rb = dev.read_reg(LIS2MDL_CFG_REG_B)
-    rc = dev.read_reg(LIS2MDL_CFG_REG_C)
+    ra = dev._read_reg(LIS2MDL_CFG_REG_A)
+    rb = dev._read_reg(LIS2MDL_CFG_REG_B)
+    rc = dev._read_reg(LIS2MDL_CFG_REG_C)
     print(f"After reset:   CFG_A=0x{ra:02X} CFG_B=0x{rb:02X} CFG_C=0x{rc:02X}")
 
     # Realistic expectations (typical default values):
@@ -635,12 +635,12 @@ def test_reboot(dev):
 
     # Put into a known state
     dev.set_odr(20)  # ODR=01
-    ra_before = dev.read_reg(LIS2MDL_CFG_REG_A)
+    ra_before = dev._read_reg(LIS2MDL_CFG_REG_A)
     print(f"Before reboot: CFG_A=0x{ra_before:02X}")
 
     # Reboot
     dev.reboot(wait_ms=15)
-    ra = dev.read_reg(LIS2MDL_CFG_REG_A)
+    ra = dev._read_reg(LIS2MDL_CFG_REG_A)
     print(f"After reboot:  CFG_A=0x{ra:02X}")
 
     # The REBOOT bit (bit6) must have cleared back to 0
