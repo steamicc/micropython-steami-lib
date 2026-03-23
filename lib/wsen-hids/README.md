@@ -126,6 +126,7 @@ sensor.set_continuous(WSEN_HIDS.ODR_1_HZ)
 Trigger a single conversion:
 
 ```python
+# Default timeout (100 ms)
 humidity, temperature = sensor.read_one_shot()
 ```
 
