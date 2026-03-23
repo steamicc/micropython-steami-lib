@@ -80,6 +80,27 @@ sensor = WSEN_HIDS(
 )
 ```
 
+### `device_id()`
+
+Read the device identification register.
+
+```python
+sensor.device_id()
+```
+
+**Returns:** `int` — Device ID (`WHO_AM_I` register value)
+
+
+### `enable_bdu(enable=True)`
+
+Enable or disable Block Data Update (BDU).
+
+```python
+sensor.enable_bdu(enable=True)
+```
+
+When enabled, output registers are not updated until both high and low bytes are read. Recommended to avoid reading inconsistent data.
+
 ---
 
 # Reading Measurements
