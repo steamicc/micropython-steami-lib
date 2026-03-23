@@ -53,7 +53,7 @@ tests:
     action: call
     method: get_gpio
     expect: 0xF0
-    mode: [mock]
+    mode: [mock, hardware]
 
   - name: "Constructor leaves reset pin high"
     action: script
