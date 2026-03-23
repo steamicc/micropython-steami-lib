@@ -17,7 +17,7 @@ hardware_init: |
 
 # Register values for mock tests
 mock_registers:
-  # IODIR (0x00): all inputs by default (0xFF)
+  # IODIR (0x00): all inputs by default
   0x00: 0xFF
   # IPOL (0x01): no inversion
   0x01: 0x00
@@ -35,12 +35,14 @@ mock_registers:
   0x07: 0x00
   # INTCAP (0x08): default
   0x08: 0x00
-  # GPIO (0x09): D-PAD buttons (bits 4-7 as inputs with pull-ups)
+  # GPIO (0x09): D-PAD buttons (bits 4-7 high)
   0x09: 0xF0
   # OLAT (0x0A): default
   0x0A: 0x00
 
 tests:
+  # --- Default state / constructor tests ---
+
   - name: "Read IODIR default value"
     action: call
     method: get_iodir
@@ -50,8 +52,24 @@ tests:
   - name: "Read GPIO register"
     action: call
     method: get_gpio
-    expect_not_none: true
+    expect: 0xF0
     mode: [mock, hardware]
+
+  - name: "Constructor leaves reset pin high"
+    action: script
+    script: |
+      result = dev.reset_pin.value() == 1
+    expect_true: true
+    mode: [mock]
+
+  - name: "Read individual GPIO level"
+    action: call
+    method: get_level
+    args: [0]
+    expect_not_none: true
+    mode: [mock]
+
+  # --- Power / reset tests ---
 
   - name: "Power off holds reset pin low"
     action: script
@@ -70,12 +88,190 @@ tests:
     expect_true: true
     mode: [mock]
 
-  - name: "Read individual GPIO level"
-    action: call
-    method: get_level
-    args: [0]
-    expect_not_none: true
+  - name: "Power cycle toggles reset pin"
+    action: script
+    script: |
+      dev.power_off()
+      off_state = dev.reset_pin.value()
+      dev.power_on()
+      on_state = dev.reset_pin.value()
+      result = off_state == 0 and on_state == 1
+    expect_true: true
     mode: [mock]
+
+  - name: "Soft reset restores default registers"
+    action: script
+    script: |
+      dev.set_iodir(0x00)
+      dev.set_gppu(0xFF)
+      dev.set_iocon(0x27)
+      dev.set_gpinten(0xFF)
+      dev._soft_reset()
+      result = (
+        dev.get_iodir() == 0xFF and
+        dev.get_gppu() == 0x00 and
+        dev.get_iocon().get_register_value() == 0x00 and
+        dev.get_gpinten() == 0x00
+      )
+    expect_true: true
+    mode: [mock]
+
+  # --- Register access tests ---
+
+  - name: "Set IODIR register"
+    action: script
+    script: |
+      dev.set_iodir(0xF0)
+      result = dev.get_iodir() == 0xF0
+    expect_true: true
+    mode: [mock]
+
+  - name: "Get GPPU register after write"
+    action: script
+    script: |
+      dev.set_gppu(0xA5)
+      result = dev.get_gppu() == 0xA5
+    expect_true: true
+    mode: [mock]
+
+  - name: "Set and get OLAT register"
+    action: script
+    script: |
+      dev.set_olat(0x3C)
+      result = dev.get_olat() == 0x3C
+    expect_true: true
+    mode: [mock]
+
+  - name: "Set and read full GPIO port"
+    action: script
+    script: |
+      dev.set_iodir(0x00)
+      dev.set_gpio(0x5A)
+      result = dev.get_gpio() == 0x5A
+    expect_true: true
+    mode: [mock]
+
+  # --- Setup / pin configuration tests ---
+
+  - name: "Setup configures pin as input with pull-up"
+    action: script
+    script: |
+      dev.set_iodir(0x00)
+      dev.set_gppu(0x00)
+      dev.set_ipol(0x00)
+      dev.setup(2, 1, pullup=1, polarity=0)
+      result = (
+        dev.get_iodir() == 0x04 and
+        dev.get_gppu() == 0x04 and
+        dev.get_ipol() == 0x00
+      )
+    expect_true: true
+    mode: [mock]
+
+  - name: "Setup configures pin as output without pull-up"
+    action: script
+    script: |
+      dev.set_iodir(0xFF)
+      dev.set_gppu(0xFF)
+      dev.set_ipol(0x00)
+      dev.setup(3, 0, pullup=0, polarity=0)
+      result = (
+        dev.get_iodir() == 0xF7 and
+        dev.get_gppu() == 0xF7 and
+        dev.get_ipol() == 0x00
+      )
+    expect_true: true
+    mode: [mock]
+
+  - name: "Setup configures polarity inversion"
+    action: script
+    script: |
+      dev.set_iodir(0x00)
+      dev.set_gppu(0x00)
+      dev.set_ipol(0x00)
+      dev.setup(1, 1, pullup=1, polarity=1)
+      result = (
+        dev.get_iodir() == 0x02 and
+        dev.get_gppu() == 0x02 and
+        dev.get_ipol() == 0x02
+      )
+    expect_true: true
+    mode: [mock]
+
+  # --- GPIO level tests ---
+
+  - name: "Set and get individual output level high"
+    action: script
+    script: |
+      dev.set_iodir(0xFE)
+      dev.set_gpio(0x00)
+      dev.set_level(0, 1)
+      result = dev.get_level(0) == 1 and dev.get_gpio() == 0x01
+    expect_true: true
+    mode: [mock]
+
+  - name: "Set and get individual output level low"
+    action: script
+    script: |
+      dev.set_iodir(0xFE)
+      dev.set_gpio(0x01)
+      dev.set_level(0, 0)
+      result = dev.get_level(0) == 0 and dev.get_gpio() == 0x00
+    expect_true: true
+    mode: [mock]
+
+  - name: "Set level ignored on input pin; GP4 remains high from GPIO (0xF0)"
+    action: script
+    script: |
+      dev.set_iodir(0xFF)
+      dev.set_gpio(0xF0)
+      dev.set_level(4, 0)
+      result = dev.get_gpio() == 0xF0 and dev.get_level(4) == 1
+    expect_true: true
+    mode: [mock]
+
+  - name: "Set level ignores invalid pin index"
+    action: script
+    script: |
+      dev.set_iodir(0x00)
+      dev.set_gpio(0xAA)
+      dev.set_level(8, 1)
+      result = dev.get_gpio() == 0xAA
+    expect_true: true
+    mode: [mock]
+
+  - name: "Get level returns low for invalid pin index"
+    action: script
+    script: |
+      result = dev.get_level(8) == 0
+    expect_true: true
+    mode: [mock]
+
+  # --- Interrupt configuration tests ---
+
+  - name: "Interrupt on change configures GPINTEN and INTCON"
+    action: script
+    script: |
+      dev.set_gpinten(0x00)
+      dev.set_intcon(0x00)
+      dev.interrupt_on_change(2, lambda level: None)
+      result = (
+        dev.get_gpinten() == 0x04 and
+        dev.get_intcon() == 0x00
+      )
+    expect_true: true
+    mode: [mock]
+
+  - name: "Disable interrupt clears GPINTEN bit"
+    action: script
+    script: |
+      dev.interrupt_on_change(2, lambda level: None)
+      dev.disable_interrupt(2)
+      result = (dev.get_gpinten() & 0x04) == 0
+    expect_true: true
+    mode: [mock]
+
+  # --- Manual hardware check ---
 
   - name: "D-PAD buttons state"
     action: manual
