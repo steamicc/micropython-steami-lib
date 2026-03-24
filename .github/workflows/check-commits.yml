@@ -14,22 +14,19 @@ jobs:
   check-commit-messages:
     runs-on: ubuntu-latest
     steps:
-      - name: "📜 Check commit messages format"
-        uses: gsactions/commit-message-checker@v1
+      - name: "⏳ Checkout repository"
+        uses: actions/checkout@v4
         with:
-          pattern: '^[^!]+: [A-Za-z]+.+ .+\.$'
-          flags: "gm"
-          error: "Commit subject line must match the following pattern: <scope>: <description>."
-          excludeTitle: "false"
-          excludeDescription: "true"
-          checkAllCommitMessages: "true"
-          accessToken: ${{ secrets.GITHUB_TOKEN }}
-      - name: "📜 Check commit messages length"
-        uses: gsactions/commit-message-checker@v1
+          fetch-depth: 0
+
+      - name: "🟢 Set up Node.js"
+        uses: actions/setup-node@v4
         with:
-          pattern: "^[^#].{10,78}$"
-          error: "Commit subject line maximum line length of 78 characters is exceeded."
-          excludeTitle: "false"
-          excludeDescription: "true"
-          checkAllCommitMessages: "true"
-          accessToken: ${{ secrets.GITHUB_TOKEN }}
+          node-version: "20"
+          cache: "npm"
+
+      - name: "🛠 Install commitlint"
+        run: npm ci
+
+      - name: "📜 Validate commit messages"
+        run: npx commitlint --from ${{ github.event.pull_request.base.sha }} --to ${{ github.event.pull_request.head.sha }} --verbose
