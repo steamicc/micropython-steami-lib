@@ -48,46 +48,46 @@ lib/<component>/
 
 ## Linting
 
-The project uses `ruff` for linting.
-
 ```bash
-ruff check .
+make lint
 ```
 
 To automatically fix issues:
 
 ```bash
-ruff check . --fix
+make lint-fix
 ```
 
 ## Commit messages
 
-Use the following format:
+Commit messages follow the [Conventional Commits](https://www.conventionalcommits.org/) format, enforced by commitlint via a git hook:
 
 ```
-<scope>: <Description starting with a capital letter ending with a period.>
+<type>[(<scope>)]: <Description starting with a capital letter ending with a period.>
 ```
 
-The scope is the driver name or domain (`hts221`, `ism330dl`, `docs`, `tests`, `ci`...). There is no predefined list of types — the scope is free-form.
+**Types**: `feat`, `fix`, `docs`, `style`, `refactor`, `test`, `ci`, `build`, `chore`, `perf`, `revert`, `tooling`
+
+**Scopes** (optional): driver names (`hts221`, `ism330dl`, `wsen-pads`...) or domains (`ci`, `docs`, `style`, `tests`, `tooling`). The scope is recommended for driver-specific changes but can be omitted for cross-cutting changes.
 
 ### Examples
 
 ```
-hts221: Fix missing self parameter in get_av method.
-ism330dl: Add driver support for temperature reading.
-wsen-pads: Correct pressure conversion formula.
+fix(hts221): Fix missing self parameter in get_av method.
+feat(ism330dl): Add driver support for temperature reading.
+fix(wsen-pads): Correct pressure conversion formula.
 docs: Update README driver table.
-tests: Add mock scenarios for mcp23009e driver.
+test(mcp23009e): Add mock scenarios for mcp23009e driver.
 ```
 
 ## Workflow
 
-1. Create a branch from main (`git checkout -b my-new-feature`)
-2. Write your code and add tests in `tests/scenarios/<driver>.yaml`
-3. Run `ruff check` and `python -m pytest tests/ -v -k mock locally`
-4. Commit your changes following the commit message format
-5. Push your branch to the repository
-6. Open a Pull Request
+1. Set up your environment: `make setup`
+2. Create a branch from main (format: `feat/`, `fix/`, `docs/`, `tooling/`, `ci/`, `test/`, `style/`, `chore/`, `refactor/`)
+3. Write your code and add tests in `tests/scenarios/<driver>.yaml`
+4. Run `make ci` to verify everything passes (lint + tests + examples)
+5. Commit — the git hooks will automatically check your commit message and run ruff on staged files
+6. Push your branch and open a Pull Request
 
 ## Continuous Integration
 
@@ -98,6 +98,7 @@ All pull requests must pass these checks:
 | Commit messages | `check-commits.yml` | Validates commit message format |
 | Linting | `python-linter.yml` | Runs `ruff check` |
 | Mock tests | `tests.yml` | Runs mock driver tests |
+| Example validation | `tests.yml` | Validates example files syntax and imports |
 
 ## Notes
 

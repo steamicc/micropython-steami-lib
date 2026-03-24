@@ -91,15 +91,67 @@ mpremote cp -r lib/ssd1327/ssd1327 :lib/
 
 Once copied, the driver can be imported normally without mounting.
 
-## Testing
+## Development
+
+### Setup
+
+```bash
+make setup    # Install pip + npm dependencies and git hooks
+```
+
+### Available commands
+
+Run `make help` to see all available targets:
+
+| Command | Description |
+|---------|-------------|
+| `make lint` | Run ruff linter |
+| `make lint-fix` | Auto-fix lint issues |
+| `make test` | Run mock tests (no hardware) |
+| `make test-mock` | Run mock tests |
+| `make test-hardware` | Run all hardware tests (needs board) |
+| `make test-board` | Board tests only (buttons, LEDs, buzzer) |
+| `make test-sensors` | Sensor driver hardware tests |
+| `make test-all` | All tests (mock + hardware) |
+| `make test-examples` | Validate example files |
+| `make test-<scenario>` | Test a specific scenario (e.g. `make test-hts221`) |
+| `make ci` | Full CI pipeline (lint + tests + examples) |
+| `make repl` | Open MicroPython REPL |
+| `make mount` | Mount lib/ on the board |
+| `make clean` | Remove caches |
+| `make deepclean` | Remove everything including node_modules |
+
+Per-scenario targets are generated automatically from `tests/scenarios/*.yaml`.
+
+### Git hooks
+
+Git hooks are managed by [husky](https://typicode.github.io/husky/) and run automatically on commit:
+
+- **commit-msg** — validates commit message format via [commitlint](https://commitlint.js.org/)
+- **pre-commit** — branch name validation, content checks (conflict markers, TODO), ruff on staged `.py` files
+
+### Testing
 
 Run the full mock test suite:
 
 ```bash
-python -m pytest tests/ -v -k mock
+make test
 ```
 
-See full details in [tests/TESTING.md](tests/TESTING.md)
+Run hardware tests (requires a STeaMi board on `/dev/ttyACM0`):
+
+```bash
+make test-hardware
+```
+
+Run tests for a specific driver:
+
+```bash
+make test-hts221
+```
+
+See full details in [tests/TESTING.md](tests/TESTING.md).
+
 ## Contributing
 
 Contributions are welcome! Please follow the project guidelines.
