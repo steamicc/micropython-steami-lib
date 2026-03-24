@@ -1,5 +1,23 @@
-[tool.isort]
-profile = "black"
+[project]
+name = "micropython-steami-lib"
+version = "0.1.0"
+description = "MicroPython driver library for the STeaMi board."
+license = {text = "MIT"}
+requires-python = ">=3.7"
+
+[project.urls]
+Homepage = "https://www.steami.cc/"
+Repository = "https://github.com/steamicc/micropython-steami-lib"
+Documentation = "https://wiki.steami.cc/"
+Issues = "https://github.com/steamicc/micropython-steami-lib/issues"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+markers = [
+    "mock: tests using FakeI2C (no hardware needed)",
+    "hardware: tests requiring a real board (use --port)",
+    "manual: tests requiring human validation",
+]
 
 [tool.ruff]
 line-length = 99
@@ -7,7 +25,7 @@ target-version = "py37"
 
 [tool.ruff.lint]
 select = [
-  "ASYNC",  # flake8-comprehensions
+  "ASYNC",  # flake8-async
   "C4",     # flake8-comprehensions
   "C90",    # McCabe cyclomatic complexity
   "DTZ",    # flake8-datetimez
@@ -15,9 +33,13 @@ select = [
   "EXE",    # flake8-executable
   "F",      # Pyflakes
   "G",      # flake8-logging-format
+  "I",      # isort
   "ICN",    # flake8-import-conventions
   "INT",    # flake8-gettext
   "ISC",    # flake8-implicit-str-concat
+  "N802",   # pep8-naming: function name should be lowercase
+  "N803",   # pep8-naming: argument name should be lowercase
+  "N806",   # pep8-naming: variable in function should be lowercase
   "PGH",    # pygrep-hooks
   "PIE",    # flake8-pie
   "PL",     # Pylint
@@ -25,62 +47,36 @@ select = [
   "RSE",    # flake8-raise
   "RUF",    # Ruff-specific rules
   "T10",    # flake8-debugger
+  "T20",    # flake8-print: no print() in production code
   "TCH",    # flake8-type-checking
   "W",      # pycodestyle
   "YTT",    # flake8-2020
-  # "A",    # flake8-builtins
-  # "ANN",  # flake8-annotations
-  # "ARG",  # flake8-unused-arguments
-  # "B",    # flake8-bugbear
-  # "BLE",  # flake8-blind-except
-  # "COM",  # flake8-commas
-  # "D",    # pydocstyle
-  # "DJ",   # flake8-django
-  # "EM",   # flake8-errmsg
-  # "ERA",  # eradicate
-  # "FBT",  # flake8-boolean-trap
-  # "I",    # isort
-  # "INP",  # flake8-no-pep420
-  "N802",  # pep8-naming: function name should be lowercase
-  "N803",  # pep8-naming: argument name should be lowercase
-  "N806",  # pep8-naming: variable in function should be lowercase
-  "T20",   # flake8-print: no print() in production code
-  # "NPY",  # NumPy-specific rules
-  # "PD",   # pandas-vet
-  # "PT",   # flake8-pytest-style
-  # "PTH",  # flake8-use-pathlib
-  # "Q",    # flake8-quotes
-  # "RET",  # flake8-return
-  # "S",    # flake8-bandit
-  # "SIM",  # flake8-simplify
-  # "SLF",  # flake8-self
-  # "T20",  # flake8-print
-  # "TID",  # flake8-tidy-imports
-  # "TRY",  # tryceratops
-  # "UP",   # pyupgrade
 ]
 ignore = [
-  "E722",
-  "E741",  # 'l' is currently widely used
-  "F401",
-  "F403",
-  "F405",
-  "E501",  # line length, recommended to disable
-  "ISC001",
+  "E501",    # line length, recommended to disable
+  "E722",    # bare except
+  "E741",    # 'l' is currently widely used
+  "F401",    # unused import (wildcard re-exports)
+  "F403",    # wildcard import
+  "F405",    # name from wildcard import
+  "ISC001",  # conflicts with formatter
   "ISC003",  # micropython does not support implicit concatenation of f-strings
   "PIE810",  # micropython does not support passing tuples to .startswith or .endswith
-  "PLC1901",
-  "PLR1704",  # sometimes desirable to redefine an argument to save code size
-  "PLR1714",
-  "PLR5501",
-  "PLW0602",
-  "PLW0603",
-  "PLW2901",
-  "RUF012",
-  "RUF100",
-  "SIM101",
-  "W191",  # tab-indent, redundant when using formatter
+  "PLC1901", # compare to empty string
+  "PLR1704", # sometimes desirable to redefine an argument to save code size
+  "PLR1714", # consider merging multiple comparisons
+  "PLR5501", # use elif instead of else+if
+  "PLW0602", # global variable not assigned
+  "PLW0603", # global statement
+  "PLW2901", # overwriting loop variable
+  "RUF012",  # mutable class variable
+  "RUF100",  # unused noqa
+  "SIM101",  # merge isinstance calls
+  "W191",    # tab-indent, redundant when using formatter
 ]
+
+[tool.ruff.lint.isort]
+known-third-party = ["micropython"]
 
 [tool.ruff.lint.mccabe]
 max-complexity = 61
@@ -99,14 +95,7 @@ max-statements = 166
 "tests/**/*.py" = ["T20"]
 
 [tool.ruff.format]
-# Like Black, use double quotes for strings.
 quote-style = "double"
-
-# Like Black, indent with spaces, rather than tabs.
 indent-style = "space"
-
-# Like Black, respect magic trailing commas.
 skip-magic-trailing-comma = false
-
-# Like Black, automatically detect the appropriate line ending.
 line-ending = "auto"
