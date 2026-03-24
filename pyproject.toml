@@ -5,6 +5,10 @@ description = "MicroPython driver library for the STeaMi board."
 license = {text = "GPL-3.0-or-later"}
 requires-python = ">=3.7"
 
+[project.optional-dependencies]
+dev = ["ruff>=0.9"]
+test = ["pytest>=7.0", "pyyaml>=6.0", "mpremote>=1.0"]
+
 [project.urls]
 Homepage = "https://www.steami.cc/"
 Repository = "https://github.com/steamicc/micropython-steami-lib"

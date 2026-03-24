@@ -6,45 +6,63 @@ All tests are executed using `pytest`.
 
 ## Installation
 
-Install the required dependencies:
-
 ```bash
-pip install pytest pyyaml
+make setup
 ```
 
+This installs all dependencies (ruff, pytest, pyyaml via pip + git hooks via npm).
+
 ## Running tests
+
+All test commands are available via `make`. Run `make help` to see the full list.
 
 ### Run mock tests
 
 ```bash
-python -m pytest tests/ -v -k mock
+make test-mock
 ```
 
 Executes tests using simulated registers. No hardware is required.
 
-### Run hardware tests
+### Run all hardware tests
 
 ```bash
-python -m pytest tests/ -v --port /dev/ttyACM0
+make test-hardware
 ```
 
-Runs tests on a connected STeaMi board.
+Runs all tests on a connected STeaMi board (default port: `/dev/ttyACM0`).
+
+### Run board-only tests (buttons, LEDs, buzzer, screen)
+
+```bash
+make test-board
+```
+
+### Run sensor driver hardware tests (I2C devices)
+
+```bash
+make test-sensors
+```
 
 ### Run tests for a specific driver
 
 ```bash
-python -m pytest tests/ -v --driver hts221 --port /dev/ttyACM0
+make test-hts221
 ```
 
-Limits execution to a single driver.
+Per-scenario targets are generated automatically from `tests/scenarios/*.yaml`. Any YAML file added to that directory creates a corresponding `make test-<name>` target.
 
-### Run interactive tests
+### Run all tests (mock + hardware)
 
 ```bash
-python -m pytest tests/ -v --port /dev/ttyACM0 -s
+make test-all
 ```
 
-Displays live output and allows manual verification.
+### Custom port
+
+```bash
+make test-hardware PORT=/dev/ttyACM1
+```
 
 ## Test reports
 
