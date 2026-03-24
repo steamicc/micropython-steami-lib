@@ -121,6 +121,15 @@ tests:
 
 The test runner automatically discovers new YAML files.
 
+### Naming convention
+
+The Makefile generates a `make test-<name>` target for each YAML scenario. The target name comes from:
+
+- **Driver scenarios**: the `driver` field in the YAML (e.g. `driver: wsen-hids` → `make test-wsen-hids`)
+- **Board scenarios**: the filename stem (e.g. `board_buttons.yaml` → `make test-board_buttons`)
+
+**Important**: for board scenarios (`type: board`), the `name` field in the YAML **must match the filename** (without `.yaml`). If they diverge, `make test-<name>` will not find any tests. For driver scenarios, the `driver` field is used and the filename can differ (e.g. `wsen_hids.yaml` with `driver: wsen-hids` works correctly).
+
 ### Requirements
 
 * Provide at least **mock tests** for every driver
