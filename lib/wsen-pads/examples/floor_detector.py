@@ -12,7 +12,7 @@ sensor.set_continuous(odr=ODR_10_HZ)
 
 SAMPLES_FOR_BASELINE = 20
 SAMPLES_PER_MEASURE = 10
-METERS_PER_FLOOR = 0.3
+METERS_PER_FLOOR = 3.0
 
 baseline_pressure_list = []
 

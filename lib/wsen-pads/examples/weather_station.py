@@ -27,6 +27,6 @@ while True:
     temperature = sensor.temperature()
 
     print("P:", pressure, "hPa  T:", temperature, "°C")
-    flash.write_line(f"{temperature:.1f};{pressure:.1f}")
+    flash.write_line("{:.1f};{:.1f}".format(temperature, pressure))
 
     sleep(5)
