@@ -20,7 +20,7 @@ setup: install prepare ## Full dev environment setup
 
 .PHONY: install
 install: node_modules/.package-lock.json ## Install dev tools (pip + npm)
-	pip install -e ".[dev,test]"
+	python3 -m pip install -e ".[dev,test]"
 
 # --- Linting ---
 
