@@ -1,10 +1,12 @@
 # device.py
 # This driver is for the LIS2MDL magnetometer sensor. It provides methods for initialization, calibration, and reading magnetic field data.
 
-from machine import I2C
-from lis2mdl.const import *
-from time import sleep_ms
 import math
+from time import sleep_ms
+
+from machine import I2C
+
+from lis2mdl.const import *
 
 
 class LIS2MDL(object):

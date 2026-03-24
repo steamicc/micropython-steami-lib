@@ -4,8 +4,8 @@ Cet exemple montre comment utiliser les GPIO du MCP23009E comme des pins normale
 """
 
 from time import sleep
-from machine import I2C, Pin
 
+from machine import I2C, Pin
 from mcp23009e import MCP23009E, MCP23009Pin
 from mcp23009e.const import *
 

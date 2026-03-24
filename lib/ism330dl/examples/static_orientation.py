@@ -1,6 +1,7 @@
-from machine import I2C
 from time import sleep_ms
+
 from ism330dl import ISM330DL
+from machine import I2C
 
 i2c = I2C(1)
 

@@ -1,10 +1,10 @@
-from bq27441.const import *
-from bq27441.exceptions import *
-
+import struct
 from time import sleep_ms, ticks_ms
+
 from machine import Pin
 
-import struct
+from bq27441.const import *
+from bq27441.exceptions import *
 
 
 # Parameters for the current() function, to specify which current to read

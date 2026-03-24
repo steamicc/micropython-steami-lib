@@ -11,8 +11,9 @@ Commands:
   - CLEAR_CONFIG (0x32): erase the entire 1 KB zone
 """
 
-from machine import I2C
 from time import sleep_ms
+
+from machine import I2C
 
 i2c = I2C(1)
 addr = 0x3B

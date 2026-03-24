@@ -1,10 +1,10 @@
-from time import sleep_ms, ticks_ms, ticks_diff
+from time import sleep_ms, ticks_diff, ticks_ms
 
 from .const import *
 from .exceptions import (
-    WSENHIDSError,
     WSENHIDSCommunicationError,
     WSENHIDSDeviceIDError,
+    WSENHIDSError,
     WSENHIDSTimeoutError,
 )
 

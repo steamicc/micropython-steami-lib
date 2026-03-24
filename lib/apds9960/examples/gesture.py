@@ -1,17 +1,16 @@
 from time import sleep
 
-from machine import I2C
-
+from apds9960 import uAPDS9960 as APDS9960
 from apds9960.const import (
-    APDS9960_DIR_NONE,
+    APDS9960_DIR_DOWN,
+    APDS9960_DIR_FAR,
     APDS9960_DIR_LEFT,
+    APDS9960_DIR_NEAR,
+    APDS9960_DIR_NONE,
     APDS9960_DIR_RIGHT,
     APDS9960_DIR_UP,
-    APDS9960_DIR_DOWN,
-    APDS9960_DIR_NEAR,
-    APDS9960_DIR_FAR,
 )
-from apds9960 import uAPDS9960 as APDS9960
+from machine import I2C
 
 i2c = I2C(1)
 

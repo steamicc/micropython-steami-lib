@@ -1,9 +1,9 @@
 """Generic pytest runner that loads YAML scenarios and executes them."""
 
-import yaml
 from pathlib import Path
 
 import pytest
+import yaml
 
 from tests.fake_machine.i2c import FakeI2C
 from tests.fake_machine.pin import FakePin

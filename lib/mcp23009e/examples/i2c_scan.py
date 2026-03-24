@@ -3,7 +3,8 @@ Script de scan I2C pour identifier tous les périphériques connectés
 Utile pour trouver l'adresse correcte du MCP23009E
 """
 from time import sleep
-from machine import I2C,Pin
+
+from machine import I2C, Pin
 
 reset = Pin("RST_EXPANDER")
 reset.init(Pin.OUT)

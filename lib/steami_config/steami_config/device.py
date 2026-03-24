@@ -1,6 +1,5 @@
 import json
 
-
 # Map sensor class names to short JSON keys to save space.
 _SENSOR_KEYS = {
     "hts221": "hts",

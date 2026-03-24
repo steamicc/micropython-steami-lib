@@ -1,6 +1,6 @@
-import ssd1327
-
 import math
+
+import ssd1327
 from machine import SPI, Pin
 
 # Setup display on SPI bus

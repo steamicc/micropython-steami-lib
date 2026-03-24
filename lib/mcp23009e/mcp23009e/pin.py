@@ -4,6 +4,7 @@ pour les GPIO du MCP23009E
 """
 
 from machine import Pin as MachinePin
+
 from mcp23009e.const import *
 
 

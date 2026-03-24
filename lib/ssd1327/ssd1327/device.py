@@ -1,7 +1,8 @@
-from ssd1327.const import *
 from time import sleep_us
 
 import framebuf
+
+from ssd1327.const import *
 
 
 class SSD1327(object):

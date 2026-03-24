@@ -4,8 +4,8 @@ Ce script teste les fonctionnalités d'interruption sur les boutons du D-PAD
 """
 
 from time import sleep
-from machine import I2C, Pin
 
+from machine import I2C, Pin
 from mcp23009e import MCP23009E
 from mcp23009e.const import *
 

@@ -1,7 +1,7 @@
+from time import sleep_ms
+
 from apds9960.const import *
 from apds9960.exceptions import *
-
-from time import sleep_ms
 
 
 class APDS9960(object):

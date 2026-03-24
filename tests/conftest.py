@@ -1,9 +1,9 @@
 """Pytest configuration and fixtures for driver testing."""
 
-import yaml
 from pathlib import Path
 
 import pytest
+import yaml
 
 pytest_plugins = ["tests.report_plugin"]
 

@@ -1,8 +1,9 @@
 # Example of heading reading with direction label
 from time import sleep_ms
-from machine import I2C
-from lis2mdl.device import LIS2MDL
+
 from lis2mdl.const import *
+from lis2mdl.device import LIS2MDL
+from machine import I2C
 
 i2c = I2C(1)
 mag = LIS2MDL(i2c)

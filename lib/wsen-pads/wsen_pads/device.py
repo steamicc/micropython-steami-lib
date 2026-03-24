@@ -1,4 +1,4 @@
-from time import sleep_ms, ticks_ms, ticks_diff
+from time import sleep_ms, ticks_diff, ticks_ms
 
 from wsen_pads.const import *
 from wsen_pads.exceptions import *

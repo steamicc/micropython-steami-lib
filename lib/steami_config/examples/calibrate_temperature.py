@@ -7,10 +7,10 @@ persistent config zone and survive power cycles.
 
 import gc
 import sys
-from machine import I2C
 from time import sleep_ms
 
 from daplink_flash.device import DaplinkFlash
+from machine import I2C
 from steami_config.device import SteamiConfig
 from wsen_hids.device import WSEN_HIDS
 

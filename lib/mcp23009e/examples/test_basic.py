@@ -4,8 +4,8 @@ Ce script teste les fonctionnalités de base : configuration GPIO, lecture/écri
 """
 
 from time import sleep
-from machine import I2C, Pin
 
+from machine import I2C, Pin
 from mcp23009e import MCP23009E
 from mcp23009e.const import *
 

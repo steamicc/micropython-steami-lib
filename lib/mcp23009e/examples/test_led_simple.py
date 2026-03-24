@@ -8,8 +8,8 @@ l'inversion de logique nécessaire pour ce type de montage.
 """
 
 from time import sleep
-from machine import I2C, Pin
 
+from machine import I2C, Pin
 from mcp23009e import MCP23009E, MCP23009ActiveLowPin
 from mcp23009e.const import *
 

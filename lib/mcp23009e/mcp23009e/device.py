@@ -1,8 +1,9 @@
-from machine import I2C, Pin
 from time import sleep_ms
 
+from machine import I2C, Pin
 
 from mcp23009e.const import *
+
 
 def _set_bit(reg, bit, value):
     """Modifie un bit spécifique dans un registre"""

@@ -1,6 +1,6 @@
-from machine import I2C
 from time import sleep, sleep_ms
 
+from machine import I2C
 from wsen_hids import WSEN_HIDS
 from wsen_hids.const import *
 

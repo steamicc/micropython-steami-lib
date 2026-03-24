@@ -1,8 +1,7 @@
 """Display the current board configuration stored in the config zone."""
 
-from machine import I2C
-
 from daplink_flash import DaplinkFlash
+from machine import I2C
 from steami_config import SteamiConfig
 
 i2c = I2C(1)

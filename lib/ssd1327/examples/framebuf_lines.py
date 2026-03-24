@@ -1,5 +1,6 @@
-import ssd1327
 from time import sleep
+
+import ssd1327
 from machine import SPI, Pin
 
 # Setup display on SPI bus

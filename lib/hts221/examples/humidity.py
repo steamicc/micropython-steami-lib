@@ -1,7 +1,8 @@
-from machine import I2C
-from hts221 import HTS221
 from time import sleep_ms
+
 import pyb
+from hts221 import HTS221
+from machine import I2C
 
 i2c = I2C(1)
 

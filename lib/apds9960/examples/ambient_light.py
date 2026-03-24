@@ -1,8 +1,7 @@
 from time import sleep
 
-from machine import I2C
-
 from apds9960 import uAPDS9960 as APDS9960
+from machine import I2C
 
 i2c = I2C(1)
 
