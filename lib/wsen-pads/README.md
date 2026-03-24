@@ -454,6 +454,7 @@ Examples are available in the `examples` directory.
 | `pressure_trend.py`        | Track pressure changes over time to detect trends                           |
 | `temp_pressure_display.py` | Display formatted temperature and pressure with ASCII bar graphs            |
 | `treshold_alert.py`        | Monitor pressure and trigger an alert when a threshold is crossed           |
+| `weather_station.py`       | Monitor weather condition and register them in a CSV file on the board      |
 
 ---
 
