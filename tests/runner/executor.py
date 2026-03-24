@@ -12,8 +12,8 @@ def prompt_yes_no(prompt):
     """
     print(f"  [MANUAL] {prompt} [Entree=oui / Echap=non] ", end="", flush=True)
     try:
-        import tty
         import termios
+        import tty
         fd = sys.stdin.fileno()
         old = termios.tcgetattr(fd)
         try:
@@ -43,12 +43,10 @@ def load_driver_mock(driver_name, fake_i2c, module_name=None):
     """
     if module_name is None:
         module_name = driver_name
-    from tests.fake_machine import FakeI2C, FakePin
-    from tests.fake_machine import micropython_stub
-    from tests.fake_machine import framebuf_stub
-
     # Patch modules before importing driver
     import types
+
+    from tests.fake_machine import FakeI2C, FakePin, framebuf_stub, micropython_stub
 
     fake_machine = types.ModuleType("machine")
     fake_machine.I2C = FakeI2C

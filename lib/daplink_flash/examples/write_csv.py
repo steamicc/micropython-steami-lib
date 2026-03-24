@@ -1,8 +1,9 @@
 """Write CSV data to flash via DAPLink bridge."""
 
-from machine import I2C
 from time import sleep_ms
+
 from daplink_flash import DaplinkFlash
+from machine import I2C
 
 i2c = I2C(1)
 flash = DaplinkFlash(i2c)

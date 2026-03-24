@@ -1,14 +1,16 @@
-from machine import I2C, Pin
 from time import sleep
+
+from machine import I2C, Pin
 from wsen_pads import WSEN_PADS
 from wsen_pads.const import (
     ODR_1_HZ,
     ODR_10_HZ,
     REG_CTRL_1,
     REG_CTRL_2,
-    REG_STATUS,
     REG_INT_SOURCE,
+    REG_STATUS,
 )
+
 
 def print_header(title):
     print()

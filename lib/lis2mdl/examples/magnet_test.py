@@ -1,8 +1,9 @@
-from time import sleep_ms
-from machine import I2C
-from lis2mdl.device import LIS2MDL
-from lis2mdl.const import *
 import math
+from time import sleep_ms
+
+from lis2mdl.const import *
+from lis2mdl.device import LIS2MDL
+from machine import I2C
 
 # Définition des constantes pour remplacer les valeurs magiques
 MAGNETIC_FIELD_MIN = 5.0

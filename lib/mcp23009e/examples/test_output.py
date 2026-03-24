@@ -3,8 +3,8 @@ Exemple de test des sorties pour le driver MCP23009E
 Ce script teste la configuration des GPIO en sortie et le contrôle de leur niveau
 """
 import time
-from machine import I2C, Pin
 
+from machine import I2C, Pin
 from mcp23009e import MCP23009E, MCP23009Pin
 from mcp23009e.const import *
 

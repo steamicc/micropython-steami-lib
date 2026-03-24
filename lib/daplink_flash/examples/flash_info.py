@@ -1,7 +1,7 @@
 """Display DAPLink Flash bridge status and filename."""
 
-from machine import I2C
 from daplink_flash import DaplinkFlash
+from machine import I2C
 
 i2c = I2C(1)
 flash = DaplinkFlash(i2c)

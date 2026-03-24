@@ -1,6 +1,5 @@
 import ssd1327
 import uos
-
 from machine import SPI, Pin
 
 # Setup display on SPI bus

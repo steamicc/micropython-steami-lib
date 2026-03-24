@@ -1,5 +1,6 @@
-from machine import I2C
 from time import sleep_ms
+
+from machine import I2C
 
 from hts221.const import *
 

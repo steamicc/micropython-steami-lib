@@ -17,7 +17,6 @@
 # .....#####...... 00 00 0F FF FF 00 00 00
 
 import ssd1327
-
 from machine import SPI, Pin
 
 # Setup display on SPI bus

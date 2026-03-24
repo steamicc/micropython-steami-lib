@@ -1,8 +1,7 @@
 from time import sleep
 
-from machine import I2C
-
 from bq27441 import BQ27441
+from machine import I2C
 
 i2c = I2C(1)
 

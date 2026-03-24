@@ -4,8 +4,8 @@ Version avec lecture en polling (sans interruption)
 """
 
 from time import sleep
-from machine import I2C, Pin
 
+from machine import I2C, Pin
 from mcp23009e import MCP23009E
 from mcp23009e.const import *
 

@@ -5,9 +5,10 @@ to a CSV file on flash, then reads it back and computes min/max/average
 for each column.
 """
 
-from machine import I2C
 from time import sleep_ms
+
 from daplink_flash import DaplinkFlash
+from machine import I2C
 
 # --- Configuration ---
 NUM_ROWS = 200

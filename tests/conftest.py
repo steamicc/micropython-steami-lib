@@ -1,9 +1,9 @@
 """Pytest configuration and fixtures for driver testing."""
 
-import yaml
 from pathlib import Path
 
 import pytest
+import yaml
 
 pytest_plugins = ["tests.report_plugin"]
 
@@ -22,12 +22,6 @@ def pytest_addoption(parser):
         help="Run tests for a specific driver only (e.g. hts221)",
     )
 
-
-def pytest_configure(config):
-    config.addinivalue_line("markers", "mock: tests that run with FakeI2C (no hardware)")
-    config.addinivalue_line("markers", "hardware: tests that require a real board")
-    config.addinivalue_line("markers", "manual: tests that require human validation")
-    config.addinivalue_line("markers", "board: board qualification tests (no driver, hardware only)")
 
 
 def pytest_collection_modifyitems(config, items):
