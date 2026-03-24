@@ -6,7 +6,7 @@ from machine import I2C
 from wsen_pads import WSEN_PADS
 from wsen_pads.const import ODR_10_HZ
 
-PRESSURE_ALERT_HPA = 1021.8 # Alert threshold
+PRESSURE_ALERT_HPA = 1000 # Alert threshold
 READ_INTERVAL_S = 1 # Time between printed readings
 
 i2c = I2C(1)
