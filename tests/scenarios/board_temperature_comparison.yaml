@@ -1,5 +1,5 @@
 type: board
-name: "Temperature comparison (all sensors)"
+name: "board_temperature_comparison"
 
 i2c:
   id: 1
