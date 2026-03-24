@@ -1,0 +1,68 @@
+name: Documentation
+description: Report missing or incorrect documentation.
+title: "docs: <short description>"
+labels: ["documentation"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Help us improve the documentation!
+
+  - type: textarea
+    id: what
+    attributes:
+      label: What needs documentation
+      description: What is missing, unclear, or incorrect?
+      placeholder: |
+        The APDS9960 README does not document the gesture recognition methods
+        (gesture(), set_gesture_gain(), etc.).
+    validations:
+      required: true
+
+  - type: dropdown
+    id: component
+    attributes:
+      label: Driver / Component
+      description: Which driver or module is concerned?
+      options:
+        - apds9960
+        - bme280
+        - bq27441
+        - daplink_flash
+        - gc9a01
+        - hts221
+        - im34dt05
+        - ism330dl
+        - lis2mdl
+        - mcp23009e
+        - ssd1327
+        - steami_config
+        - vl53l1x
+        - wsen-hids
+        - wsen-pads
+        - README / CONTRIBUTING
+        - Wiki (wiki.steami.cc)
+    validations:
+      required: true
+
+  - type: textarea
+    id: current
+    attributes:
+      label: Current state
+      description: What documentation exists now?
+      placeholder: The README only has a basic "Installation" section.
+    validations:
+      required: false
+
+  - type: textarea
+    id: desired
+    attributes:
+      label: Desired state
+      description: What should be added or changed?
+      placeholder: |
+        Add a "Gesture Recognition" section with:
+        - Method signatures and return values
+        - Example code
+        - Supported gestures list
+    validations:
+      required: false

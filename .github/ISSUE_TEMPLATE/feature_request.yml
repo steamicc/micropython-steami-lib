@@ -1,0 +1,67 @@
+name: Feature Request
+description: Suggest a new feature or improvement.
+title: "<component>: <short description>"
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Describe the feature you'd like and why it would be useful.
+
+  - type: textarea
+    id: description
+    attributes:
+      label: Description
+      description: What do you want and why?
+      placeholder: |
+        I would like a `heading()` method on LIS2MDL that returns the compass
+        bearing in degrees (0-360), so I can build a digital compass without
+        computing atan2 manually.
+    validations:
+      required: true
+
+  - type: dropdown
+    id: component
+    attributes:
+      label: Driver / Component
+      description: Which driver or module is concerned?
+      options:
+        - apds9960
+        - bme280
+        - bq27441
+        - daplink_flash
+        - gc9a01
+        - hts221
+        - im34dt05
+        - ism330dl
+        - lis2mdl
+        - mcp23009e
+        - ssd1327
+        - steami_config
+        - vl53l1x
+        - wsen-hids
+        - wsen-pads
+        - New driver
+        - Project-wide
+    validations:
+      required: true
+
+  - type: textarea
+    id: api
+    attributes:
+      label: Proposed API
+      description: Show how you would like to use this feature.
+      render: python
+      placeholder: |
+        mag = LIS2MDL(I2C(1))
+        print("Heading:", mag.heading(), "°")
+    validations:
+      required: false
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+      description: Any workarounds or other approaches you've thought of?
+    validations:
+      required: false
