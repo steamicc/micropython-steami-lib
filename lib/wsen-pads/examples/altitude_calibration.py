@@ -1,6 +1,6 @@
-from machine import I2C
 from time import sleep
 
+from machine import I2C
 from wsen_pads import WSEN_PADS
 
 # Set your known altitude (in meters) for calibration

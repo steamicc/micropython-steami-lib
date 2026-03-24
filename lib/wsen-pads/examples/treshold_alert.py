@@ -1,6 +1,7 @@
 """Monitor pressure continuously and print an alert when pressure drops below a configurable threshold (e.g. storm detection)."""
 
 from time import sleep
+
 from machine import I2C
 from wsen_pads import WSEN_PADS
 from wsen_pads.const import ODR_10_HZ

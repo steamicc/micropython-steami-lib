@@ -1,9 +1,9 @@
 """
 Read temperature and pressure, format a nice display with units and a simple bar graph using # characters to visualize pressure (e.g. 1013.2 hPa [##########-----])
 """
-from machine import I2C
 from time import sleep
 
+from machine import I2C
 from wsen_pads import WSEN_PADS
 
 TEMP_MIN = 15.0

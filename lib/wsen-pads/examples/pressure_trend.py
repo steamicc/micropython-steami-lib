@@ -1,6 +1,7 @@
 """Read pressure every 10s, keep the last 10 values in a list, print whether pressure is rising, falling, or stable (useful for simple weather prediction)"""
 
 from time import sleep
+
 from machine import I2C
 from wsen_pads import WSEN_PADS
 from wsen_pads.const import ODR_10_HZ

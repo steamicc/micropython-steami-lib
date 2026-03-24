@@ -45,4 +45,3 @@ while True:
     floor_change = round(altitude_diff / METERS_PER_FLOOR)
 
     print("Avg Pressure:", avg_pressure, "hPa  Altitude Diff:", altitude_diff, "m  Floor Change:", floor_change)
-    
