@@ -1,6 +1,6 @@
 name: Feature Request
 description: Suggest a new feature or improvement.
-title: "<driver>: <short description>"
+title: "<component>: <short description>"
 labels: ["enhancement"]
 body:
   - type: markdown

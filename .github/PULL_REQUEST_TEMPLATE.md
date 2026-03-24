@@ -11,7 +11,7 @@
 ## Checklist
 
 - [ ] `ruff check` passes
-- [ ] `pytest tests/ -k mock` passes (no mock test broken)
+- [ ] `python -m pytest tests/ -k mock -v` passes (no mock test broken)
 - [ ] Tested on hardware (if applicable)
 - [ ] README updated (if adding/changing public API)
 - [ ] Examples added/updated (if applicable)

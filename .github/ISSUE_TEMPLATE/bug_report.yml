@@ -1,6 +1,6 @@
 name: Bug Report
 description: Report a bug in a driver or module.
-title: "<driver>: <short description>"
+title: "<component>: <short description>"
 labels: ["bug"]
 body:
   - type: markdown
