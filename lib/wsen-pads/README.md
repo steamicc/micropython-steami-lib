@@ -443,14 +443,18 @@ This computes a corrected gain and offset so that the measured temperature bette
 
 Examples are available in the `examples` directory.
 
-| Example       | Description                         |
-| ------------- | ----------------------------------- |
-| `basic_reader.py`      | Basic pressure and temperature read |
-| `continuous_reader.py` | Continuous measurement example      |
-| `one_shot_reader.py`   | One-shot measurement example        |
-| `altitude.py`          | Altitude estimation from pressure   |
-| `test.py`              | Driver test script                  |
-
+| Example                    | Description                                                                 |
+| -------------------------- | --------------------------------------------------------------------------- |
+| `basic_reader.py`          | Basic pressure and temperature read                                         |
+| `continuous_reader.py`     | Continuous measurement example                                              |
+| `one_shot_reader.py`       | One-shot measurement example                                                |
+| `altitude.py`              | Altitude estimation from pressure                                           |
+| `altitude_calibration.py`  | Calibrate sea-level pressure from known altitude and compute corrected altitude |
+| `floor_detector.py`        | Detect floor changes based on altitude variations                           |
+| `pressure_trend.py`        | Track pressure changes over time to detect trends                           |
+| `temp_pressure_display.py` | Display formatted temperature and pressure with ASCII bar graphs            |
+| `threshold_alert.py`        | Monitor pressure and trigger an alert when a threshold is crossed           |
+| `weather_station.py`       | Monitor weather condition and register them in a CSV file on the board      |
 
 ---
 

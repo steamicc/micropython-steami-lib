@@ -121,3 +121,242 @@ tests:
     prompt: "Ces valeurs sont-elles cohérentes (pression ~1013 hPa, température ambiante) ?"
     expect_true: true
     mode: [hardware]
+
+  # ---------------------------------------------------------------------------
+  # Init / identification
+  # ---------------------------------------------------------------------------
+
+  - name: "Device absent raises exception"
+    action: script
+    script: |
+      from wsen_pads import WSEN_PADS
+      from wsen_pads.exceptions import WSENPADSDeviceNotFound
+
+      try:
+          i2c.scan = lambda: []
+          WSEN_PADS(i2c, address=0x5D)
+          result = False
+      except WSENPADSDeviceNotFound:
+          result = True
+      except Exception:
+          result = False
+    expect_true: true
+    mode: [mock]
+
+  - name: "Invalid DEVICE_ID raises exception"
+    action: script
+    script: |
+      from wsen_pads import WSEN_PADS
+      from wsen_pads.exceptions import WSENPADSInvalidDevice
+
+      original = i2c._registers[0x0F]
+      i2c._registers[0x0F] = bytes([0x00])
+
+      try:
+          WSEN_PADS(i2c, address=0x5D)
+          result = False
+      except WSENPADSInvalidDevice:
+          result = True
+      except Exception:
+          result = False
+
+      i2c._registers[0x0F] = original
+    expect_true: true
+    mode: [mock]
+
+  - name: "Boot timeout raises exception at init"
+    action: script
+    script: |
+      from wsen_pads import WSEN_PADS
+      from wsen_pads.exceptions import WSENPADSTimeout
+
+      original = i2c._registers[0x24]
+      i2c._registers[0x24] = bytes([0x80])  # INT_SOURCE_BOOT_ON
+
+      try:
+          WSEN_PADS(i2c, address=0x5D)
+          result = False
+      except WSENPADSTimeout:
+          result = True
+      except Exception:
+          result = False
+
+      i2c._registers[0x24] = original
+    expect_true: true
+    mode: [mock]
+
+  # ---------------------------------------------------------------------------
+  # Continuous mode validation
+  # ---------------------------------------------------------------------------
+
+  - name: "set_continuous rejects invalid ODR"
+    action: script
+    script: |
+      try:
+          dev.set_continuous(odr=99)
+          result = False
+      except ValueError:
+          result = True
+      except Exception:
+          result = False
+    expect_true: true
+    mode: [mock]
+
+  - name: "set_continuous rejects low-noise at 100 Hz"
+    action: script
+    script: |
+      try:
+          dev.set_continuous(odr=0x06, low_noise=True)
+          result = False
+      except ValueError:
+          result = True
+      except Exception:
+          result = False
+    expect_true: true
+    mode: [mock]
+
+  - name: "set_continuous rejects low-noise at 200 Hz"
+    action: script
+    script: |
+      try:
+          dev.set_continuous(odr=0x07, low_noise=True)
+          result = False
+      except ValueError:
+          result = True
+      except Exception:
+          result = False
+    expect_true: true
+    mode: [mock]
+
+  # ---------------------------------------------------------------------------
+  # Status helpers
+  # ---------------------------------------------------------------------------
+
+  - name: "pressure_ready false when status empty"
+    action: script
+    script: |
+      i2c._registers[0x27] = bytes([0x00])
+      result = dev.pressure_ready()
+      i2c._registers[0x27] = bytes([0x03])
+    expect_false: true
+    mode: [mock]
+
+  - name: "temperature_ready false when status empty"
+    action: script
+    script: |
+      i2c._registers[0x27] = bytes([0x00])
+      result = dev.temperature_ready()
+      i2c._registers[0x27] = bytes([0x03])
+    expect_false: true
+    mode: [mock]
+
+  - name: "data_ready false when status empty"
+    action: script
+    script: |
+      i2c._registers[0x27] = bytes([0x00])
+      result = dev.data_ready()
+      i2c._registers[0x27] = bytes([0x03])
+    expect_false: true
+    mode: [mock]
+
+  - name: "pressure_ready true when only pressure available"
+    action: script
+    script: |
+      i2c._registers[0x27] = bytes([0x01])  # STATUS_P_DA
+      result = dev.pressure_ready()
+      i2c._registers[0x27] = bytes([0x03])
+    expect_true: true
+    mode: [mock]
+
+  - name: "temperature_ready true when only temperature available"
+    action: script
+    script: |
+      i2c._registers[0x27] = bytes([0x02])  # STATUS_T_DA
+      result = dev.temperature_ready()
+      i2c._registers[0x27] = bytes([0x03])
+    expect_true: true
+    mode: [mock]
+
+  - name: "data_ready false when only pressure available"
+    action: script
+    script: |
+      i2c._registers[0x27] = bytes([0x01])  # STATUS_P_DA
+      result = dev.data_ready()
+      i2c._registers[0x27] = bytes([0x03])
+    expect_false: true
+    mode: [mock]
+
+  - name: "data_ready false when only temperature available"
+    action: script
+    script: |
+      i2c._registers[0x27] = bytes([0x02])  # STATUS_T_DA
+      result = dev.data_ready()
+      i2c._registers[0x27] = bytes([0x03])
+    expect_false: true
+    mode: [mock]
+
+  - name: "data_ready true when pressure and temperature available"
+    action: script
+    script: |
+      i2c._registers[0x27] = bytes([0x03])  # STATUS_P_DA | STATUS_T_DA
+      result = dev.data_ready()
+    expect_true: true
+    mode: [mock]
+
+  # ---------------------------------------------------------------------------
+  # Reset / reboot
+  # ---------------------------------------------------------------------------
+
+  - name: "soft_reset reapplies default configuration"
+    action: script
+    script: |
+      dev.set_continuous(odr=0x03, low_noise=True, low_pass=True, low_pass_strong=True)
+      dev.soft_reset()
+
+      ctrl1 = i2c._registers[0x10][0]
+      ctrl2 = i2c._registers[0x11][0]
+
+      bdu_ok = (ctrl1 & 0x02) == 0x02
+      odr_power_down = (ctrl1 & 0x70) == 0x00
+      auto_inc_ok = (ctrl2 & 0x10) == 0x10
+      low_noise_off = (ctrl2 & 0x02) == 0x00
+
+      result = bdu_ok and odr_power_down and auto_inc_ok and low_noise_off
+    expect_true: true
+    mode: [mock]
+
+  - name: "reboot reapplies default configuration"
+    action: script
+    script: |
+      dev.set_continuous(odr=0x03, low_noise=False, low_pass=True, low_pass_strong=True)
+      i2c._registers[0x24] = bytes([0x00])  # boot already finished
+      dev.reboot()
+
+      ctrl1 = i2c._registers[0x10][0]
+      ctrl2 = i2c._registers[0x11][0]
+
+      bdu_ok = (ctrl1 & 0x02) == 0x02
+      odr_power_down = (ctrl1 & 0x70) == 0x00
+      auto_inc_ok = (ctrl2 & 0x10) == 0x10
+      low_noise_off = (ctrl2 & 0x02) == 0x00
+
+      result = bdu_ok and odr_power_down and auto_inc_ok and low_noise_off
+    expect_true: true
+    mode: [mock]
+
+  # ---------------------------------------------------------------------------
+  # Calibration
+  # ---------------------------------------------------------------------------
+
+  - name: "Temperature calibration rejects identical measured points"
+    action: script
+    script: |
+      try:
+          dev.calibrate_temperature(20.0, 25.0, 30.0, 25.0)
+          result = False
+      except ValueError:
+          result = True
+      except Exception:
+          result = False
+    expect_true: true
+    mode: [mock]
