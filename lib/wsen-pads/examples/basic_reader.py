@@ -1,6 +1,6 @@
 from time import sleep
 
-from machine import I2C, Pin
+from machine import I2C
 from wsen_pads import WSEN_PADS
 
 # Update the I2C bus number and pins to match your board

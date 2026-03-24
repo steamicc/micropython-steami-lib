@@ -1,6 +1,6 @@
 from time import sleep
 
-from machine import I2C, Pin
+from machine import I2C
 from wsen_pads import WSEN_PADS
 
 SEA_LEVEL_PRESSURE = 1013.25 # depends on your location, you can adjust it for better altitude estimation
