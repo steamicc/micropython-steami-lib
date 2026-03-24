@@ -1,0 +1,81 @@
+name: Bug Report
+description: Report a bug in a driver or module.
+title: "<driver>: <short description>"
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting a bug! Please fill in the details below.
+
+  - type: textarea
+    id: description
+    attributes:
+      label: Description
+      description: What happened? What did you expect instead?
+      placeholder: |
+        When I call `sensor.temperature()`, the returned value is always 0.0.
+        I expected a plausible room temperature (~20-30°C).
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      description: Minimal code or steps to trigger the bug.
+      placeholder: |
+        ```python
+        from machine import I2C
+        from hts221 import HTS221
+        sensor = HTS221(I2C(1))
+        print(sensor.temperature())  # always 0.0
+        ```
+    validations:
+      required: true
+
+  - type: dropdown
+    id: component
+    attributes:
+      label: Driver / Component
+      description: Which driver or module is affected?
+      options:
+        - apds9960
+        - bme280
+        - bq27441
+        - daplink_flash
+        - gc9a01
+        - hts221
+        - im34dt05
+        - ism330dl
+        - lis2mdl
+        - mcp23009e
+        - ssd1327
+        - steami_config
+        - vl53l1x
+        - wsen-hids
+        - wsen-pads
+        - Other
+    validations:
+      required: true
+
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment
+      description: MicroPython version, board revision, firmware version.
+      placeholder: |
+        - MicroPython: v1.24.1
+        - Board revision: 3
+        - DAPLink firmware: 0259
+    validations:
+      required: false
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs / Output
+      description: Paste any relevant error messages or output.
+      render: text
+    validations:
+      required: false
