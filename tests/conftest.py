@@ -23,12 +23,6 @@ def pytest_addoption(parser):
     )
 
 
-def pytest_configure(config):
-    config.addinivalue_line("markers", "mock: tests that run with FakeI2C (no hardware)")
-    config.addinivalue_line("markers", "hardware: tests that require a real board")
-    config.addinivalue_line("markers", "manual: tests that require human validation")
-    config.addinivalue_line("markers", "board: board qualification tests (no driver, hardware only)")
-
 
 def pytest_collection_modifyitems(config, items):
     port = config.getoption("--port")
