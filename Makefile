@@ -2,10 +2,17 @@
 
 PORT ?= /dev/ttyACM0
 
-# --- Development setup ---
+# --- Setup ---
+
+.PHONY: prepare
+prepare: ## Install git hooks
+	husky
+
+.PHONY: setup
+setup: install prepare ## Full dev environment setup
 
 .PHONY: install
-install: ## Install dev tools and git hooks
+install: ## Install dev tools (pip + npm)
 	pip install ruff pytest
 	npm install
 
@@ -40,6 +47,20 @@ test-driver: ## Run tests for one driver (usage: make test-driver DRIVER=hts221)
 .PHONY: test-examples
 test-examples: ## Validate all example files (syntax + imports)
 	python3 -m pytest tests/test_examples.py -v
+
+# --- CI ---
+
+.PHONY: ci
+ci: lint test test-examples ## Run all CI checks (lint + tests + examples)
+
+# --- Build / Package ---
+
+.PHONY: build
+build: lint test ## Build (lint + test)
+
+.PHONY: package
+package: ## Package drivers for distribution
+	@echo "Packaging not yet implemented (see issue backlog)"
 
 # --- Hardware ---
 

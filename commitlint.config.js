@@ -1,5 +1,10 @@
 module.exports = {
   extends: ['@commitlint/config-conventional'],
+  parserPreset: {
+    parserOpts: {
+      issuePrefixes: ['#'],
+    },
+  },
   rules: {
     'subject-case': [0],
     'subject-full-stop': [0],
