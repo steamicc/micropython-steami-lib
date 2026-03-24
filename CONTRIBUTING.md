@@ -63,12 +63,12 @@ make lint-fix
 Commit messages follow the [Conventional Commits](https://www.conventionalcommits.org/) format, enforced by commitlint via a git hook:
 
 ```
-<type>(<scope>): <Description starting with a capital letter ending with a period.>
+<type>[(<scope>)]: <Description starting with a capital letter ending with a period.>
 ```
 
 **Types**: `feat`, `fix`, `docs`, `style`, `refactor`, `test`, `ci`, `build`, `chore`, `perf`, `revert`, `tooling`
 
-**Scopes**: driver names (`hts221`, `ism330dl`, `wsen-pads`...) or domains (`ci`, `docs`, `style`, `tests`, `tooling`).
+**Scopes** (optional): driver names (`hts221`, `ism330dl`, `wsen-pads`...) or domains (`ci`, `docs`, `style`, `tests`, `tooling`). The scope is recommended for driver-specific changes but can be omitted for cross-cutting changes.
 
 ### Examples
 
@@ -83,7 +83,7 @@ test(mcp23009e): Add mock scenarios for mcp23009e driver.
 ## Workflow
 
 1. Set up your environment: `make setup`
-2. Create a branch from main (format: `feat/`, `fix/`, `docs/`, `tooling/`, `ci/`, `test/`, `style/`)
+2. Create a branch from main (format: `feat/`, `fix/`, `docs/`, `tooling/`, `ci/`, `test/`, `style/`, `chore/`, `refactor/`)
 3. Write your code and add tests in `tests/scenarios/<driver>.yaml`
 4. Run `make ci` to verify everything passes (lint + tests + examples)
 5. Commit — the git hooks will automatically check your commit message and run ruff on staged files

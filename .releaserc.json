@@ -1,7 +1,7 @@
 {
     "branches": ["main"],
     "repositoryUrl": "https://github.com/steamicc/micropython-steami-lib.git",
-    "debug": "false",
+    "debug": false,
     "plugins": [
         "@semantic-release/commit-analyzer",
         "@semantic-release/release-notes-generator",
