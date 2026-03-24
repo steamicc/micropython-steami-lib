@@ -15,7 +15,7 @@ flash = DaplinkFlash(i2c)
 sensor.set_continuous(odr=ODR_10_HZ)
 
 # Set filename and erase
-flash.set_filename("weather_station", "CSV")
+flash.set_filename("WSTATION", "CSV")
 flash.clear_flash()
 sleep_ms(500)
 print("Flash erased.")
@@ -29,4 +29,4 @@ while True:
     print("P:", pressure, "hPa  T:", temperature, "°C")
     flash.write_line(f"{temperature};{pressure}")
 
-    sleep(0.1)
+    sleep(5)
