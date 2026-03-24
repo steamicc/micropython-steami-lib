@@ -1,3 +1,5 @@
+"""Read pressure every 10s, keep the last 10 values in a list, print whether pressure is rising, falling, or stable (useful for simple weather prediction)"""
+
 from time import sleep
 from machine import I2C
 from wsen_pads import WSEN_PADS
@@ -10,20 +12,24 @@ sensor.set_continuous(odr=ODR_10_HZ)
 
 pressure_history = []
 MAX_VALUES = 10
-THRESHOLD = 0.12  # sensitivity (hPa) ~ 1 meter altitude change
+THRESHOLD = 0.5 # sensitivity (hPa)
 
 def get_trend(values):
     if len(values) < 2:
         return "N/A"
 
-    diff = values[-1] - values[0]
+    half = len(values) // 2
+    first_half_avg = sum(values[:half]) / len(values[:half])
+    second_half_avg = sum(values[half:]) / len(values[half:])
+
+    diff = second_half_avg - first_half_avg
 
     if abs(diff) < THRESHOLD:
         return "stable"
     elif diff > 0:
-        return "falling" # pressure rising means lower altitude
-    else:
         return "rising"
+    else:
+        return "falling"
 
 while True:
     pressure = sensor.pressure_hpa()
@@ -37,6 +43,6 @@ while True:
 
     trend = get_trend(pressure_history)
 
-    print("P:", pressure, "hPa Trend:", trend)
+    print("P:", pressure, "hPa, Pressure is", trend)
 
     sleep(10)
