@@ -12,8 +12,7 @@ sensor.set_continuous(odr=ODR_10_HZ)
 
 SAMPLES_FOR_BASELINE = 20
 SAMPLES_PER_MEASURE = 10
-SEA_LEVEL_HPA = 1013.25
-METERS_PER_FLOOR = 0.1 #3.0
+METERS_PER_FLOOR = 0.3
 
 baseline_pressure_list = []
 
