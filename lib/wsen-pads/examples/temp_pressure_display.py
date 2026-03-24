@@ -8,8 +8,8 @@ from wsen_pads import WSEN_PADS
 
 TEMP_MIN = 15.0
 TEMP_MAX = 30.0
-PRESS_MIN = 1020.0
-PRESS_MAX = 1023.0
+PRESS_MIN = 960.0
+PRESS_MAX = 1060.0
 
 
 i2c = I2C(1)
