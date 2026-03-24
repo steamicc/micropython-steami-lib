@@ -9,6 +9,10 @@ requires-python = ">=3.7"
 dev = ["ruff>=0.9"]
 test = ["pytest>=7.0", "pyyaml>=6.0", "mpremote>=1.0"]
 
+[tool.setuptools]
+# No Python packages to install — this project contains MicroPython drivers
+packages = []
+
 [project.urls]
 Homepage = "https://www.steami.cc/"
 Repository = "https://github.com/steamicc/micropython-steami-lib"
