@@ -293,16 +293,19 @@ No calibration is required for basic usage.
 
 ---
 
-# Examples
+## Examples
 
-Example scripts are located in:
+The `examples/` directory provides practical scripts demonstrating how to use the WSEN-HIDS sensor in different scenarios.
 
-```
-examples/
-```
+### Overview
 
-Examples include:
-
-* basic one-shot measurements
-* continuous measurement mode
-* driver validation tests
+| Example | Description |
+|--------|------------|
+| `one_shot_mode.py` | Basic one-shot measurements: trigger a measurement and read humidity and temperature on demand |
+| `continuous_mode.py` | Continuous measurement mode: sensor runs continuously and values are read periodically |
+| `humidity_temperature.py` | Beginner-friendly example: perform a single read and print humidity and temperature |
+| `comfort_monitor.py` | Read every 2 seconds and display a comfort indicator (`Dry`, `Comfortable`, `Humid`) based on humidity |
+| `data_logger.py` | Log data every 5 seconds in CSV format (`timestamp, humidity, temperature`) for serial capture |
+| `dew_point.py` | Compute and display dew point using temperature and humidity (Magnus formula) |
+| `heater_demo.py` | Demonstrate the built-in heater: compare readings before and after enabling it |
+| `low_power_sampling.py` | Low-power sampling: perform one-shot measurements every 10 seconds, power down the sensor between reads, and display memory usage and timing |
