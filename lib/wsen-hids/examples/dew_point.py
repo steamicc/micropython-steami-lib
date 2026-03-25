@@ -8,12 +8,15 @@ from wsen_hids import WSEN_HIDS
 i2c = I2C(1)
 sensor = WSEN_HIDS(i2c)
 
+
 def dew_point_celsius(temperature_c, humidity):
     # Magnus formula
     a = 17.62
     b = 243.12  # °C
 
-    gamma = (a * temperature_c / (b + temperature_c)) + log(humidity / 100.0)
+    # Clamp humidity to a small positive value to avoid log(0) when humidity is 0.0
+    safe_humidity = max(humidity, 0.01)
+    gamma = (a * temperature_c / (b + temperature_c)) + log(safe_humidity / 100.0)
     dp = (b * gamma) / (a - gamma)
     return dp
 
