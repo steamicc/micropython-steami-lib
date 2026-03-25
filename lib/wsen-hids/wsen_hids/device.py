@@ -170,10 +170,13 @@ class WSEN_HIDS(object):
     # -------------------------------------------------------------------------
 
     def enable_bdu(self, enabled=True):
+        self._bdu = enabled
         value = CTRL_1_BDU if enabled else 0
         self._update_reg(REG_CTRL_1, CTRL_1_BDU, value)
 
     def set_average(self, avg_t=AVG_T_DEFAULT, avg_h=AVG_H_DEFAULT):
+        self._avg_t = avg_t
+        self._avg_h = avg_h
         avg_t &= 0x07
         avg_h &= 0x07
         value = (avg_t << 3) | avg_h
