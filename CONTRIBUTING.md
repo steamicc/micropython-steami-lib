@@ -122,6 +122,21 @@ make bump PART=minor   # minor: v1.0.1 → v1.1.0
 make bump PART=major   # major: v1.1.0 → v2.0.0
 ```
 
+## Firmware build and deploy
+
+The drivers are "frozen" into the MicroPython firmware for the STeaMi board. The Makefile automates cloning, building, and flashing:
+
+```bash
+make firmware       # Clone micropython-steami (if needed), update submodule, build
+make deploy         # Flash firmware via OpenOCD
+make run SCRIPT=lib/steami_config/examples/calibrate_magnetometer.py  # Deploy a script as main.py
+make firmware-clean # Clean firmware build artifacts
+```
+
+The firmware source is cloned into `.build/micropython-steami/` (gitignored). The submodule `lib/micropython-steami-lib` is pointed to the current HEAD of your local branch, so the firmware always includes your latest driver changes.
+
+**Requirements**: `arm-none-eabi-gcc` toolchain and OpenOCD for flashing.
+
 ## Notes
 
 * Keep implementations simple and readable
