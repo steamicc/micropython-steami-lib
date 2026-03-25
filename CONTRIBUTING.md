@@ -103,6 +103,25 @@ All pull requests must pass these checks:
 | Mock tests | `tests.yml` | Runs mock driver tests |
 | Example validation | `tests.yml` | Validates example files syntax and imports |
 
+## Releasing
+
+Releases are handled automatically by [semantic-release](https://semantic-release.gitbook.io/) when commits are pushed to `main`. The version is determined from commit messages:
+
+- `fix:` → patch bump (v1.0.0 → v1.0.1)
+- `feat:` → minor bump (v1.0.0 → v1.1.0)
+- `BREAKING CHANGE:` in commit body → major bump (v1.0.0 → v2.0.0)
+- `docs:`, `style:`, `test:`, `ci:`, `chore:` → no release
+
+semantic-release automatically updates `pyproject.toml`, generates `CHANGELOG.md`, creates a git tag, and publishes a GitHub release.
+
+To force a specific version manually (override):
+
+```bash
+make bump              # patch: v1.0.0 → v1.0.1
+make bump PART=minor   # minor: v1.0.1 → v1.1.0
+make bump PART=major   # major: v1.1.0 → v2.0.0
+```
+
 ## Notes
 
 * Keep implementations simple and readable
