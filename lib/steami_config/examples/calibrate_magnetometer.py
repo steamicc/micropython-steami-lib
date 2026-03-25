@@ -21,6 +21,12 @@ from time import sleep_ms
 
 from machine import I2C
 
+# Add driver paths when running via mpremote mount lib/
+for p in ("daplink_flash", "steami_config", "lis2mdl", "ssd1327"):
+    path = "/remote/" + p
+    if path not in sys.path:
+        sys.path.insert(0, path)
+
 
 def show_screen(i2c, lines):
     """Display text lines on the OLED screen, then free the driver."""
@@ -133,7 +139,7 @@ config2.apply_magnetometer_calibration(mag2)
 print("Verification (5 heading readings after reload):")
 lines = ["=== COMPAS ===", "", "Verification:"]
 for i in range(5):
-    heading = mag2.heading()
+    heading = mag2.heading_flat_only()
     norm = mag2.calibrated_field()
     line = "  {}: cap={:.0f} deg".format(i + 1, heading)
     print("  Reading {}: heading={:.1f} deg  norm=({:.3f}, {:.3f}, {:.3f})".format(
@@ -141,5 +147,5 @@ for i in range(5):
     lines.append(line)
     sleep_ms(500)
 
-show_screen(i2c, [*lines, "", "Termine !"])
+show_screen(i2c, lines + ["", "Termine !"])  # noqa: RUF005
 print("\nDone! Calibration is stored and will be restored at next boot.")
