@@ -1,12 +1,13 @@
 """Loop that reads humidity + temperature every 2s and prints a comfort indicator ("Dry", "Comfortable", "Humid") based on humidity thresholds (< 30%, 30-60%, > 60%)"""
 
-from time import sleep
+from time import sleep_ms
 
 from machine import I2C
 from wsen_hids import WSEN_HIDS
 
 i2c = I2C(1)
 sensor = WSEN_HIDS(i2c)
+
 
 def comfort_label(humidity):
     if humidity < 30:
@@ -25,4 +26,4 @@ while True:
     print("Comfort: {}".format(comfort))
     print()
 
-    sleep(2)
+    sleep_ms(2000)
