@@ -103,10 +103,14 @@ bump: ## Create a version tag (PART=patch|minor|major, default: patch)
 	@if [ -n "$$(git status --porcelain)" ]; then \
 		echo "Error: working tree is not clean. Commit or stash changes first."; exit 1; \
 	fi
-	@LAST=$$(git tag --sort=-v:refname | head -1); \
+	@set -e; \
+	LAST=$$(git tag --sort=-v:refname | head -1); \
 	if [ -z "$$LAST" ]; then \
 		NEXT="v1.0.0"; \
 	else \
+		if ! echo "$$LAST" | grep -Eq '^v[0-9]+\.[0-9]+\.[0-9]+$$'; then \
+			echo "Error: latest tag '$$LAST' is not in supported format v<major>.<minor>.<patch>."; exit 1; \
+		fi; \
 		MAJOR=$$(echo "$$LAST" | sed 's/^v//' | cut -d. -f1); \
 		MINOR=$$(echo "$$LAST" | sed 's/^v//' | cut -d. -f2); \
 		PATCH=$$(echo "$$LAST" | sed 's/^v//' | cut -d. -f3); \
@@ -119,10 +123,11 @@ bump: ## Create a version tag (PART=patch|minor|major, default: patch)
 		NEXT="v$$MAJOR.$$MINOR.$$PATCH"; \
 	fi; \
 	echo "$$LAST → $$NEXT"; \
-	sed -i "s/^version = \".*\"/version = \"$${NEXT#v}\"/" pyproject.toml; \
+	VERSION=$${NEXT#v}; \
+	python3 -c "import re, pathlib; p=pathlib.Path('pyproject.toml'); p.write_text(re.sub(r'^version = \".*\"', 'version = \"$$VERSION\"', p.read_text(), count=1, flags=re.MULTILINE))"; \
 	git add pyproject.toml; \
 	git commit -m "chore: Bump version to $$NEXT."; \
-	git tag "$$NEXT"; \
+	git tag -a "$$NEXT" -m "Release $$NEXT"; \
 	git push origin main "$$NEXT"; \
 	echo "Tag $$NEXT pushed to origin."
 
