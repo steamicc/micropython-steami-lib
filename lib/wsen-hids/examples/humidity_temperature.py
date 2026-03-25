@@ -1,3 +1,5 @@
+"""Simple read: print humidity and temperature once (beginner-friendly first example)"""
+
 from machine import I2C
 from wsen_hids import WSEN_HIDS
 
