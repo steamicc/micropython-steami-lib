@@ -177,23 +177,25 @@ class SteamiConfig(object):
         if cm is None:
             return None
         return {
-            "hard_iron_x": cm["hx"],
-            "hard_iron_y": cm["hy"],
-            "hard_iron_z": cm["hz"],
-            "soft_iron_x": cm["sx"],
-            "soft_iron_y": cm["sy"],
-            "soft_iron_z": cm["sz"],
+            "hard_iron_x": cm.get("hx", 0.0),
+            "hard_iron_y": cm.get("hy", 0.0),
+            "hard_iron_z": cm.get("hz", 0.0),
+            "soft_iron_x": cm.get("sx", 1.0),
+            "soft_iron_y": cm.get("sy", 1.0),
+            "soft_iron_z": cm.get("sz", 1.0),
         }
 
     def apply_magnetometer_calibration(self, lis2mdl_instance):
         """Apply stored magnetometer calibration to a LIS2MDL instance.
 
         The instance must have x_off/y_off/z_off and x_scale/y_scale/z_scale
-        attributes.
+        attributes.  Only applies to LIS2MDL instances.
 
         Args:
             lis2mdl_instance: a LIS2MDL driver instance.
         """
+        if type(lis2mdl_instance).__name__.lower() != "lis2mdl":
+            return
         cal = self.get_magnetometer_calibration()
         if cal is None:
             return

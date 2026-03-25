@@ -199,7 +199,10 @@ tests:
 
       mag = LIS2MDL()
       dev.apply_magnetometer_calibration(mag)
-      result = mag.x_off == 0 and mag.x_scale == 1
+      result = (
+          mag.x_off == 0 and mag.y_off == 0 and mag.z_off == 0
+          and mag.x_scale == 1 and mag.y_scale == 1 and mag.z_scale == 1
+      )
     expect_true: true
     mode: [mock]
 
@@ -214,7 +217,14 @@ tests:
       dev2 = SteamiConfig(dev._flash)
       dev2.load()
       cal = dev2.get_magnetometer_calibration()
-      result = cal["hard_iron_x"] == 5.5 and cal["soft_iron_x"] == 1.0
+      result = (
+          cal["hard_iron_x"] == 5.5
+          and cal["hard_iron_y"] == -2.2
+          and cal["hard_iron_z"] == 0.3
+          and cal["soft_iron_x"] == 1.0
+          and cal["soft_iron_y"] == 1.0
+          and cal["soft_iron_z"] == 1.0
+      )
     expect_true: true
     mode: [mock]
 
