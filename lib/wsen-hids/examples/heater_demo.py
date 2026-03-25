@@ -1,4 +1,6 @@
-"""Show the effect of the built-in heater (enable_heater()): read humidity before, enable heater for a few seconds, read again. The heater evaporates condensation — humidity should drop. Demonstrates a feature unique to this sensor."""
+"""Show the effect of the built-in heater
+(enable_heater()): read humidity before, enable heater for a few seconds, read again.
+The heater evaporates condensation — humidity should drop. Demonstrates a feature unique to this sensor."""
 from time import sleep_ms
 
 from machine import I2C

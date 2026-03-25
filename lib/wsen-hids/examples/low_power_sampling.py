@@ -1,4 +1,6 @@
-"""Use power_off() between readings to minimize energy consumption. Read one-shot every 10s, print values, then power down. Show gc.mem_free() and elapsed time to illustrate battery-friendly usage."""
+"""Use power_off() between readings to minimize energy consumption.
+Read one-shot every 10s, print values, then power down.
+Show gc.mem_free() and elapsed time to illustrate battery-friendly usage."""
 
 import gc
 from time import sleep, ticks_diff, ticks_ms

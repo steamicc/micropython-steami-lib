@@ -1,4 +1,5 @@
-"""Compute and display the dew point temperature from humidity + temperature using the Magnus formula. Useful to understand when condensation might occur."""
+"""Compute and display the dew point temperature from humidity + temperature using the Magnus formula.
+Useful to understand when condensation might occur."""
 from math import log
 
 from machine import I2C

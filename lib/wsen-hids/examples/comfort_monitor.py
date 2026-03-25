@@ -1,4 +1,5 @@
-"""Loop that reads humidity + temperature every 2s and prints a comfort indicator ("Dry", "Comfortable", "Humid") based on humidity thresholds (< 30%, 30-60%, > 60%)"""
+"""Loop that reads humidity + temperature every 2s and prints a comfort indicator ("Dry", "Comfortable", "Humid")
+based on humidity thresholds (< 30%, 30-60%, > 60%)"""
 
 from time import sleep_ms
 
