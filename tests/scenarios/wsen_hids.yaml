@@ -136,6 +136,18 @@ tests:
     expect_true: true
     mode: [mock]
 
+  - name: "Read one-shot after power cycle (hardware)"
+    action: script
+    script: |
+      from time import sleep_ms
+      dev.power_off()
+      sleep_ms(50)
+      dev.power_on()
+      h, t = dev.read_one_shot()
+      result = 10.0 < h < 90.0 and 10.0 < t < 50.0
+    expect_true: true
+    mode: [hardware]
+
   - name: "Temperature with offset"
     action: script
     script: |
