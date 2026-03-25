@@ -10,7 +10,7 @@ module.exports = {
     'subject-full-stop': [0],
     'header-max-length': [2, 'always', 78],
     'scope-enum': [
-      1,
+      2,
       'always',
       [
         'apds9960',

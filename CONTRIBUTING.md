@@ -68,7 +68,10 @@ Commit messages follow the [Conventional Commits](https://www.conventionalcommit
 
 **Types**: `feat`, `fix`, `docs`, `style`, `refactor`, `test`, `ci`, `build`, `chore`, `perf`, `revert`, `tooling`
 
-**Scopes** (optional): driver names (`hts221`, `ism330dl`, `wsen-pads`...) or domains (`ci`, `docs`, `style`, `tests`, `tooling`). The scope is recommended for driver-specific changes but can be omitted for cross-cutting changes.
+**Scopes** (optional but enforced): if provided, the scope **must** be one of the allowed values. The scope is recommended for driver-specific changes but can be omitted for cross-cutting changes.
+
+- Driver scopes: `apds9960`, `bme280`, `bq27441`, `daplink_flash`, `gc9a01`, `hts221`, `im34dt05`, `ism330dl`, `lis2mdl`, `mcp23009e`, `ssd1327`, `steami_config`, `vl53l1x`, `wsen-hids`, `wsen-pads`
+- Domain scopes: `ci`, `docs`, `style`, `tests`, `tooling`
 
 ### Examples
 
