@@ -106,6 +106,76 @@ tests:
     expect_true: true
     mode: [mock]
 
+  - name: "Power on restores averaging config after register loss"
+    action: script
+    script: |
+      dev.power_off()
+      i2c.writeto_mem(dev.address, 0x10, bytes([0x00]))
+      dev.power_on()
+      av_conf = i2c.readfrom_mem(dev.address, 0x10, 1)[0]
+      result = av_conf == 0x1B
+    expect_true: true
+    mode: [mock]
+
+  - name: "Power on restores BDU after register loss"
+    action: script
+    script: |
+      dev.power_off()
+      i2c.writeto_mem(dev.address, 0x20, bytes([0x00]))
+      dev.power_on()
+      ctrl1 = i2c.readfrom_mem(dev.address, 0x20, 1)[0]
+      result = (ctrl1 & 0x04) != 0
+    expect_true: true
+    mode: [mock]
+
+  - name: "Power on preserves runtime config changes"
+    action: script
+    script: |
+      dev.enable_bdu(False)
+      dev.power_off()
+      i2c.writeto_mem(dev.address, 0x20, bytes([0x00]))
+      dev.power_on()
+      ctrl1 = i2c.readfrom_mem(dev.address, 0x20, 1)[0]
+      result = (ctrl1 & 0x04) == 0
+    expect_true: true
+    mode: [mock]
+
+  - name: "Power on preserves runtime averaging changes"
+    action: script
+    script: |
+      dev.set_average(dev.AVG_64, dev.AVG_32)
+      dev.power_off()
+      i2c.writeto_mem(dev.address, 0x10, bytes([0x00]))
+      dev.power_on()
+      av_conf = i2c.readfrom_mem(dev.address, 0x10, 1)[0]
+      result = av_conf == ((dev.AVG_64 << 3) | dev.AVG_32)
+    expect_true: true
+    mode: [mock]
+
+  - name: "Read one-shot works after register loss"
+    action: script
+    script: |
+      dev.power_off()
+      i2c.writeto_mem(dev.address, 0x10, bytes([0x00]))
+      i2c.writeto_mem(dev.address, 0x20, bytes([0x00]))
+      dev.power_on()
+      h, t = dev.read_one_shot()
+      result = isinstance(h, float) and isinstance(t, float)
+    expect_true: true
+    mode: [mock]
+
+  - name: "Read one-shot after power cycle (hardware)"
+    action: script
+    script: |
+      from time import sleep_ms
+      dev.power_off()
+      sleep_ms(50)
+      dev.power_on()
+      h, t = dev.read_one_shot()
+      result = 10.0 < h < 90.0 and 10.0 < t < 50.0
+    expect_true: true
+    mode: [hardware]
+
   - name: "Temperature with offset"
     action: script
     script: |

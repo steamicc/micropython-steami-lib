@@ -61,6 +61,9 @@ class WSEN_HIDS(object):
         self._calibration = {}
         self._temp_gain = 1.0
         self._temp_offset = 0.0
+        self._avg_t = avg_t
+        self._avg_h = avg_h
+        self._bdu = enable_bdu
 
         if check_device:
             self.check_device()
@@ -167,10 +170,13 @@ class WSEN_HIDS(object):
     # -------------------------------------------------------------------------
 
     def enable_bdu(self, enabled=True):
+        self._bdu = enabled
         value = CTRL_1_BDU if enabled else 0
         self._update_reg(REG_CTRL_1, CTRL_1_BDU, value)
 
     def set_average(self, avg_t=AVG_T_DEFAULT, avg_h=AVG_H_DEFAULT):
+        self._avg_t = avg_t
+        self._avg_h = avg_h
         avg_t &= 0x07
         avg_h &= 0x07
         value = (avg_t << 3) | avg_h
@@ -201,6 +207,10 @@ class WSEN_HIDS(object):
         ctrl1 = self._read_reg(REG_CTRL_1)
         ctrl1 |= CTRL_1_PD
         self._write_reg(REG_CTRL_1, ctrl1)
+        self.set_average(self._avg_t, self._avg_h)
+        if self._bdu:
+            self.enable_bdu(True)
+        self._read_calibration()
 
     def enable_heater(self, enabled=True):
         value = CTRL_2_HEATER if enabled else 0
