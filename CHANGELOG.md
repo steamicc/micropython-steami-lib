@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [0.1.0](https://github.com/steamicc/micropython-steami-lib/compare/v0.0.3...v0.1.0) (2026-03-25)
+
+
+### Features
+
+* **steami_config:** Add magnetometer calibration storage. ([#241](https://github.com/steamicc/micropython-steami-lib/issues/241)) ([017a40b](https://github.com/steamicc/micropython-steami-lib/commit/017a40bb91e742f8172b301faeafb21e7d85f3f1))
+
 ## [0.0.3](https://github.com/steamicc/micropython-steami-lib/compare/v0.0.2...v0.0.3) (2026-03-25)
 
 
