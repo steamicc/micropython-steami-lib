@@ -101,13 +101,24 @@ deploy: ## Flash firmware to the board via OpenOCD
 	cd $(CURDIR)/$(MPY_DIR)/ports/stm32 && $(MAKE) BOARD=$(BOARD) deploy-openocd
 
 .PHONY: run
-run: ## Copy and run a script on the board (SCRIPT=path/to/file.py)
+run: ## Run a script on the board with live output (SCRIPT=path/to/file.py)
 	@if [ -z "$(SCRIPT)" ]; then \
 		echo "Error: SCRIPT is required. Usage: make run SCRIPT=lib/.../example.py"; exit 1; \
+	fi
+	mpremote connect $(PORT) run $(SCRIPT)
+
+.PHONY: deploy-script
+deploy-script: ## Deploy a script as main.py for autonomous execution (SCRIPT=path/to/file.py)
+	@if [ -z "$(SCRIPT)" ]; then \
+		echo "Error: SCRIPT is required. Usage: make deploy-script SCRIPT=lib/.../example.py"; exit 1; \
 	fi
 	mpremote connect $(PORT) cp $(SCRIPT) :main.py
 	mpremote connect $(PORT) reset
 	@echo "Script deployed as main.py and board reset."
+
+.PHONY: run-main
+run-main: ## Re-execute main.py on the board and capture output
+	mpremote connect $(PORT) exec "exec(open('/flash/main.py').read())"
 
 .PHONY: firmware-clean
 firmware-clean: ## Clean firmware build artifacts
