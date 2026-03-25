@@ -106,6 +106,36 @@ tests:
     expect_true: true
     mode: [mock]
 
+  - name: "Power on restores averaging config"
+    action: script
+    script: |
+      dev.power_off()
+      dev.power_on()
+      av_conf = i2c.readfrom_mem(dev.address, 0x10, 1)[0]
+      result = av_conf != 0
+    expect_true: true
+    mode: [mock]
+
+  - name: "Power on restores BDU setting"
+    action: script
+    script: |
+      dev.power_off()
+      dev.power_on()
+      ctrl1 = i2c.readfrom_mem(dev.address, 0x20, 1)[0]
+      result = (ctrl1 & 0x04) != 0
+    expect_true: true
+    mode: [mock]
+
+  - name: "Read one-shot works after power cycle"
+    action: script
+    script: |
+      dev.power_off()
+      dev.power_on()
+      h, t = dev.read_one_shot()
+      result = isinstance(h, float) and isinstance(t, float)
+    expect_true: true
+    mode: [mock]
+
   - name: "Temperature with offset"
     action: script
     script: |
