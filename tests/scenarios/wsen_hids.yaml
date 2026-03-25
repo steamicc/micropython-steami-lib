@@ -140,6 +140,18 @@ tests:
     expect_true: true
     mode: [mock]
 
+  - name: "Power on preserves runtime averaging changes"
+    action: script
+    script: |
+      dev.set_average(dev.AVG_64, dev.AVG_32)
+      dev.power_off()
+      i2c.writeto_mem(dev.address, 0x10, bytes([0x00]))
+      dev.power_on()
+      av_conf = i2c.readfrom_mem(dev.address, 0x10, 1)[0]
+      result = av_conf == ((dev.AVG_64 << 3) | dev.AVG_32)
+    expect_true: true
+    mode: [mock]
+
   - name: "Read one-shot works after register loss"
     action: script
     script: |
