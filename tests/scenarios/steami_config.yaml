@@ -299,3 +299,75 @@ tests:
       result = abs(calibrated - ref) < 1.0
     expect_true: true
     mode: [hardware]
+
+  - name: "Save and load magnetometer calibration on hardware"
+    action: script
+    script: |
+      from time import sleep_ms
+      dev._flash.clear_config()
+      dev._data = {}
+      dev.set_magnetometer_calibration(
+          hard_iron_x=12.3, hard_iron_y=-5.1, hard_iron_z=0.8,
+          soft_iron_x=1.01, soft_iron_y=0.98, soft_iron_z=1.0,
+      )
+      dev.save()
+      sleep_ms(200)
+      dev2 = SteamiConfig(dev._flash)
+      dev2.load()
+      cal = dev2.get_magnetometer_calibration()
+      result = (
+          cal["hard_iron_x"] == 12.3
+          and cal["hard_iron_y"] == -5.1
+          and cal["soft_iron_x"] == 1.01
+      )
+    expect_true: true
+    mode: [hardware]
+
+  - name: "Apply magnetometer calibration to real LIS2MDL"
+    action: script
+    script: |
+      from time import sleep_ms
+      from lis2mdl import LIS2MDL
+      mag = LIS2MDL(i2c)
+      dev._flash.clear_config()
+      dev._data = {}
+      dev.set_magnetometer_calibration(
+          hard_iron_x=10.5, hard_iron_y=-3.2, hard_iron_z=0.7,
+          soft_iron_x=1.02, soft_iron_y=0.99, soft_iron_z=1.0,
+      )
+      dev.save()
+      sleep_ms(200)
+      dev2 = SteamiConfig(dev._flash)
+      dev2.load()
+      dev2.apply_magnetometer_calibration(mag)
+      result = (
+          mag.x_off == 10.5
+          and mag.y_off == -3.2
+          and mag.z_off == 0.7
+          and mag.x_scale == 1.02
+      )
+    expect_true: true
+    mode: [hardware]
+
+  - name: "Magnetometer calibration coexists with temperature calibration"
+    action: script
+    script: |
+      from time import sleep_ms
+      dev._flash.clear_config()
+      dev._data = {}
+      dev.set_temperature_calibration("hts221", gain=1.05, offset=-0.3)
+      dev.set_magnetometer_calibration(hard_iron_x=8.0, hard_iron_y=-2.0, hard_iron_z=0.5)
+      dev.save()
+      sleep_ms(200)
+      dev2 = SteamiConfig(dev._flash)
+      dev2.load()
+      tc = dev2.get_temperature_calibration("hts221")
+      mc = dev2.get_magnetometer_calibration()
+      result = (
+          tc["gain"] == 1.05
+          and tc["offset"] == -0.3
+          and mc["hard_iron_x"] == 8.0
+          and mc["soft_iron_x"] == 1.0
+      )
+    expect_true: true
+    mode: [hardware]
