@@ -17,9 +17,6 @@ while True:
     sensor.power_on()
 
     humidity, temperature = sensor.read_one_shot()
-
-    sensor.power_off()
-
     elapsed_ms = ticks_diff(ticks_ms(), t0)
 
     print("Humidity: {:.2f} %RH".format(humidity))
@@ -27,5 +24,7 @@ while True:
     print("Free RAM: {} bytes".format(gc.mem_free()))
     print("Elapsed: {} ms".format(elapsed_ms))
     print()
+
+    sensor.power_off()
 
     sleep(10)
