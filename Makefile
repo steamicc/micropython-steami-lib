@@ -95,6 +95,8 @@ PART ?= patch
 
 .PHONY: bump
 bump: ## Create a version tag (PART=patch|minor|major, default: patch)
+	@echo "Note: releases are normally handled by semantic-release in CI."
+	@echo "Use 'make bump' only to force a specific version.\n"
 	@if [ "$$(git symbolic-ref --short HEAD)" != "main" ]; then \
 		echo "Error: bump must be run on the main branch."; exit 1; \
 	fi
