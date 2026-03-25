@@ -1,5 +1,5 @@
 """Show the effect of the built-in heater (enable_heater()): read humidity before, enable heater for a few seconds, read again. The heater evaporates condensation — humidity should drop. Demonstrates a feature unique to this sensor."""
-from time import sleep
+from time import sleep_ms
 
 from machine import I2C
 from wsen_hids import WSEN_HIDS
@@ -20,7 +20,7 @@ print("Heater ON...")
 sensor.enable_heater(True)
 
 # Wait a few seconds to see the effect
-sleep(10)
+sleep_ms(1000)
 
 # New reading
 humidity_after, temperature_after = sensor.read_one_shot()
