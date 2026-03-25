@@ -208,6 +208,7 @@ The library includes several practical examples:
 | `binary_counter.py`   | 4-bit binary counter displayed on GPIO outputs (GP0–GP3) |
 | `dpad_piano.py`       | Play musical notes with the D-PAD and buzzer (multi-press = higher octave) |
 | `menu_navigation.py`  | Minimal centered UI for navigating a menu on the SSD1327 OLED display |
+| `sleep_on_button.py`  | Low-power example: wake the board from sleep using MCP23009E interrupts |
 
 ### How to run 
 
