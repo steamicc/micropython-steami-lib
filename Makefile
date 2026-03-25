@@ -89,6 +89,41 @@ repl: ## Open MicroPython REPL on the board
 mount: ## Mount lib/ on the board for live testing
 	mpremote connect $(PORT) mount lib/
 
+# --- Release ---
+
+PART ?= patch
+
+.PHONY: bump
+bump: ## Create a version tag (PART=patch|minor|major, default: patch)
+	@if [ "$$(git symbolic-ref --short HEAD)" != "main" ]; then \
+		echo "Error: bump must be run on the main branch."; exit 1; \
+	fi
+	@if [ -n "$$(git status --porcelain)" ]; then \
+		echo "Error: working tree is not clean. Commit or stash changes first."; exit 1; \
+	fi
+	@LAST=$$(git tag --sort=-v:refname | head -1); \
+	if [ -z "$$LAST" ]; then \
+		NEXT="v1.0.0"; \
+	else \
+		MAJOR=$$(echo "$$LAST" | sed 's/^v//' | cut -d. -f1); \
+		MINOR=$$(echo "$$LAST" | sed 's/^v//' | cut -d. -f2); \
+		PATCH=$$(echo "$$LAST" | sed 's/^v//' | cut -d. -f3); \
+		case "$(PART)" in \
+			major) MAJOR=$$((MAJOR + 1)); MINOR=0; PATCH=0 ;; \
+			minor) MINOR=$$((MINOR + 1)); PATCH=0 ;; \
+			patch) PATCH=$$((PATCH + 1)) ;; \
+			*) echo "Error: PART must be patch, minor or major."; exit 1 ;; \
+		esac; \
+		NEXT="v$$MAJOR.$$MINOR.$$PATCH"; \
+	fi; \
+	echo "$$LAST → $$NEXT"; \
+	sed -i "s/^version = \".*\"/version = \"$${NEXT#v}\"/" pyproject.toml; \
+	git add pyproject.toml; \
+	git commit -m "chore: Bump version to $$NEXT."; \
+	git tag "$$NEXT"; \
+	git push origin main "$$NEXT"; \
+	echo "Tag $$NEXT pushed to origin."
+
 # --- Utilities ---
 
 .PHONY: clean

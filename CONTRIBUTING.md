@@ -103,6 +103,22 @@ All pull requests must pass these checks:
 | Mock tests | `tests.yml` | Runs mock driver tests |
 | Example validation | `tests.yml` | Validates example files syntax and imports |
 
+## Releasing
+
+Version tags are created with `make bump`:
+
+```bash
+make bump              # patch: v1.0.0 → v1.0.1
+make bump PART=minor   # minor: v1.0.1 → v1.1.0
+make bump PART=major   # major: v1.1.0 → v2.0.0
+```
+
+This will:
+1. Check you are on `main` with a clean working tree
+2. Compute the next version from the latest git tag
+3. Update `pyproject.toml` version
+4. Commit, tag, and push to origin
+
 ## Notes
 
 * Keep implementations simple and readable
