@@ -134,3 +134,72 @@ class SteamiConfig(object):
             return
         sensor_instance._temp_gain = cal["gain"]
         sensor_instance._temp_offset = cal["offset"]
+
+    # --------------------------------------------------
+    # Magnetometer calibration
+    # --------------------------------------------------
+
+    def set_magnetometer_calibration(
+        self,
+        hard_iron_x=0.0,
+        hard_iron_y=0.0,
+        hard_iron_z=0.0,
+        soft_iron_x=1.0,
+        soft_iron_y=1.0,
+        soft_iron_z=1.0,
+    ):
+        """Store magnetometer hard-iron and soft-iron calibration.
+
+        Args:
+            hard_iron_x: X-axis hard-iron offset.
+            hard_iron_y: Y-axis hard-iron offset.
+            hard_iron_z: Z-axis hard-iron offset.
+            soft_iron_x: X-axis soft-iron scale factor.
+            soft_iron_y: Y-axis soft-iron scale factor.
+            soft_iron_z: Z-axis soft-iron scale factor.
+        """
+        self._data["cm"] = {
+            "hx": hard_iron_x,
+            "hy": hard_iron_y,
+            "hz": hard_iron_z,
+            "sx": soft_iron_x,
+            "sy": soft_iron_y,
+            "sz": soft_iron_z,
+        }
+
+    def get_magnetometer_calibration(self):
+        """Return magnetometer calibration data.
+
+        Returns:
+            dict with hard_iron_x/y/z and soft_iron_x/y/z keys, or None.
+        """
+        cm = self._data.get("cm")
+        if cm is None:
+            return None
+        return {
+            "hard_iron_x": cm["hx"],
+            "hard_iron_y": cm["hy"],
+            "hard_iron_z": cm["hz"],
+            "soft_iron_x": cm["sx"],
+            "soft_iron_y": cm["sy"],
+            "soft_iron_z": cm["sz"],
+        }
+
+    def apply_magnetometer_calibration(self, lis2mdl_instance):
+        """Apply stored magnetometer calibration to a LIS2MDL instance.
+
+        The instance must have x_off/y_off/z_off and x_scale/y_scale/z_scale
+        attributes.
+
+        Args:
+            lis2mdl_instance: a LIS2MDL driver instance.
+        """
+        cal = self.get_magnetometer_calibration()
+        if cal is None:
+            return
+        lis2mdl_instance.x_off = cal["hard_iron_x"]
+        lis2mdl_instance.y_off = cal["hard_iron_y"]
+        lis2mdl_instance.z_off = cal["hard_iron_z"]
+        lis2mdl_instance.x_scale = cal["soft_iron_x"]
+        lis2mdl_instance.y_scale = cal["soft_iron_y"]
+        lis2mdl_instance.z_scale = cal["soft_iron_z"]
