@@ -82,23 +82,23 @@ build: lint test ## Build (lint + test)
 # --- Firmware ---
 
 $(MPY_DIR):
-	@echo "Cloning micropython-steami into $(MPY_DIR)..."
-	git clone --branch $(MICROPYTHON_BRANCH) $(MICROPYTHON_REPO) $(MPY_DIR)
-	cd $(MPY_DIR) && git submodule update --init --recursive
+	@echo "Cloning micropython-steami into $(CURDIR)/$(MPY_DIR)..."
+	git clone --branch $(MICROPYTHON_BRANCH) $(MICROPYTHON_REPO) $(CURDIR)/$(MPY_DIR)
+	cd $(CURDIR)/$(MPY_DIR)/ports/stm32 && $(MAKE) BOARD=$(BOARD) submodules
 
 .PHONY: firmware
 firmware: $(MPY_DIR) ## Build MicroPython firmware with current drivers
 	@echo "Updating submodule to current HEAD..."
-	cd $(MPY_DIR)/lib/micropython-steami-lib && \
+	cd $(CURDIR)/$(MPY_DIR)/lib/micropython-steami-lib && \
 		git fetch origin && \
 		git checkout $$(cd $(CURDIR) && git rev-parse HEAD)
 	@echo "Building firmware for $(BOARD)..."
-	cd $(MPY_DIR)/ports/stm32 && $(MAKE) BOARD=$(BOARD)
-	@echo "Firmware ready: $(MPY_DIR)/ports/stm32/build-$(BOARD)/firmware.hex"
+	cd $(CURDIR)/$(MPY_DIR)/ports/stm32 && $(MAKE) BOARD=$(BOARD)
+	@echo "Firmware ready: $(CURDIR)/$(MPY_DIR)/ports/stm32/build-$(BOARD)/firmware.hex"
 
 .PHONY: deploy
 deploy: ## Flash firmware to the board via OpenOCD
-	cd $(MPY_DIR)/ports/stm32 && $(MAKE) BOARD=$(BOARD) deploy-openocd
+	cd $(CURDIR)/$(MPY_DIR)/ports/stm32 && $(MAKE) BOARD=$(BOARD) deploy-openocd
 
 .PHONY: run
 run: ## Copy and run a script on the board (SCRIPT=path/to/file.py)
