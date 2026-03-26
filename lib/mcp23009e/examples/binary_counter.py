@@ -6,7 +6,8 @@ DOWN  -> decrement
 LEFT  -> reset
 RIGHT -> print current value
 
-The value is displayed on GP0..GP3 as a 4-bit binary number.
+The value is displayed on GPIO1..GPIO4 (expander pins 0..3)
+as a 4-bit binary number.
 """
 
 from time import sleep_ms
