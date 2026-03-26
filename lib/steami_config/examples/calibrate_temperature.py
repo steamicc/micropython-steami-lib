@@ -40,7 +40,7 @@ sensors = [
 ]
 
 for name, sensor in sensors:
-    if name == "ism330dl":
+    if name in ("ism330dl", "lis2mdl"):
         sleep_ms(200)
     raw = sensor.temperature()
     offset = ref_temp - raw
@@ -63,7 +63,7 @@ verify_sensors = [
 
 print("\nVerification (after reload):")
 for name, sensor in verify_sensors:
-    if name == "ism330dl":
+    if name in ("ism330dl", "lis2mdl"):
         sleep_ms(200)
     config2.apply_temperature_calibration(sensor)
     print("  {:10s}: {:6.2f} C".format(name, sensor.temperature()))
