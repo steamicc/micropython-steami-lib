@@ -74,9 +74,12 @@ while True:
     sleep_ms(20)
 
     if wake_button is None:
-        # Fallback: directly read the current button state
+        intf = mcp.get_intf()      # which pins triggered
+        intcap = mcp.get_intcap()  # latched GPIO state at interrupt time
+
         for pin_number, name in BUTTONS.items():
-            if mcp.get_level(pin_number) == MCP23009_LOGIC_LOW:
+            mask = 1 << pin_number
+            if (intf & mask) and not (intcap & mask):
                 wake_button = name
                 break
 
