@@ -215,22 +215,20 @@ print("Register dump:", regs)
 
 ---
 
-## Example: Continuous Compass Loop
+## Examples
 
-```python
-from machine import I2C, Pin
-from lis2mdl import LIS2MDL
-import time
-
-i2c = I2C(1, scl=Pin(22), sda=Pin(21))
-mag = LIS2MDL(i2c)
-mag.set_declination(2.3)
-
-while True:
-    heading = mag.heading_flat_only()
-    print("Heading: {:.1f}° {}".format(heading, mag.direction_label(heading)))
-    time.sleep(0.5)
-```
+| Example                      | Description |
+|-----------------------------|-------------|
+| basic_read.py               | Read raw magnetic field (X, Y, Z) in microtesla and temperature in a loop. Simplest entry point to the LIS2MDL driver. |
+| calibrate_2d.py             | Interactive 2D hard-iron calibration. The user rotates the board flat to compute offsets using `calibrate_minmax_2d()`, then evaluates calibration quality with `calibrate_quality()`. |
+| tilt_compensated_heading.py | Tilt-compensated heading using both magnetometer and accelerometer. Combines `heading_with_tilt_compensation()` from LIS2MDL with acceleration data from the ISM330DL driver. **Dependency: `ism330dl` driver required.** |
+| metal_detector.py           | Detect nearby metal objects by monitoring magnetic field magnitude changes. Displays an intensity bar and triggers a buzzer with stronger beeps for stronger disturbances. **Dependency: board PWM/buzzer support required, no extra driver needed.** |
+| door_sensor.py              | Detect door open/close using a magnet. Compares live magnetic field magnitude to a closed-door baseline and prints state changes with timestamps. |
+| field_logger.py             | Log magnetic field (X, Y, Z) and temperature to a CSV file every second for 60 seconds. The file is written to DAPLink flash and can be read later over USB mass storage. **Dependency: `daplink_flash` driver/module required (`set_filename`, `write_line`).** |
+| field_map.py                | Real-time spatial magnetic field mapping. Displays X, Y, Z, field magnitude, and min/max tracking for each axis while the board is moved around. |
+| low_power_one_shot.py       | Energy-efficient sampling example. Uses `power_off()` between readings and `read_one_shot()` every 10 seconds, then prints values and free memory. |
+| magnet_compass.py           | Flat compass example that computes heading and cardinal direction from the LIS2MDL magnetic field. Useful for basic orientation demos. |
+| magnet_fieldForce.py        | Magnetic field magnitude example that shows total field strength in microtesla. Useful for observing magnetic disturbances and relative field changes. |
 
 ---
 
