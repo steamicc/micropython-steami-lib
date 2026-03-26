@@ -8,25 +8,36 @@ i2c:
 
 # Register values for mock tests
 # BQ27441 uses 2-byte little-endian registers read via struct.unpack("<h")
-# The constructor calls power_on() -> set_capacity() -> writeExtendedData()
+# The constructor calls power_on() -> set_capacity() -> write_extended_data()
 # which enters config mode (needs CFGUPMODE flag in FLAGS register).
 mock_registers:
   # CONTROL (0x00): status word (unsealed, INITCOMP set)
   0x00: [0x80, 0x00]
-  # FLAGS (0x06): CFGUPMODE | BAT_DET | DSG — needed for enterConfig/exitConfig
-  0x06: [0x19, 0x00]
+
+  # TEMPERATURE (0x02): 298.1 K raw value
+  0x02: [0xA5, 0x0B]
+
   # VOLTAGE (0x04): 3700 mV
   0x04: [0x74, 0x0E]
+
+  # FLAGS (0x06): CFGUPMODE | BAT_DET | DSG
+  0x06: [0x19, 0x00]
+
   # REM_CAPACITY (0x0C): 600 mAh
   0x0C: [0x58, 0x02]
+
   # FULL_CAPACITY (0x0E): 650 mAh
   0x0E: [0x8A, 0x02]
+
   # AVG_CURRENT (0x10): 50 mA
   0x10: [0x32, 0x00]
+
   # AVG_POWER (0x18): 185 mW
   0x18: [0xB9, 0x00]
+
   # SOC (0x1C): 92%
   0x1C: [0x5C, 0x00]
+
   # SOH (0x20): 99% (low byte = percent, high byte = status)
   0x20: [0x63, 0x00]
 
@@ -67,6 +78,41 @@ tests:
     expect: 185
     mode: [mock]
 
+  - name: "Read state of health"
+    action: call
+    method: state_of_health
+    expect: 99
+    mode: [mock]
+
+  - name: "Read flags register"
+    action: call
+    method: flags
+    expect: 25
+    mode: [mock]
+
+  - name: "Battery temperature returns float from mock data"
+    action: script
+    script: |
+      from bq27441.device import TempMeasureType
+      result = float(dev.temperature(TempMeasureType.BATTERY))
+    expect: 2981.0
+    mode: [mock]
+
+  - name: "Device type validation returns true"
+    action: script
+    script: |
+      original_read_control_word = dev.read_control_word
+
+      def fake_read_control_word(function):
+          if function == 0x01:
+              return 0x0421
+          return original_read_control_word(function)
+
+      dev.read_control_word = fake_read_control_word
+      result = dev.is_valid_device()
+    expect_true: true
+    mode: [mock]
+
   - name: "Reset sends CONTROL_RESET command"
     action: script
     script: |
@@ -76,12 +122,6 @@ tests:
       wrote_reset = any(reg == 0x00 and data[0] == 0x41 for reg, data in log)
       result = wrote_reset
     expect_true: true
-    mode: [mock]
-
-  - name: "Read state of health"
-    action: call
-    method: state_of_health
-    expect: 99
     mode: [mock]
 
   - name: "Battery connected check"
