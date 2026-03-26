@@ -16,7 +16,7 @@ from machine import I2C, Pin
 from mcp23009e import MCP23009E
 from mcp23009e.const import *
 
-SPEAKER = Pin("SPEAKER", Pin.OUT_PP)
+SPEAKER = Pin("SPEAKER", Pin.OUT)
 
 # I2C and expander setup
 i2c = I2C(1)
@@ -30,9 +30,6 @@ BUTTONS = {
     MCP23009_BTN_DOWN: "DOWN",
     MCP23009_BTN_LEFT: "LEFT",
 }
-
-# Optional MENU button if available on the board
-MENU_BUTTON = None
 
 # Low octave
 NOTES_LOW = {
