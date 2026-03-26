@@ -79,6 +79,61 @@ ci: lint test test-examples ## Run all CI checks (lint + tests + examples)
 .PHONY: build
 build: lint test ## Build (lint + test)
 
+# --- Firmware ---
+
+$(MPY_DIR):
+	@echo "Cloning micropython-steami into $(CURDIR)/$(MPY_DIR)..."
+	@mkdir -p $(dir $(CURDIR)/$(MPY_DIR))
+	git clone --branch $(MICROPYTHON_BRANCH) $(MICROPYTHON_REPO) $(CURDIR)/$(MPY_DIR)
+	cd $(CURDIR)/$(MPY_DIR)/ports/stm32 && $(MAKE) BOARD=$(BOARD) submodules
+
+.PHONY: firmware
+firmware: $(MPY_DIR) ## Build MicroPython firmware with current drivers
+	@echo "Linking local drivers..."
+	rm -rf $(CURDIR)/$(MPY_DIR)/lib/micropython-steami-lib
+	ln -s $(CURDIR) $(CURDIR)/$(MPY_DIR)/lib/micropython-steami-lib
+	@echo "Building firmware for $(BOARD)..."
+	cd $(CURDIR)/$(MPY_DIR)/ports/stm32 && $(MAKE) BOARD=$(BOARD)
+	@echo "Firmware ready: $(CURDIR)/$(MPY_DIR)/ports/stm32/build-$(BOARD)/firmware.hex"
+
+.PHONY: firmware-update
+firmware-update: $(MPY_DIR) ## Update the MicroPython clone and board-specific submodules
+	@echo "Updating micropython-steami..."
+	rm -rf $(CURDIR)/$(MPY_DIR)/lib/micropython-steami-lib
+	cd $(CURDIR)/$(MPY_DIR) && git fetch origin && git checkout $(MICROPYTHON_BRANCH) && git checkout -- lib/micropython-steami-lib && git pull --ff-only
+	@echo "Updating required submodules for $(BOARD)..."
+	cd $(CURDIR)/$(MPY_DIR)/ports/stm32 && $(MAKE) BOARD=$(BOARD) submodules
+
+.PHONY: deploy
+deploy: $(MPY_DIR) ## Flash firmware to the board via OpenOCD
+	cd $(CURDIR)/$(MPY_DIR)/ports/stm32 && $(MAKE) BOARD=$(BOARD) deploy-openocd
+
+.PHONY: run
+run: ## Run a script on the board with live output (SCRIPT=path/to/file.py)
+	@if [ -z "$(SCRIPT)" ]; then \
+		echo "Error: SCRIPT is required. Usage: make run SCRIPT=lib/.../example.py"; exit 1; \
+	fi
+	mpremote connect $(PORT) run $(SCRIPT)
+
+.PHONY: deploy-script
+deploy-script: ## Deploy a script as main.py for autonomous execution (SCRIPT=path/to/file.py)
+	@if [ -z "$(SCRIPT)" ]; then \
+		echo "Error: SCRIPT is required. Usage: make deploy-script SCRIPT=lib/.../example.py"; exit 1; \
+	fi
+	mpremote connect $(PORT) cp $(SCRIPT) :main.py
+	mpremote connect $(PORT) reset
+	@echo "Script deployed as main.py and board reset."
+
+.PHONY: run-main
+run-main: ## Re-execute main.py on the board and capture output
+	mpremote connect $(PORT) exec "exec(open('/flash/main.py').read())"
+
+.PHONY: firmware-clean
+firmware-clean: ## Clean firmware build artifacts
+	@if [ -d "$(MPY_DIR)/ports/stm32" ]; then \
+		cd $(MPY_DIR)/ports/stm32 && $(MAKE) BOARD=$(BOARD) clean; \
+	fi
+
 # --- Hardware ---
 
 .PHONY: repl
@@ -141,8 +196,9 @@ clean: ## Remove build artifacts and caches
 	find . -type d -name .mypy_cache -exec rm -rf {} + 2>/dev/null || true
 
 .PHONY: deepclean
-deepclean: clean ## Remove everything including node_modules
+deepclean: clean ## Remove everything including node_modules and firmware
 	rm -rf node_modules
+	@if [ -d "$(BUILD_DIR)" ]; then rm -rf "$(BUILD_DIR)"; fi
 
 .PHONY: help
 help: ## Show this help
