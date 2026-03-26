@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [0.1.2](https://github.com/steamicc/micropython-steami-lib/compare/v0.1.1...v0.1.2) (2026-03-26)
+
+
+### Bug Fixes
+
+* **steami_config:** Simplify calibrate_temperature for frozen drivers. ([#249](https://github.com/steamicc/micropython-steami-lib/issues/249)) ([81f9588](https://github.com/steamicc/micropython-steami-lib/commit/81f958882c70fa44afd95d2b47a3eb4bc2263400))
+
 ## [0.1.1](https://github.com/steamicc/micropython-steami-lib/compare/v0.1.0...v0.1.1) (2026-03-26)
 
 # [0.1.0](https://github.com/steamicc/micropython-steami-lib/compare/v0.0.3...v0.1.0) (2026-03-25)
