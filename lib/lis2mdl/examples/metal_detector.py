@@ -20,20 +20,21 @@ BAR_WIDTH = 20
 
 
 def tone(pin, freq, duration_ms):
-    """Generate a square wave on the buzzer pin."""
-    if freq == 0:
+    """Generate a square wave on the buzzer pin using millisecond timing only."""
+    if freq <= 0:
         sleep_ms(duration_ms)
         return
 
-    period_us = int(1_000_000 / freq)
-    half_period_us = period_us // 2
+    # With sleep_ms(), half-period cannot be smaller than 1 ms.
+    # That limits the practical max frequency to about 500 Hz.
+    half_period_ms = max(1, int(500 / freq))
     end_time = ticks_ms() + duration_ms
 
     while ticks_ms() < end_time:
         pin.on()
-        sleep_ms(max(1, half_period_us // 1000))
+        sleep_ms(half_period_ms)
         pin.off()
-        sleep_ms(max(1, half_period_us // 1000))
+        sleep_ms(half_period_ms)
 
 
 def make_bar(value, max_value, width=20):
@@ -46,7 +47,7 @@ def make_bar(value, max_value, width=20):
 def alert_tone(delta_ut):
     """Play a stronger tone when the magnetic disturbance is larger."""
     normalized = min(delta_ut, MAX_ALERT_DELTA_UT) / MAX_ALERT_DELTA_UT
-    freq = int(1200 + normalized * 1800)
+    freq = int(150 + normalized * 350)   # 150 -> 500 Hz
     duration_ms = int(40 + normalized * 80)
     tone(SPEAKER, freq, duration_ms)
 
