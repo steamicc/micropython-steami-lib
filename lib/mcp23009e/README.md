@@ -194,21 +194,24 @@ Toggles the reset pin to perform a hardware reset.
 
 ## Examples
 
-The library includes several examples:
+The library includes several practical examples:
 
-* `buttons.py` - Simple button reading with polling
-* `i2c_scan.py` - Scan I2C buses for connected devices
-* `test_basic.py` - Basic driver functionality tests
-* `test_interrupts.py` - Interrupt system demonstration
-* `test_led_simple.py` - Basic active-low LED control example
-* `test_output_active_low.py` - Active-low output tests with inverted logic
-* `test_output.py` - GPIO output tests using low-level and Pin APIs
-* `test_pin.py` - MCP23009Pin class usage examples
-* `test_pin_irq.py` - Pin-compatible interrupt examples
-
+| Example                | Description |
+|-----------------------|------------|
+| `buttons.py`          | Simple D-PAD button reading using polling (no interrupts) |
+| `i2c_scan.py`         | Scan the I2C bus to detect connected devices |
+| `reaction_timer.py`   | Reaction time game using D-PAD buttons and interrupts (best of 5 rounds) |
+| `simon.py`            | Simon Says memory game using the D-PAD |
+| `combination_lock.py` | Digital lock using a secret D-PAD sequence |
+| `dpad_counter.py`     | Simple state machine: increment/decrement/reset/print using D-PAD |
+| `morse_code.py`       | Morse code input using button press duration (dot/dash detection) |
+| `binary_counter.py`   | 4-bit binary counter displayed on GPIO outputs (GPIO1–GPIO4 / pins 0–3) |  
+| `dpad_piano.py`       | Play musical notes with the D-PAD and buzzer (multi-press = higher octave) |
+| `menu_navigation.py`  | Minimal centered UI for navigating a menu on the SSD1327 OLED display |
+| `sleep_on_button.py`  | Low-power example: wake the board from sleep using MCP23009E interrupts |
 
 ### How to run 
 
 ```python
-mpremote mount lib/mcp23009e run lib/mcp23009e/examples/test_basic.py
+mpremote mount lib/mcp23009e run lib/mcp23009e/examples/buttons.py
 ```
