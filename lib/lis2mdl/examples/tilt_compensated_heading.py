@@ -35,8 +35,10 @@ print("Press Ctrl+C to stop.")
 print()
 
 while True:
-    ax, ay, az = imu.acceleration_g()
-    heading = mag.heading_with_tilt_compensation(imu.acceleration_g)
+    accel = imu.acceleration_g()
+    ax, ay, az = accel
+
+    heading = mag.heading_with_tilt_compensation(lambda: accel)
     pitch_deg, roll_deg = pitch_roll_from_accel(ax, ay, az)
     direction = mag.direction_label(heading)
 
