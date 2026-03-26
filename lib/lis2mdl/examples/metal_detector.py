@@ -12,7 +12,8 @@ magnetometer.
 from time import sleep_ms
 
 from lis2mdl import LIS2MDL
-from machine import I2C, Pin, Timer
+from machine import I2C, Pin
+from pyb import Timer
 
 BASELINE_SAMPLES = 30
 BASELINE_DELAY_MS = 100
