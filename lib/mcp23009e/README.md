@@ -205,7 +205,7 @@ The library includes several practical examples:
 | `combination_lock.py` | Digital lock using a secret D-PAD sequence |
 | `dpad_counter.py`     | Simple state machine: increment/decrement/reset/print using D-PAD |
 | `morse_code.py`       | Morse code input using button press duration (dot/dash detection) |
-| `binary_counter.py`   | 4-bit binary counter displayed on GPIO outputs (GP0–GP3) |
+| `binary_counter.py`   | 4-bit binary counter displayed on GPIO outputs (GPIO1–GPIO4 / pins 0–3) |  
 | `dpad_piano.py`       | Play musical notes with the D-PAD and buzzer (multi-press = higher octave) |
 | `menu_navigation.py`  | Minimal centered UI for navigating a menu on the SSD1327 OLED display |
 | `sleep_on_button.py`  | Low-power example: wake the board from sleep using MCP23009E interrupts |
@@ -213,5 +213,5 @@ The library includes several practical examples:
 ### How to run 
 
 ```python
-mpremote mount lib/mcp23009e run lib/mcp23009e/examples/test_basic.py
+mpremote mount lib/mcp23009e run lib/mcp23009e/examples/buttons.py
 ```
