@@ -50,11 +50,20 @@ for name, sensor in sensors:
 config.save()
 print("\nCalibration saved.")
 
-# Verify by reloading
+# Verify by reloading with fresh sensor instances (simulates a reboot)
 config2 = SteamiConfig(flash)
 config2.load()
 
+verify_sensors = [
+    ("hts221", HTS221(i2c)),
+    ("wsen_pads", WSEN_PADS(i2c)),
+    ("lis2mdl", LIS2MDL(i2c)),
+    ("ism330dl", ISM330DL(i2c)),
+]
+
 print("\nVerification (after reload):")
-for name, sensor in sensors:
+for name, sensor in verify_sensors:
+    if name == "ism330dl":
+        sleep_ms(200)
     config2.apply_temperature_calibration(sensor)
     print("  {:10s}: {:6.2f} C".format(name, sensor.temperature()))
