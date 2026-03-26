@@ -92,6 +92,8 @@ test(mcp23009e): Add mock scenarios for mcp23009e driver.
 5. Commit — the git hooks will automatically check your commit message and run ruff on staged files
 6. Push your branch and open a Pull Request
 
+If git hooks fail because `node_modules/` is missing (for example on a fresh clone or after `make deepclean`), run `make setup` or `npm install` before committing.
+
 ## Continuous Integration
 
 All pull requests must pass these checks:
@@ -128,6 +130,7 @@ The drivers are "frozen" into the MicroPython firmware for the STeaMi board. The
 
 ```bash
 make firmware       # Clone micropython-steami (if needed), link local drivers, build
+make firmware-update # Refresh the MicroPython clone and board-specific submodules
 make deploy         # Flash firmware via OpenOCD
 make run SCRIPT=lib/steami_config/examples/show_config.py      # Run with live output
 make deploy-script SCRIPT=lib/.../calibrate_magnetometer.py    # Deploy as main.py for autonomous use
@@ -136,6 +139,8 @@ make firmware-clean # Clean firmware build artifacts
 ```
 
 The firmware source is cloned into `.build/micropython-steami/` (gitignored). A symbolic link replaces the submodule `lib/micropython-steami-lib` with your local working directory, so the firmware always includes your latest changes — even uncommitted ones.
+
+Use `make firmware` for normal rebuilds from the existing local clone. Use `make firmware-update` only when you want to refresh the `micropython-steami` checkout itself or resync the board-specific submodules before rebuilding.
 
 **Requirements**: `arm-none-eabi-gcc` toolchain, OpenOCD for flashing, and `mpremote` for running scripts on the board.
 

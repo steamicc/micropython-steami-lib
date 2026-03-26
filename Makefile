@@ -89,14 +89,20 @@ $(MPY_DIR):
 
 .PHONY: firmware
 firmware: $(MPY_DIR) ## Build MicroPython firmware with current drivers
-	@echo "Updating micropython-steami..."
-	cd $(CURDIR)/$(MPY_DIR) && git checkout $(MICROPYTHON_BRANCH) && git pull
 	@echo "Linking local drivers..."
 	rm -rf $(CURDIR)/$(MPY_DIR)/lib/micropython-steami-lib
 	ln -s $(CURDIR) $(CURDIR)/$(MPY_DIR)/lib/micropython-steami-lib
 	@echo "Building firmware for $(BOARD)..."
 	cd $(CURDIR)/$(MPY_DIR)/ports/stm32 && $(MAKE) BOARD=$(BOARD)
 	@echo "Firmware ready: $(CURDIR)/$(MPY_DIR)/ports/stm32/build-$(BOARD)/firmware.hex"
+
+.PHONY: firmware-update
+firmware-update: $(MPY_DIR) ## Update the MicroPython clone and board-specific submodules
+	@echo "Updating micropython-steami..."
+	rm -rf $(CURDIR)/$(MPY_DIR)/lib/micropython-steami-lib
+	cd $(CURDIR)/$(MPY_DIR) && git fetch origin && git checkout $(MICROPYTHON_BRANCH) && git checkout -- lib/micropython-steami-lib && git pull --ff-only
+	@echo "Updating required submodules for $(BOARD)..."
+	cd $(CURDIR)/$(MPY_DIR)/ports/stm32 && $(MAKE) BOARD=$(BOARD) submodules
 
 .PHONY: deploy
 deploy: $(MPY_DIR) ## Flash firmware to the board via OpenOCD
