@@ -1,26 +1,31 @@
-'''
-Read every 5s and print CSV-formatted output (timestamp, humidity, temperature) suitable for serial capture
-This example writes data both to the serial console and to DAPLink flash storage.
+"""Log humidity and temperature to DAPLink flash and serial console.
 
-WARNING: If configured to erase on startup, this script will erase the entire
-DAPLink flash contents before logging, which is a destructive operation.
-Make sure you have backed up any important data before enabling erasure.
-'''
+Reads every 5 seconds and writes CSV-formatted output (timestamp,
+humidity, temperature).  Data is stored on the DAPLink flash as
+DATA.CSV and also printed to the serial console.
+
+WARNING: When ERASE_FLASH_ON_START is True, the entire DAPLink flash
+is erased before logging.  Make sure you have backed up any important
+data before enabling erasure.
+"""
 from time import sleep_ms, ticks_diff, ticks_ms
 
 from daplink_flash import DaplinkFlash
 from machine import I2C
 from wsen_hids import WSEN_HIDS
 
+# Set to True to erase the DAPLink flash on startup (DESTRUCTIVE).
+ERASE_FLASH_ON_START = False
+
 i2c = I2C(1)
 sensor = WSEN_HIDS(i2c)
 flash = DaplinkFlash(i2c)
 
-# Set filename and erase
-flash.set_filename("data", "CSV")
-flash.clear_flash()
-sleep_ms(500)
-print("Flash erased.")
+flash.set_filename("DATA", "CSV")
+if ERASE_FLASH_ON_START:
+    flash.clear_flash()
+    sleep_ms(500)
+    print("Flash erased.")
 
 start_ms = ticks_ms()
 
