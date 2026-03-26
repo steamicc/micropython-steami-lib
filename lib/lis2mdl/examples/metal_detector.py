@@ -1,15 +1,18 @@
 """
 Detect nearby metal objects by monitoring field magnitude changes.
-Measure a baseline, then loop and print an alert (with intensity bar) when magnitude deviates significantly.
-Louder buzzer beep for stronger fields — like a real metal detector.
+Measure a baseline, then loop and print an alert (with intensity bar)
+when magnitude deviates significantly.  Higher-pitched buzzer beep for
+stronger fields — like a real metal detector.
+
+The buzzer uses hardware PWM (Timer 1 channel 4 on PA11/SPEAKER) so the
+tone is generated in the background while the CPU continues reading the
+magnetometer.
 """
 
-from time import sleep_ms, ticks_ms
+from time import sleep_ms
 
 from lis2mdl import LIS2MDL
-from machine import I2C, Pin
-
-SPEAKER = Pin("SPEAKER", Pin.OUT)
+from machine import I2C, Pin, Timer
 
 BASELINE_SAMPLES = 30
 BASELINE_DELAY_MS = 100
@@ -18,23 +21,27 @@ MIN_ALERT_DELTA_UT = 8.0
 MAX_ALERT_DELTA_UT = 60.0
 BAR_WIDTH = 20
 
+# Hardware PWM on SPEAKER pin (PA11 = TIM1_CH4)
+buzzer_tim = Timer(1, freq=1000)
+buzzer_ch = buzzer_tim.channel(4, Timer.PWM, pin=Pin("SPEAKER"))
+buzzer_ch.pulse_width_percent(0)
 
-def tone(pin, freq, duration_ms):
-    """Generate a square wave on the buzzer pin using millisecond timing only."""
+
+def tone(freq, duration_ms):
+    """Play a tone at the given frequency for duration_ms using hardware PWM."""
     if freq <= 0:
+        buzzer_ch.pulse_width_percent(0)
         sleep_ms(duration_ms)
         return
+    buzzer_tim.freq(freq)
+    buzzer_ch.pulse_width_percent(50)
+    sleep_ms(duration_ms)
+    buzzer_ch.pulse_width_percent(0)
 
-    # With sleep_ms(), half-period cannot be smaller than 1 ms.
-    # That limits the practical max frequency to about 500 Hz.
-    half_period_ms = max(1, int(500 / freq))
-    end_time = ticks_ms() + duration_ms
 
-    while ticks_ms() < end_time:
-        pin.on()
-        sleep_ms(half_period_ms)
-        pin.off()
-        sleep_ms(half_period_ms)
+def no_tone():
+    """Silence the buzzer."""
+    buzzer_ch.pulse_width_percent(0)
 
 
 def make_bar(value, max_value, width=20):
@@ -45,11 +52,11 @@ def make_bar(value, max_value, width=20):
 
 
 def alert_tone(delta_ut):
-    """Play a stronger tone when the magnetic disturbance is larger."""
+    """Play a higher-pitched tone when the magnetic disturbance is larger."""
     normalized = min(delta_ut, MAX_ALERT_DELTA_UT) / MAX_ALERT_DELTA_UT
-    freq = int(150 + normalized * 350)   # 150 -> 500 Hz
+    freq = int(800 + normalized * 2200)  # 800 -> 3000 Hz
     duration_ms = int(40 + normalized * 80)
-    tone(SPEAKER, freq, duration_ms)
+    tone(freq, duration_ms)
 
 
 i2c = I2C(1)
