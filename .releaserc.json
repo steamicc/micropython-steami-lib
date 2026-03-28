@@ -24,7 +24,8 @@
       "changelogTitle": "# Changelog\n\nAll notable changes to this project will be documented in this file.\nSee [Conventional Commits](https://conventionalcommits.org) for commit guidelines."
     }],
     ["@semantic-release/exec", {
-      "prepareCmd": "sed -i 's/^version = \".*\"/version = \"${nextRelease.version}\"/' pyproject.toml"
+      "prepareCmd": "sed -i 's/^version = \".*\"/version = \"${nextRelease.version}\"/' pyproject.toml",
+      "publishCmd": "echo new-release-published=true >> $GITHUB_OUTPUT && echo new-release-version=${nextRelease.version} >> $GITHUB_OUTPUT"
     }],
     ["@semantic-release/git", {
       "assets": ["CHANGELOG.md", "pyproject.toml"],
