@@ -12,7 +12,7 @@ display = ssd1327.WS_OLED_128X128_SPI(spi, dc, res, cs)
 # random pixels (slow)
 # note: urandom not available on all devices
 
-for i in range(256):
+for _ in range(256):
     x = uos.urandom(1)[0] // 2
     y = uos.urandom(1)[0] // 2
     display.pixel(x, y, 15)
