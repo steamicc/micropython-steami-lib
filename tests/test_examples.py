@@ -121,8 +121,8 @@ class TestExampleValidation:
                 part in driver_dir.name.replace("-", "_")
                 for part in (node.module.split(".")[0],)
             ):
-                    for alias in node.names:
-                        driver_imports.add(alias.asname or alias.name)
+                for alias in node.names:
+                    driver_imports.add(alias.asname or alias.name)
 
         if not driver_imports:
             pytest.skip(f"No driver import found in {example_path.name}")
@@ -132,16 +132,16 @@ class TestExampleValidation:
         driver_vars = set()
         for node in ast.walk(tree):
             if isinstance(node, ast.Assign) and isinstance(node.value, ast.Call):
-                    func = node.value.func
-                    func_name = None
-                    if isinstance(func, ast.Name):
-                        func_name = func.id
-                    elif isinstance(func, ast.Attribute):
-                        func_name = func.attr
-                    if func_name in driver_imports:
-                        for target in node.targets:
-                            if isinstance(target, ast.Name):
-                                driver_vars.add(target.id)
+                func = node.value.func
+                func_name = None
+                if isinstance(func, ast.Name):
+                    func_name = func.id
+                elif isinstance(func, ast.Attribute):
+                    func_name = func.attr
+                if func_name in driver_imports:
+                    for target in node.targets:
+                        if isinstance(target, ast.Name):
+                            driver_vars.add(target.id)
 
         if not driver_vars:
             pytest.skip(
