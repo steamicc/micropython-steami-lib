@@ -22,7 +22,7 @@ This driver communicates over **I²C** with the STM32F103 DAPLink interface, whi
 
 # I²C Address
 
-Default 7-bit I²C address: ```0x3B```
+Default 7-bit I²C address: `0x3B`
 
 # Basic Usage
 
@@ -70,7 +70,7 @@ flash.device_id()
 
 Read the `WHO_AM_I` register.
 
-Expected value: ```0x4C```
+Expected value: `0x4C`
 
 ## Status
 
