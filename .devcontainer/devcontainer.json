@@ -1,0 +1,92 @@
+{
+    "name": "STeaMi MicroPython Dev",
+    "build": {
+        "dockerfile": "Dockerfile"
+    },
+
+    // USB access for STeaMi board (DAPLink / mpremote / OpenOCD).
+    // Privileged mode is required for firmware flashing and board communication.
+    // This is incompatible with GitHub Codespaces but essential for local use.
+    "privileged": true,
+    "mounts": ["type=bind,source=/dev/bus/usb,target=/dev/bus/usb"],
+    "runArgs": ["--device=/dev/bus/usb"],
+
+    "remoteEnv": {
+        "VENV_DIR": "/home/vscode/.venv"
+    },
+
+    "features": {
+        "ghcr.io/devcontainers/features/node:1": {
+            "version": "22"
+        },
+        "ghcr.io/devcontainers/features/common-utils:2": {
+            "installZsh": true,
+            "installOhMyZsh": true,
+            "upgradePackages": true,
+            "username": "vscode"
+        },
+        "ghcr.io/devcontainers/features/github-cli:1": {},
+        "ghcr.io/stuartleeks/dev-container-features/shell-history:0": {}
+    },
+
+    "customizations": {
+        "vscode": {
+            "settings": {
+                "terminal.integrated.profiles.linux": {
+                    "zsh": {
+                        "path": "zsh"
+                    }
+                },
+                "terminal.integrated.defaultProfile.linux": "zsh",
+
+                "editor.minimap.enabled": false,
+                "editor.formatOnSave": true,
+                "editor.formatOnPaste": true,
+                "editor.rulers": [99],
+
+                "[python]": {
+                    "editor.defaultFormatter": "charliermarsh.ruff"
+                },
+                "[json]": {
+                    "editor.defaultFormatter": "esbenp.prettier-vscode"
+                },
+                "[jsonc]": {
+                    "editor.defaultFormatter": "esbenp.prettier-vscode"
+                },
+                "[makefile]": {
+                    "editor.tabSize": 8
+                },
+                "[yaml]": {
+                    "editor.tabSize": 2
+                },
+
+                "python.defaultInterpreterPath": "/home/vscode/.venv/bin/python",
+                "python.testing.pytestEnabled": true,
+                "python.testing.pytestArgs": ["-v", "-k", "mock"],
+
+                "files.watcherExclude": {
+                    "**/.git/objects/**": true,
+                    "**/node_modules/**": true,
+                    "**/.build/**": true,
+                    "**/__pycache__/**": true
+                },
+                "search.exclude": {
+                    "**/node_modules": true,
+                    "**/.build": true
+                }
+            },
+            "extensions": [
+                "charliermarsh.ruff",
+                "ms-python.python",
+                "ms-python.vscode-pylance",
+                "ms-vscode.vscode-serial-monitor",
+                "esbenp.prettier-vscode",
+                "github.vscode-pull-request-github",
+                "vivaxy.vscode-conventional-commits"
+            ]
+        }
+    },
+
+    "postCreateCommand": "make setup VENV_DIR=/home/vscode/.venv && sudo /usr/lib/systemd/systemd-udevd --daemon",
+    "remoteUser": "vscode"
+}
