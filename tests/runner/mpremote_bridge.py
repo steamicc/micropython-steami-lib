@@ -173,11 +173,11 @@ class MpremoteBridge:
         last_line = lines[-1] if lines else ""
         try:
             return json.loads(last_line)
-        except json.JSONDecodeError:
+        except json.JSONDecodeError as err:
             full = "\n".join(lines)
             raise RuntimeError(
                 f"Script did not produce valid JSON result.\nFull output:\n{full}"
-            )
+            ) from err
 
     def scan_bus(self, i2c_config):
         """Scan I2C bus and return list of addresses."""

@@ -38,7 +38,7 @@ while True:
     accel = imu.acceleration_g()
     ax, ay, az = accel
 
-    heading = mag.heading_with_tilt_compensation(lambda: accel)
+    heading = mag.heading_with_tilt_compensation(lambda a=accel: a)
     pitch_deg, roll_deg = pitch_roll_from_accel(ax, ay, az)
     direction = mag.direction_label(heading)
 

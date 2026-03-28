@@ -469,10 +469,10 @@ class BQ27441(object):
     def soft_reset(self):
         return self.execute_control_word(BQ27441_CONTROL_SOFT_RESET)
 
-    # Read a 16 - bit command word from the BQ27441-G1A, def format = little endian int16
-    def read_word(self, sub_address, format="<h"):
+    # Read a 16-bit command word from the BQ27441-G1A, default fmt = little-endian int16
+    def read_word(self, sub_address, fmt="<h"):
         data = bytes(self._read_reg(sub_address, 2))
-        return struct.unpack(format, data)[0]
+        return struct.unpack(fmt, data)[0]
 
     # Read a 16 - bit subcommand() from the BQ27441-G1A's control()
     def read_control_word(self, function):

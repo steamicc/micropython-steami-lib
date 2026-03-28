@@ -16,8 +16,8 @@ print()
 # -------------------------------------------------
 
 while True:
-    dir = imu.orientation()
+    direction = imu.orientation()
 
-    print("Orientation: {}".format(dir))
+    print("Orientation: {}".format(direction))
 
     sleep_ms(500)

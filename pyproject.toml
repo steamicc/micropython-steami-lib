@@ -38,7 +38,9 @@ target-version = "py37"
 
 [tool.ruff.lint]
 select = [
+  "A",      # flake8-builtins: prevent shadowing builtins
   "ASYNC",  # flake8-async
+  "B",      # flake8-bugbear: common bug patterns
   "C4",     # flake8-comprehensions
   "C90",    # McCabe cyclomatic complexity
   "DTZ",    # flake8-datetimez
@@ -60,6 +62,7 @@ select = [
   "RSE",    # flake8-raise
   "RUF",    # Ruff-specific rules
   "T10",    # flake8-debugger
+  "PERF",   # Perflint
   "T20",    # flake8-print: no print() in production code
   "TCH",    # flake8-type-checking
   "W",      # pycodestyle
@@ -67,7 +70,6 @@ select = [
 ]
 ignore = [
   "E501",    # line length, recommended to disable
-  "E722",    # bare except
   "E741",    # 'l' is currently widely used
   "F401",    # unused import (wildcard re-exports)
   "F403",    # wildcard import
@@ -105,6 +107,7 @@ max-statements = 166
 # manifest.py files are evaluated with some global names pre-defined
 "**/manifest.py" = ["F821"]
 "**/examples/*.py" = ["T20", "N806"]
+"lib/mcp23009e/examples/i2c_scan.py" = ["PERF203"]
 "tests/**/*.py" = ["T20"]
 
 [tool.ruff.format]

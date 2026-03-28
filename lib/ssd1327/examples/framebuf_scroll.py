@@ -19,7 +19,7 @@ for i in range(10):
 display.show()
 sleep(1)
 
-for i in range(2):
+for _ in range(2):
     display.scroll(0, 16)  # framebuf.scroll
     display.show()
     sleep(1)
