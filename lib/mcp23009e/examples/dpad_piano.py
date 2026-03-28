@@ -58,7 +58,7 @@ NOTES_HIGH = {
 def tone(freq):
     """Start a tone using hardware PWM."""
     if freq <= 0:
-        buzzer_ch.pulse_width_percent(0)
+        no_tone()
         return
     buzzer_tim.freq(freq)
     buzzer_ch.pulse_width_percent(50)
@@ -123,7 +123,7 @@ def dpad_piano():
 
     last_note = None
     last_octave = None
-    last_freq = None
+    last_freq = 0
 
     try:
         while True:
