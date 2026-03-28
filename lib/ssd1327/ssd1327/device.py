@@ -2,7 +2,29 @@ from time import sleep_us
 
 import framebuf
 
-from ssd1327.const import *
+from ssd1327.const import (
+    REG_CMD,
+    REG_DATA,
+    SET_COL_ADDR,
+    SET_COMMAND_LOCK,
+    SET_CONTRAST,
+    SET_DISP,
+    SET_DISP_CLK_DIV,
+    SET_DISP_MODE,
+    SET_DISP_OFFSET,
+    SET_DISP_START_LINE,
+    SET_FN_SELECT_A,
+    SET_FN_SELECT_B,
+    SET_GRAYSCALE_LINEAR,
+    SET_MUX_RATIO,
+    SET_PHASE_LEN,
+    SET_PRECHARGE,
+    SET_ROW_ADDR,
+    SET_SCROLL_DEACTIVATE,
+    SET_SECOND_PRECHARGE,
+    SET_SEG_REMAP,
+    SET_VCOM_DESEL,
+)
 
 
 class SSD1327(object):

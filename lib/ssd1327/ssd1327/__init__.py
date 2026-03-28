@@ -1,4 +1,4 @@
-from ssd1327.const import *
+from ssd1327.const import SET_DISP_OFFSET, SET_SEG_REMAP
 from ssd1327.device import (
     SSD1327,
     SSD1327_I2C,

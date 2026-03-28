@@ -1,7 +1,45 @@
 from time import sleep_ms, ticks_diff, ticks_ms
 
-from wsen_pads.const import *
-from wsen_pads.exceptions import *
+from wsen_pads.const import (
+    BOOT_DELAY_MS,
+    CTRL1_BDU,
+    CTRL1_EN_LPFP,
+    CTRL1_LPFP_CFG,
+    CTRL1_ODR_MASK,
+    CTRL1_ODR_SHIFT,
+    CTRL2_BOOT,
+    CTRL2_IF_ADD_INC,
+    CTRL2_LOW_NOISE_EN,
+    CTRL2_ONE_SHOT,
+    CTRL2_SWRESET,
+    INT_SOURCE_BOOT_ON,
+    ODR_1_HZ,
+    ODR_10_HZ,
+    ODR_25_HZ,
+    ODR_50_HZ,
+    ODR_75_HZ,
+    ODR_100_HZ,
+    ODR_200_HZ,
+    ODR_POWER_DOWN,
+    ONE_SHOT_LOW_NOISE_DELAY_MS,
+    ONE_SHOT_LOW_POWER_DELAY_MS,
+    PRESSURE_HPA_PER_DIGIT,
+    PRESSURE_KPA_PER_DIGIT,
+    PRESSURE_PA_PER_DIGIT,
+    REG_CTRL_1,
+    REG_CTRL_2,
+    REG_DATA_P_XL,
+    REG_DATA_T_L,
+    REG_DEVICE_ID,
+    REG_INT_SOURCE,
+    REG_STATUS,
+    STATUS_P_DA,
+    STATUS_T_DA,
+    TEMPERATURE_C_PER_DIGIT,
+    WSEN_PADS_DEVICE_ID,
+    WSEN_PADS_I2C_DEFAULT_ADDR,
+)
+from wsen_pads.exceptions import WSENPADSDeviceNotFound, WSENPADSInvalidDevice, WSENPADSTimeout
 
 
 class WSEN_PADS(object):

@@ -1,8 +1,31 @@
 from time import sleep_ms
 
-from machine import I2C
-
-from hts221.const import *
+from hts221.const import (
+    HTS221_AV_CONF,
+    HTS221_CTRL1_BDU,
+    HTS221_CTRL1_ODR_MASK,
+    HTS221_CTRL1_PD,
+    HTS221_CTRL2_BOOT,
+    HTS221_CTRL2_ONE_SHOT,
+    HTS221_CTRL_REG1,
+    HTS221_CTRL_REG2,
+    HTS221_H0_T0_OUT_L,
+    HTS221_H1_T0_OUT_L,
+    HTS221_HUMIDITY_OUT_L,
+    HTS221_STATUS_H_DA,
+    HTS221_STATUS_REG,
+    HTS221_STATUS_T_DA,
+    HTS221_T0_OUT_L,
+    HTS221_T1_OUT_L,
+    HTS221_TEMP_OUT_L,
+    HTS221_WHO_AM_I,
+    HTS_I2C_ADDR,
+    HTS221_H0_rH_x2,
+    HTS221_H1_rH_x2,
+    HTS221_T0_degC_x8,
+    HTS221_T1_degC_x8,
+    HTS221_T1T0_msb,
+)
 
 
 def int16(d):

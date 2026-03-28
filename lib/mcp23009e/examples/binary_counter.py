@@ -14,7 +14,22 @@ from time import sleep_ms
 
 from machine import I2C, Pin
 from mcp23009e import MCP23009E
-from mcp23009e.const import *
+from mcp23009e.const import (
+    MCP23009_BTN_DOWN,
+    MCP23009_BTN_LEFT,
+    MCP23009_BTN_RIGHT,
+    MCP23009_BTN_UP,
+    MCP23009_DIR_INPUT,
+    MCP23009_DIR_OUTPUT,
+    MCP23009_GPIO1,
+    MCP23009_GPIO2,
+    MCP23009_GPIO3,
+    MCP23009_GPIO4,
+    MCP23009_I2C_ADDR,
+    MCP23009_LOGIC_HIGH,
+    MCP23009_LOGIC_LOW,
+    MCP23009_PULLUP,
+)
 
 bus = I2C(1)
 reset = Pin("RST_EXPANDER", Pin.OUT)

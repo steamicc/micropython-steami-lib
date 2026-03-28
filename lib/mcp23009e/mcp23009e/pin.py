@@ -3,9 +3,15 @@ Module fournissant une classe Pin compatible avec l'API MicroPython
 pour les GPIO du MCP23009E
 """
 
-from machine import Pin as MachinePin
 
-from mcp23009e.const import *
+from mcp23009e.const import (
+    MCP23009_DIR_INPUT,
+    MCP23009_DIR_OUTPUT,
+    MCP23009_LOGIC_HIGH,
+    MCP23009_LOGIC_LOW,
+    MCP23009_NO_PULLUP,
+    MCP23009_PULLUP,
+)
 
 
 class MCP23009Pin:
