@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "micropython-steami-lib"
-version = "0.2.5"
+version = "0.2.6"
 description = "MicroPython driver library for the STeaMi board."
 license = {text = "GPL-3.0-or-later"}
 requires-python = ">=3.7"
