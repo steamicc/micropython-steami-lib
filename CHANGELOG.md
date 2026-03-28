@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [0.1.3](https://github.com/steamicc/micropython-steami-lib/compare/v0.1.2...v0.1.3) (2026-03-28)
+
+
+### Bug Fixes
+
+* **examples:** Migrate buzzer tone() to hardware PWM Timer. ([#273](https://github.com/steamicc/micropython-steami-lib/issues/273)) ([54a46e2](https://github.com/steamicc/micropython-steami-lib/commit/54a46e2c1fc674aa4496e3245d4a88c9d3a63967))
+
 ## [0.1.2](https://github.com/steamicc/micropython-steami-lib/compare/v0.1.1...v0.1.2) (2026-03-26)
 
 
