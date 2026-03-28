@@ -31,7 +31,7 @@ btn_mapping = {
 }
 
 print("Configuration des boutons...")
-for btn_pin in btn_mapping.keys():
+for btn_pin in btn_mapping:
     mcp.setup(btn_pin, MCP23009_DIR_INPUT, pullup=MCP23009_PULLUP)
 print("✓ Configuration terminée\n")
 

@@ -61,6 +61,7 @@ select = [
   "PYI",    # flake8-pyi
   "RSE",    # flake8-raise
   "RUF",    # Ruff-specific rules
+  "SIM",    # flake8-simplify
   "T10",    # flake8-debugger
   "PERF",   # Perflint
   "T20",    # flake8-print: no print() in production code
@@ -86,7 +87,8 @@ ignore = [
   "PLW2901", # overwriting loop variable
   "RUF012",  # mutable class variable
   "RUF100",  # unused noqa
-  "SIM101",  # merge isinstance calls
+  "SIM101",  # merge isinstance calls (micropython compat)
+  "SIM105",  # contextlib.suppress not available in micropython
   "W191",    # tab-indent, redundant when using formatter
 ]
 
