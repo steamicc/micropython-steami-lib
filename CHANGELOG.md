@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [0.2.1](https://github.com/steamicc/micropython-steami-lib/compare/v0.2.0...v0.2.1) (2026-03-28)
+
+
+### Bug Fixes
+
+* Fix publishCmd template conflict with lodash interpolation. ([e3a0c33](https://github.com/steamicc/micropython-steami-lib/commit/e3a0c3338369250c8bd8051dd7a61e8c4295b57a))
+
 # [0.2.0](https://github.com/steamicc/micropython-steami-lib/compare/v0.1.5...v0.2.0) (2026-03-28)
 
 
