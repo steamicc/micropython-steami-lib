@@ -56,7 +56,7 @@ class DaplinkFlash(object):
             buf[2 : 2 + chunk_len] = data[offset : offset + chunk_len]
             for i in range(2 + chunk_len, len(buf)):
                 buf[i] = 0
-            self._bridge.i2c.writeto(self._bridge.address, buf)
+            self._bridge._writeto(buf)
             offset += chunk_len
         self._bridge._wait_busy()
         err = self._bridge._error()
@@ -84,7 +84,7 @@ class DaplinkFlash(object):
         self._bridge._wait_busy()
         self._bridge._write_reg(CMD_READ_SECTOR, bytes([sector >> 8, sector & 0xFF]))
         sleep_ms(200)
-        return self._bridge.i2c.readfrom(self._bridge.address, SECTOR_SIZE)
+        return self._bridge._readfrom(SECTOR_SIZE)
 
     def read(self, length=None):
         """Read file content from flash.

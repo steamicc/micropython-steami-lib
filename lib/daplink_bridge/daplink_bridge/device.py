@@ -31,6 +31,14 @@ class DaplinkBridge(object):
         self._buffer_1[0] = cmd
         self.i2c.writeto(self.address, self._buffer_1)
 
+    def _writeto(self, data):
+        """Write raw data frame to the bridge."""
+        self.i2c.writeto(self.address, data)
+
+    def _readfrom(self, n):
+        """Read n raw bytes from the bridge."""
+        return self.i2c.readfrom(self.address, n)
+
     # --------------------------------------------------
     # Device identification
     # --------------------------------------------------
