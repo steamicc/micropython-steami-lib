@@ -159,6 +159,238 @@ tests:
     expect_true: true
     mode: [mock]
 
+  # ----- Calibration -----
+
+  - name: "set_heading_offset stores offset"
+    action: script
+    script: |
+      dev.set_heading_offset(45.0)
+      result = dev._heading_offset_deg == 45.0
+    expect_true: true
+    mode: [mock]
+
+  - name: "set_declination stores declination"
+    action: script
+    script: |
+      dev.set_declination(-3.5)
+      result = dev._declination_deg == -3.5
+    expect_true: true
+    mode: [mock]
+
+  - name: "set_hw_offsets writes to offset registers"
+    action: script
+    script: |
+      i2c.clear_write_log()
+      dev.set_hw_offsets(100, -200, 300)
+      log = i2c.get_write_log()
+      # Should write to OFFSET_X (0x45), OFFSET_Y (0x47), OFFSET_Z (0x49)
+      regs = [reg for reg, data in log if reg is not None]
+      result = 0x45 in regs and 0x47 in regs and 0x49 in regs
+    expect_true: true
+    mode: [mock]
+
+  - name: "read_hw_offsets returns zeros from mock registers"
+    action: script
+    script: |
+      ox, oy, oz = dev.read_hw_offsets()
+      # Mock registers initialize all offset bytes to 0x00
+      result = (ox, oy, oz) == (0, 0, 0)
+    expect_true: true
+    mode: [mock]
+
+  - name: "calibrated_field applies offset and scale"
+    action: script
+    script: |
+      dev.x_off = 100.0
+      dev.y_off = -50.0
+      dev.z_off = 0.0
+      dev.x_scale = 2.0
+      dev.y_scale = 1.0
+      dev.z_scale = 1.0
+      x, y, z = dev.calibrated_field()
+      # Raw is (300, -150, 450), after calibration:
+      # x = (300 - 100) / 2.0 = 100.0
+      # y = (-150 - (-50)) / 1.0 = -100.0
+      # z = (450 - 0) / 1.0 = 450.0
+      result = x == 100.0 and y == -100.0 and z == 450.0
+    expect_true: true
+    mode: [mock]
+
+  - name: "calibrate_reset restores defaults"
+    action: script
+    script: |
+      dev.x_off = 999
+      dev.y_off = 999
+      dev.calibrate_reset()
+      result = dev.x_off == 0 and dev.y_off == 0 and dev.x_scale == 1.0 and dev.y_scale == 1.0
+    expect_true: true
+    mode: [mock]
+
+  - name: "read_calibration returns current values"
+    action: script
+    script: |
+      dev.x_off = 10
+      dev.y_off = 20
+      dev.z_off = 30
+      dev.x_scale = 1.1
+      dev.y_scale = 1.2
+      dev.z_scale = 1.3
+      cal = dev.read_calibration()
+      result = cal == (10, 20, 30, 1.1, 1.2, 1.3)
+    expect_true: true
+    mode: [mock]
+
+  # ----- Heading -----
+
+  - name: "heading_flat_only returns angle 0-360"
+    action: script
+    script: |
+      dev.calibrate_reset()
+      h = dev.heading_flat_only()
+      result = 0 <= h < 360
+    expect_true: true
+    mode: [mock]
+
+  - name: "heading_with_tilt_compensation returns angle 0-360"
+    action: script
+    script: |
+      dev.calibrate_reset()
+      # Simulate flat accelerometer: (0, 0, 1g)
+      h = dev.heading_with_tilt_compensation(lambda: (0.0, 0.0, 1.0))
+      result = 0 <= h < 360
+    expect_true: true
+    mode: [mock]
+
+  - name: "heading offset shifts heading"
+    action: script
+    script: |
+      dev.calibrate_reset()
+      dev.set_heading_offset(0)
+      h1 = dev.heading_flat_only()
+      dev.set_heading_offset(90)
+      h2 = dev.heading_flat_only()
+      # h2 should differ from h1 by ~90 degrees (mod 360)
+      diff = abs(h2 - h1)
+      if diff > 180:
+          diff = 360 - diff
+      result = 80 < diff < 100
+    expect_true: true
+    mode: [mock]
+
+  - name: "declination shifts heading"
+    action: script
+    script: |
+      dev.calibrate_reset()
+      dev.set_declination(0)
+      h1 = dev.heading_flat_only()
+      dev.set_declination(45)
+      h2 = dev.heading_flat_only()
+      diff = abs(h2 - h1)
+      if diff > 180:
+          diff = 360 - diff
+      result = 35 < diff < 55
+    expect_true: true
+    mode: [mock]
+
+  - name: "direction_label returns cardinal"
+    action: script
+    script: |
+      label = dev.direction_label(0)
+      result = label == "N"
+    expect_true: true
+    mode: [mock]
+
+  - name: "direction_label E at 90 degrees"
+    action: script
+    script: |
+      label = dev.direction_label(90)
+      result = label == "E"
+    expect_true: true
+    mode: [mock]
+
+  # ----- read_all -----
+
+  - name: "read_all returns dict with expected keys"
+    action: script
+    script: |
+      data = dev.read_all()
+      keys = set(data.keys())
+      expected = {"raw", "uT", "cal_norm", "tempC", "status"}
+      result = keys == expected
+    expect_true: true
+    mode: [mock]
+
+  # ----- Mode & configuration setters -----
+
+  - name: "set_mode continuous"
+    action: script
+    script: |
+      dev.set_mode("continuous")
+      result = dev.get_mode() == "continuous"
+    expect_true: true
+    mode: [mock]
+
+  - name: "set_mode idle"
+    action: script
+    script: |
+      dev.set_mode("idle")
+      result = dev.get_mode() == "idle"
+    expect_true: true
+    mode: [mock]
+
+  - name: "set_odr writes CFG_REG_A"
+    action: script
+    script: |
+      i2c.clear_write_log()
+      dev.set_odr(50)
+      log = i2c.get_write_log()
+      result = any(reg == 0x60 for reg, data in log)
+    expect_true: true
+    mode: [mock]
+
+  - name: "power_on restores continuous mode"
+    action: script
+    script: |
+      dev.power_off()
+      dev.power_on()
+      result = dev.get_mode() == "continuous"
+    expect_true: true
+    mode: [mock]
+
+  - name: "is_idle after power_off"
+    action: script
+    script: |
+      dev.power_off()
+      result = dev.is_idle()
+    expect_true: true
+    mode: [mock]
+
+  - name: "data_ready returns True when status has Zyxda set"
+    action: script
+    script: |
+      # Mock STATUS_REG is 0x0F (Zyxda bit set)
+      result = dev.data_ready() is True
+    expect_true: true
+    mode: [mock]
+
+  - name: "magnetic_field_raw returns same as magnetic_field"
+    action: script
+    script: |
+      raw = dev.magnetic_field_raw()
+      field = dev.magnetic_field()
+      result = raw == field
+    expect_true: true
+    mode: [mock]
+
+  - name: "heading_from_vectors computes angle"
+    action: script
+    script: |
+      dev.calibrate_reset()
+      h = dev.heading_from_vectors(100, 0, 0, calibrated=False)
+      result = 0 <= h < 360
+    expect_true: true
+    mode: [mock]
+
   - name: "Fresh magnitude after power down"
     action: script
     script: |

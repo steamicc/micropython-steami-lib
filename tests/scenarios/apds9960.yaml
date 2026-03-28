@@ -143,6 +143,232 @@ tests:
     expect_true: true
     mode: [mock]
 
+  # ----- Getter/Setter round-trips -----
+
+  - name: "Proximity gain round-trip"
+    action: script
+    script: |
+      dev.set_proximity_gain(2)
+      result = dev.get_proximity_gain() == 2
+    expect_true: true
+    mode: [mock]
+
+  - name: "Ambient light gain round-trip"
+    action: script
+    script: |
+      dev.set_ambient_light_gain(2)
+      result = dev.get_ambient_light_gain() == 2
+    expect_true: true
+    mode: [mock]
+
+  - name: "LED drive round-trip"
+    action: script
+    script: |
+      dev.set_led_drive(1)
+      result = dev.get_led_drive() == 1
+    expect_true: true
+    mode: [mock]
+
+  - name: "LED boost round-trip"
+    action: script
+    script: |
+      dev.set_led_boost(2)
+      result = dev.get_led_boost() == 2
+    expect_true: true
+    mode: [mock]
+
+  - name: "Proximity int low threshold round-trip"
+    action: script
+    script: |
+      dev.set_prox_int_low_thresh(50)
+      result = dev.get_prox_int_low_thresh() == 50
+    expect_true: true
+    mode: [mock]
+
+  - name: "Proximity int high threshold round-trip"
+    action: script
+    script: |
+      dev.set_prox_int_high_thresh(200)
+      result = dev.get_prox_int_high_thresh() == 200
+    expect_true: true
+    mode: [mock]
+
+  - name: "Gesture gain round-trip"
+    action: script
+    script: |
+      dev.set_gesture_gain(2)
+      result = dev.get_gesture_gain() == 2
+    expect_true: true
+    mode: [mock]
+
+  - name: "Gesture LED drive round-trip"
+    action: script
+    script: |
+      dev.set_gesture_led_drive(1)
+      result = dev.get_gesture_led_drive() == 1
+    expect_true: true
+    mode: [mock]
+
+  - name: "Gesture enter threshold round-trip"
+    action: script
+    script: |
+      dev.set_gesture_enter_thresh(30)
+      result = dev.get_gesture_enter_thresh() == 30
+    expect_true: true
+    mode: [mock]
+
+  - name: "Gesture exit threshold round-trip"
+    action: script
+    script: |
+      dev.set_gesture_exit_thresh(20)
+      result = dev.get_gesture_exit_thresh() == 20
+    expect_true: true
+    mode: [mock]
+
+  # ----- Gesture sensor enable/disable -----
+
+  - name: "Enable gesture sensor sets GEN bit"
+    action: script
+    script: |
+      dev.enable_gesture_sensor(False)
+      mode = dev.get_mode()
+      has_gen = bool(mode & 0x40)
+      has_pon = bool(mode & 0x01)
+      result = has_gen and has_pon
+    expect_true: true
+    mode: [mock]
+
+  - name: "Disable gesture sensor clears GEN bit"
+    action: script
+    script: |
+      dev.enable_gesture_sensor(False)
+      dev.disable_gesture_sensor()
+      mode = dev.get_mode()
+      has_gen = bool(mode & 0x40)
+      result = not has_gen
+    expect_true: true
+    mode: [mock]
+
+  - name: "is_gesture_available returns False when GSTATUS not set"
+    action: script
+    script: |
+      # Mock GSTATUS (0xAF) not configured, so GVALID bit is 0
+      result = dev.is_gesture_available() is False
+    expect_true: true
+    mode: [mock]
+
+  # ----- Power on/off -----
+
+  - name: "Power off clears PON bit"
+    action: script
+    script: |
+      dev.power_on()
+      dev.power_off()
+      mode = dev.get_mode()
+      result = not bool(mode & 0x01)
+    expect_true: true
+    mode: [mock]
+
+  - name: "Power on sets PON bit"
+    action: script
+    script: |
+      dev.power_off()
+      dev.power_on()
+      mode = dev.get_mode()
+      result = bool(mode & 0x01)
+    expect_true: true
+    mode: [mock]
+
+  # ----- Additional setter/getter round-trips -----
+
+  - name: "Gesture wait time round-trip"
+    action: script
+    script: |
+      dev.set_gesture_wait_time(3)
+      result = dev.get_gesture_wait_time() == 3
+    expect_true: true
+    mode: [mock]
+
+  - name: "Light int low threshold round-trip"
+    action: script
+    script: |
+      dev.set_light_int_low_threshold(100)
+      result = dev.get_light_int_low_threshold() == 100
+    expect_true: true
+    mode: [mock]
+
+  - name: "Light int high threshold round-trip"
+    action: script
+    script: |
+      dev.set_light_int_high_threshold(5000)
+      result = dev.get_light_int_high_threshold() == 5000
+    expect_true: true
+    mode: [mock]
+
+  - name: "Gesture mode round-trip"
+    action: script
+    script: |
+      dev.set_gesture_mode(True)
+      result = dev.get_gesture_mode() == True
+    expect_true: true
+    mode: [mock]
+
+  - name: "Proximity int enable round-trip"
+    action: script
+    script: |
+      dev.set_proximity_int_enable(True)
+      result = dev.get_proximity_int_enable() == True
+    expect_true: true
+    mode: [mock]
+
+  - name: "Ambient light int enable round-trip"
+    action: script
+    script: |
+      dev.set_ambient_light_int_enable(True)
+      result = dev.get_ambient_light_int_enable() == True
+    expect_true: true
+    mode: [mock]
+
+  - name: "data_ready returns True when status indicates valid data"
+    action: script
+    script: |
+      # Mock STATUS register is 0x03 (AVALID + PVALID set)
+      result = dev.data_ready() is True
+    expect_true: true
+    mode: [mock]
+
+  - name: "light_ready returns True when AVALID set"
+    action: script
+    script: |
+      # Mock STATUS register is 0x03 (AVALID bit set)
+      result = dev.light_ready() is True
+    expect_true: true
+    mode: [mock]
+
+  - name: "proximity_ready returns True when PVALID set"
+    action: script
+    script: |
+      # Mock STATUS register is 0x03 (PVALID bit set)
+      result = dev.proximity_ready() is True
+    expect_true: true
+    mode: [mock]
+
+  - name: "Green light returns int"
+    action: script
+    script: |
+      dev.enable_light_sensor(False)
+      result = isinstance(dev.green_light(), int)
+    expect_true: true
+    mode: [mock]
+
+  - name: "Blue light returns int"
+    action: script
+    script: |
+      dev.enable_light_sensor(False)
+      result = isinstance(dev.blue_light(), int)
+    expect_true: true
+    mode: [mock]
+
   # ----- Hardware -----
 
   - name: "Ambient light in plausible range"
