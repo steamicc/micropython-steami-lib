@@ -17,14 +17,14 @@ class SteamiConfig(object):
     """Persistent configuration stored in the DAPLink F103 config zone.
 
     Data is serialised as compact JSON and written via
-    ``DaplinkFlash.write_config()`` / ``read_config()``.
+    ``DaplinkBridge.write_config()`` / ``read_config()``.
 
     Args:
-        flash: a ``DaplinkFlash`` instance.
+        bridge: a ``DaplinkBridge`` instance.
     """
 
-    def __init__(self, flash):
-        self._flash = flash
+    def __init__(self, bridge):
+        self._bridge = bridge
         self._data = {}
 
     # --------------------------------------------------
@@ -36,7 +36,7 @@ class SteamiConfig(object):
 
         Falls back to empty config if the zone contains invalid JSON.
         """
-        raw = self._flash.read_config()
+        raw = self._bridge.read_config()
         if raw:
             try:
                 self._data = json.loads(raw)
@@ -47,8 +47,8 @@ class SteamiConfig(object):
 
     def save(self):
         """Save configuration to the config zone."""
-        self._flash.clear_config()
-        self._flash.write_config(json.dumps(self._data, separators=(",", ":")))
+        self._bridge.clear_config()
+        self._bridge.write_config(json.dumps(self._data, separators=(",", ":")))
 
     # --------------------------------------------------
     # Board info

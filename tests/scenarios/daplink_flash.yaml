@@ -2,15 +2,25 @@ driver: daplink_flash
 driver_class: DaplinkFlash
 i2c_address: 0x3B
 
-# I2C config for hardware tests (STeaMi board - STM32WB55)
+dependencies:
+  - daplink_bridge
+
+# Custom init: DaplinkFlash now takes a DaplinkBridge, not i2c
+mock_init: |
+  from daplink_bridge import DaplinkBridge
+  bridge = DaplinkBridge(i2c, address=0x3B)
+  dev = DaplinkFlash(bridge)
+
 i2c:
   id: 1
 
-# Register values for mock tests
-# These simulate the STM32F103 DAPLink flash bridge
+# Hardware init: create bridge then flash
+hardware_init: |
+  from daplink_bridge import DaplinkBridge
+  bridge = DaplinkBridge(i2c, address=0x3B)
+  dev = DaplinkFlash(bridge)
+
 mock_registers:
-  # WHO_AM_I (expected 0x4C)
-  0x01: 0x4C
   # STATUS_REG (not busy)
   0x80: 0x00
   # ERROR_REG (no error)
@@ -19,37 +29,6 @@ mock_registers:
   0x04: [0x54, 0x45, 0x53, 0x54, 0x20, 0x20, 0x20, 0x20, 0x43, 0x53, 0x56]
 
 tests:
-  - name: "Verify WHO_AM_I register"
-    action: read_register
-    register: 0x01
-    expect: 0x4C
-    mode: [mock, hardware]
-
-  - name: "Read WHO_AM_I via method"
-    action: call
-    method: device_id
-    expect: 0x4C
-    mode: [mock, hardware]
-
-  - name: "Read status register"
-    action: call
-    method: _status
-    expect: 0x00
-    mode: [mock]
-
-  - name: "Read error register"
-    action: call
-    method: _error
-    expect: 0x00
-    mode: [mock]
-
-  - name: "Not busy when status is 0"
-    action: script
-    script: |
-      result = dev.busy() == False
-    expect_true: true
-    mode: [mock]
-
   - name: "Get filename returns tuple"
     action: script
     script: |
@@ -61,9 +40,10 @@ tests:
   - name: "Set filename writes to register"
     action: script
     script: |
-      i2c.clear_write_log()
+      _i2c = dev._bridge.i2c
+      _i2c.clear_write_log()
       dev.set_filename("DATA", "CSV")
-      log = i2c.get_write_log()
+      log = _i2c.get_write_log()
       wrote_filename = any(reg == 0x03 for reg, data in log)
       result = wrote_filename
     expect_true: true
@@ -72,9 +52,10 @@ tests:
   - name: "Clear flash sends command"
     action: script
     script: |
-      i2c.clear_write_log()
+      _i2c = dev._bridge.i2c
+      _i2c.clear_write_log()
       dev.clear_flash()
-      log = i2c.get_write_log()
+      log = _i2c.get_write_log()
       sent_clear = any(reg is None and 0x10 in data for reg, data in log)
       result = sent_clear
     expect_true: true
@@ -83,9 +64,10 @@ tests:
   - name: "Write sends chunked data"
     action: script
     script: |
-      i2c.clear_write_log()
+      _i2c = dev._bridge.i2c
+      _i2c.clear_write_log()
       dev.write(b"Hello")
-      log = i2c.get_write_log()
+      log = _i2c.get_write_log()
       sent_write = any(reg is None and data[0] == 0x11 for reg, data in log)
       result = sent_write
     expect_true: true
@@ -118,61 +100,16 @@ tests:
   - name: "Read sector sends command"
     action: script
     script: |
-      i2c.clear_write_log()
+      _i2c = dev._bridge.i2c
+      _i2c.clear_write_log()
       dev.read_sector(0)
-      log = i2c.get_write_log()
+      log = _i2c.get_write_log()
       sent_read = any(reg == 0x20 for reg, data in log)
       result = sent_read
     expect_true: true
     mode: [mock]
 
-  - name: "Clear config sends command"
-    action: script
-    script: |
-      i2c.clear_write_log()
-      dev.clear_config()
-      log = i2c.get_write_log()
-      sent_clear = any(reg is None and 0x32 in data for reg, data in log)
-      result = sent_clear
-    expect_true: true
-    mode: [mock]
-
-  - name: "Write config sends command"
-    action: script
-    script: |
-      i2c.clear_write_log()
-      dev.write_config(b"test")
-      log = i2c.get_write_log()
-      sent_write = any(reg is None and data[0] == 0x30 for reg, data in log)
-      result = sent_write
-    expect_true: true
-    mode: [mock]
-
-  - name: "Write config sends write without prior clear"
-    action: script
-    script: |
-      i2c.clear_write_log()
-      dev.write_config(b"hi")
-      log = i2c.get_write_log()
-      sent_clear = any(reg is None and 0x32 in data for reg, data in log)
-      sent_write = any(reg is None and data[0] == 0x30 for reg, data in log)
-      result = sent_write and not sent_clear
-    expect_true: true
-    mode: [mock]
-
   # ----- Hardware -----
-
-  - name: "Status register readable"
-    action: call
-    method: _status
-    expect_not_none: true
-    mode: [hardware]
-
-  - name: "Error register readable"
-    action: call
-    method: _error
-    expect_not_none: true
-    mode: [hardware]
 
   - name: "Set and get filename round-trip"
     action: hardware_script
@@ -214,7 +151,6 @@ tests:
       dev.set_filename("PAGEBND", "TXT")
       dev.clear_flash()
       sleep_ms(500)
-      # Write 20 lines of 21 bytes each (420 bytes, crosses 256-byte page)
       for i in range(20):
           dev.write_line("ROW{:04d};AAAAAAAAAA".format(i))
       sleep_ms(100)
@@ -255,7 +191,6 @@ tests:
       dev.set_filename("SECTOR", "TXT")
       dev.clear_flash()
       sleep_ms(500)
-      # Write more than 256 bytes to fill at least 2 sectors
       data = "A" * 300 + "\n"
       dev.write(data)
       sleep_ms(100)
@@ -263,20 +198,6 @@ tests:
       s1 = dev.read_sector(1)
       result = len(s0) == 256 and len(s1) == 256
       result = result and s0[0] == ord("A") and s1[0] == ord("A")
-    expect_true: true
-    mode: [hardware]
-
-  - name: "Error register set when writing to full flash"
-    action: hardware_script
-    script: |
-      # Verify error register is clean after normal operations
-      dev.set_filename("ERRTEST", "TXT")
-      dev.clear_flash()
-      from time import sleep_ms
-      sleep_ms(500)
-      dev.write_line("test")
-      sleep_ms(100)
-      result = dev._error() == 0x00
     expect_true: true
     mode: [hardware]
 
@@ -296,50 +217,19 @@ tests:
     expect_true: true
     mode: [hardware]
 
-  # ----- Config zone -----
-
-  - name: "Write and read config round-trip"
-    action: hardware_script
-    script: |
-      dev.clear_config()
-      dev.write_config('{"test": 42}')
-      content = dev.read_config()
-      result = content == b'{"test": 42}'
-    expect_true: true
-    mode: [hardware]
-
-  - name: "Clear config erases config zone"
-    action: hardware_script
-    script: |
-      dev.write_config("data")
-      dev.clear_config()
-      result = dev.read_config() == b""
-    expect_true: true
-    mode: [hardware]
-
-  - name: "Clear flash does not erase config"
-    action: hardware_script
-    script: |
-      from time import sleep_ms
-      dev.clear_config()
-      dev.write_config("preserved")
-      dev.clear_flash()
-      sleep_ms(500)
-      result = dev.read_config() == b"preserved"
-    expect_true: true
-    mode: [hardware]
-
   - name: "Config survives data file operations"
     action: hardware_script
     script: |
       from time import sleep_ms
-      dev.clear_config()
-      dev.write_config('{"cal": true}')
+      from daplink_bridge import DaplinkBridge
+      bridge = DaplinkBridge(i2c, address=0x3B)
+      bridge.clear_config()
+      bridge.write_config('{"cal": true}')
       dev.set_filename("TEST", "CSV")
       dev.clear_flash()
       sleep_ms(500)
       dev.write_line("row1")
       sleep_ms(100)
-      result = dev.read_config() == b'{"cal": true}'
+      result = bridge.read_config() == b'{"cal": true}'
     expect_true: true
     mode: [hardware]

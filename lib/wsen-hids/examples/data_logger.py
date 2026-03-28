@@ -10,6 +10,7 @@ data before enabling erasure.
 """
 from time import sleep_ms, ticks_diff, ticks_ms
 
+from daplink_bridge import DaplinkBridge
 from daplink_flash import DaplinkFlash
 from machine import I2C
 from wsen_hids import WSEN_HIDS
@@ -19,7 +20,8 @@ ERASE_FLASH_ON_START = False
 
 i2c = I2C(1)
 sensor = WSEN_HIDS(i2c)
-flash = DaplinkFlash(i2c)
+bridge = DaplinkBridge(i2c)
+flash = DaplinkFlash(bridge)
 
 flash.set_filename("DATA", "CSV")
 if ERASE_FLASH_ON_START:

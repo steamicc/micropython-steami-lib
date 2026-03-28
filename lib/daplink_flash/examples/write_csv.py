@@ -2,13 +2,15 @@
 
 from time import sleep_ms
 
+from daplink_bridge import DaplinkBridge
 from daplink_flash import DaplinkFlash
 from machine import I2C
 
 i2c = I2C(1)
-flash = DaplinkFlash(i2c)
+bridge = DaplinkBridge(i2c)
+flash = DaplinkFlash(bridge)
 
-print("WHO_AM_I:", hex(flash.device_id()))
+print("WHO_AM_I:", hex(bridge.device_id()))
 
 # Set filename and erase
 flash.set_filename("DATA", "CSV")

@@ -12,7 +12,7 @@ Press MENU to start the calibration.
 import gc
 from time import sleep_ms
 
-from daplink_flash import DaplinkFlash
+from daplink_bridge import DaplinkBridge
 from lis2mdl import LIS2MDL
 from machine import I2C, SPI, Pin
 from ssd1327 import WS_OLED_128X128_SPI
@@ -29,8 +29,8 @@ oled = WS_OLED_128X128_SPI(
 )
 btn_menu = Pin("MENU_BUTTON", Pin.IN, Pin.PULL_UP)
 
-flash = DaplinkFlash(i2c)
-config = SteamiConfig(flash)
+bridge = DaplinkBridge(i2c)
+config = SteamiConfig(bridge)
 config.load()
 mag = LIS2MDL(i2c)
 config.apply_magnetometer_calibration(mag)
@@ -153,7 +153,7 @@ sleep_ms(500)
 show(["COMPAS", "", "Sauvegarde OK", "", "Verification..."])
 
 gc.collect()
-config2 = SteamiConfig(flash)
+config2 = SteamiConfig(bridge)
 config2.load()
 
 mag2 = LIS2MDL(i2c)

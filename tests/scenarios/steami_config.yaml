@@ -5,9 +5,9 @@ i2c:
   id: 1
 i2c_address: 0x3B
 dependencies:
-  - daplink_flash
+  - daplink_bridge
 mock_init: |
-  class FakeFlash(object):
+  class FakeBridge(object):
       def __init__(self):
           self._data = b""
       def read_config(self):
@@ -18,12 +18,10 @@ mock_init: |
           self._data = data
       def clear_config(self):
           self._data = b""
-      def clear_flash(self):
-          pass
-  dev = SteamiConfig(FakeFlash())
+  dev = SteamiConfig(FakeBridge())
 hardware_init: |
-  from daplink_flash import DaplinkFlash
-  dev = SteamiConfig(DaplinkFlash(i2c))
+  from daplink_bridge import DaplinkBridge
+  dev = SteamiConfig(DaplinkBridge(i2c))
 
 tests:
   # ----- Mock -----
@@ -31,7 +29,7 @@ tests:
   - name: "Load empty config returns empty data"
     action: script
     script: |
-      dev._flash._data = b""
+      dev._bridge._data = b""
       dev.load()
       result = dev.board_revision is None and dev.board_name is None
     expect_true: true
@@ -44,7 +42,7 @@ tests:
       dev.board_revision = 3
       dev.board_name = "STeaMi-01"
       dev.save()
-      dev2 = SteamiConfig(dev._flash)
+      dev2 = SteamiConfig(dev._bridge)
       dev2.load()
       result = dev2.board_revision == 3 and dev2.board_name == "STeaMi-01"
     expect_true: true
@@ -214,7 +212,7 @@ tests:
           hard_iron_x=5.5, hard_iron_y=-2.2, hard_iron_z=0.3,
       )
       dev.save()
-      dev2 = SteamiConfig(dev._flash)
+      dev2 = SteamiConfig(dev._bridge)
       dev2.load()
       cal = dev2.get_magnetometer_calibration()
       result = (
@@ -251,7 +249,7 @@ tests:
   - name: "Save and load config on hardware"
     action: script
     script: |
-      dev._flash.clear_config()
+      dev._bridge.clear_config()
       dev._data = {}
       dev.board_revision = 3
       dev.board_name = "STeaMi-Test"
@@ -259,7 +257,7 @@ tests:
       dev.save()
       from time import sleep_ms
       sleep_ms(200)
-      dev2 = SteamiConfig(dev._flash)
+      dev2 = SteamiConfig(dev._bridge)
       dev2.load()
       result = (
           dev2.board_revision == 3
@@ -273,14 +271,16 @@ tests:
     action: script
     script: |
       from time import sleep_ms
-      dev._flash.clear_config()
+      from daplink_flash import DaplinkFlash
+      dev._bridge.clear_config()
       dev._data = {}
       dev.board_name = "Persist"
       dev.save()
       sleep_ms(200)
-      dev._flash.clear_flash()
+      flash = DaplinkFlash(dev._bridge)
+      flash.clear_flash()
       sleep_ms(500)
-      dev2 = SteamiConfig(dev._flash)
+      dev2 = SteamiConfig(dev._bridge)
       dev2.load()
       result = dev2.board_name == "Persist"
     expect_true: true
@@ -297,12 +297,12 @@ tests:
       ref = hids.temperature()
       raw = hts.temperature()
       offset = ref - raw
-      dev._flash.clear_config()
+      dev._bridge.clear_config()
       dev._data = {}
       dev.set_temperature_calibration("hts221", gain=1.0, offset=offset)
       dev.save()
       sleep_ms(200)
-      dev2 = SteamiConfig(dev._flash)
+      dev2 = SteamiConfig(dev._bridge)
       dev2.load()
       dev2.apply_temperature_calibration(hts)
       calibrated = hts.temperature()
@@ -314,7 +314,7 @@ tests:
     action: script
     script: |
       from time import sleep_ms
-      dev._flash.clear_config()
+      dev._bridge.clear_config()
       dev._data = {}
       dev.set_magnetometer_calibration(
           hard_iron_x=12.3, hard_iron_y=-5.1, hard_iron_z=0.8,
@@ -322,7 +322,7 @@ tests:
       )
       dev.save()
       sleep_ms(200)
-      dev2 = SteamiConfig(dev._flash)
+      dev2 = SteamiConfig(dev._bridge)
       dev2.load()
       cal = dev2.get_magnetometer_calibration()
       result = (
@@ -339,7 +339,7 @@ tests:
       from time import sleep_ms
       from lis2mdl import LIS2MDL
       mag = LIS2MDL(i2c)
-      dev._flash.clear_config()
+      dev._bridge.clear_config()
       dev._data = {}
       dev.set_magnetometer_calibration(
           hard_iron_x=10.5, hard_iron_y=-3.2, hard_iron_z=0.7,
@@ -347,7 +347,7 @@ tests:
       )
       dev.save()
       sleep_ms(200)
-      dev2 = SteamiConfig(dev._flash)
+      dev2 = SteamiConfig(dev._bridge)
       dev2.load()
       dev2.apply_magnetometer_calibration(mag)
       result = (
@@ -363,13 +363,13 @@ tests:
     action: script
     script: |
       from time import sleep_ms
-      dev._flash.clear_config()
+      dev._bridge.clear_config()
       dev._data = {}
       dev.set_temperature_calibration("hts221", gain=1.05, offset=-0.3)
       dev.set_magnetometer_calibration(hard_iron_x=8.0, hard_iron_y=-2.0, hard_iron_z=0.5)
       dev.save()
       sleep_ms(200)
-      dev2 = SteamiConfig(dev._flash)
+      dev2 = SteamiConfig(dev._bridge)
       dev2.load()
       tc = dev2.get_temperature_calibration("hts221")
       mc = dev2.get_magnetometer_calibration()
