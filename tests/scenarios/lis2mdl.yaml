@@ -319,6 +319,76 @@ tests:
     expect_true: true
     mode: [mock]
 
+  # ----- Mode & configuration setters -----
+
+  - name: "set_mode continuous"
+    action: script
+    script: |
+      dev.set_mode("continuous")
+      result = dev.get_mode() == "continuous"
+    expect_true: true
+    mode: [mock]
+
+  - name: "set_mode idle"
+    action: script
+    script: |
+      dev.set_mode("idle")
+      result = dev.get_mode() == "idle"
+    expect_true: true
+    mode: [mock]
+
+  - name: "set_odr writes CFG_REG_A"
+    action: script
+    script: |
+      i2c.clear_write_log()
+      dev.set_odr(50)
+      log = i2c.get_write_log()
+      result = any(reg == 0x60 for reg, data in log)
+    expect_true: true
+    mode: [mock]
+
+  - name: "power_on restores continuous mode"
+    action: script
+    script: |
+      dev.power_off()
+      dev.power_on()
+      result = dev.get_mode() == "continuous"
+    expect_true: true
+    mode: [mock]
+
+  - name: "is_idle after power_off"
+    action: script
+    script: |
+      dev.power_off()
+      result = dev.is_idle()
+    expect_true: true
+    mode: [mock]
+
+  - name: "data_ready returns bool"
+    action: script
+    script: |
+      result = isinstance(dev.data_ready(), bool)
+    expect_true: true
+    mode: [mock]
+
+  - name: "magnetic_field_raw returns same as magnetic_field"
+    action: script
+    script: |
+      raw = dev.magnetic_field_raw()
+      field = dev.magnetic_field()
+      result = raw == field
+    expect_true: true
+    mode: [mock]
+
+  - name: "heading_from_vectors computes angle"
+    action: script
+    script: |
+      dev.calibrate_reset()
+      h = dev.heading_from_vectors(100, 0, 0, calibrated=False)
+      result = 0 <= h < 360
+    expect_true: true
+    mode: [mock]
+
   - name: "Fresh magnitude after power down"
     action: script
     script: |
