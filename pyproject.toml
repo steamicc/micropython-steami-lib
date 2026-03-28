@@ -96,21 +96,21 @@ ignore = [
 known-third-party = ["micropython"]
 
 [tool.ruff.lint.mccabe]
-max-complexity = 61
+max-complexity = 25
 
 [tool.ruff.lint.pylint]
 allow-magic-value-types = ["bytes", "int", "str"]
-max-args = 14
-max-branches = 58
-max-returns = 13
-max-statements = 166
+max-args = 10
+max-branches = 25
+max-returns = 8
+max-statements = 65
 
 [tool.ruff.lint.per-file-ignores]
 # manifest.py files are evaluated with some global names pre-defined
 "**/manifest.py" = ["F821"]
 "**/examples/*.py" = ["T20", "N806"]
 "lib/mcp23009e/examples/i2c_scan.py" = ["PERF203"]
-"tests/**/*.py" = ["T20"]
+"tests/**/*.py" = ["T20", "PLR0911", "PLR0912", "PLR0915"]
 
 [tool.ruff.format]
 quote-style = "double"
