@@ -7,7 +7,7 @@
 | latest release | Yes |
 | older releases | No |
 
-Only the latest release on the `main` branch receives security updates.
+Only the most recent tagged release receives security updates.
 
 ## Reporting a Vulnerability
 
@@ -37,12 +37,12 @@ This policy covers the MicroPython driver library code in `lib/` and the build/C
 
 * The MicroPython firmware itself (report upstream at [micropython/micropython](https://github.com/micropython/micropython))
 * The STeaMi board hardware
-* Third-party npm dependencies (report upstream to the respective package maintainers)
+* Third-party dependencies (npm packages, Python packages — report upstream to the respective package maintainers)
 
 ## Automated Security
 
-This repository uses:
+This repository has the following GitHub security features enabled:
 
-* **Dependabot** for automated dependency vulnerability alerts
-* **CodeQL** for static analysis on CI workflows
+* **Dependabot alerts** for dependency vulnerability detection
+* **CodeQL analysis** for static security analysis
 * **Secret scanning** for detecting leaked credentials
