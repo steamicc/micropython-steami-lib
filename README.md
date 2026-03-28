@@ -14,7 +14,8 @@ This repository contains all the drivers for the main components of the [STeaMi]
 | Component     | Driver                                         | I2C Address | Description                           |
 | ------------- | ---------------------------------------------- | ----------- | ------------------------------------- |
 | BQ27441-G1    | [`bq27441`](lib/bq27441/README.md)             | `0x55`      | Battery fuel gauge                    |
-| DAPLink Flash | [`daplink_flash`](lib/daplink_flash/README.md) | `0x3B`      | I2C-to-SPI flash bridge + config zone |
+| DAPLink Bridge | [`daplink_bridge`](lib/daplink_bridge/)        | `0x3B`      | I2C bridge to STM32F103 + config zone |
+| DAPLink Flash | [`daplink_flash`](lib/daplink_flash/README.md) | —           | Flash file operations via bridge      |
 | SSD1327       | [`ssd1327`](lib/ssd1327/README.md)             | — (SPI)     | 128x128 greyscale OLED display        |
 | MCP23009E     | [`mcp23009e`](lib/mcp23009e/README.md)         | `0x20`      | 8-bit I/O expander (D-PAD)            |
 | VL53L1X       | [`vl53l1x`](lib/vl53l1x/README.md)             | `0x29`      | Time-of-Flight distance sensor        |
