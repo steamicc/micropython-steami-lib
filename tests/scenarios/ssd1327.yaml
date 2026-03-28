@@ -18,6 +18,8 @@ hardware_init: |
   dev = WS_OLED_128X128_SPI(spi, dc, res, cs)
 
 tests:
+  # ----- Mock: Smoke tests -----
+
   - name: "Fill black does not crash"
     action: call
     method: fill
@@ -36,27 +38,172 @@ tests:
     args: ["Test", 0, 0, 15]
     mode: [mock]
 
-  - name: "Power off does not crash"
-    action: script
-    script: |
-      dev.power_off()
-      result = True
-    expect_true: true
-    mode: [mock]
-
-  - name: "Power on does not crash"
-    action: script
-    script: |
-      dev.power_off()
-      dev.power_on()
-      result = True
-    expect_true: true
-    mode: [mock]
-
   - name: "Show does not crash"
     action: call
     method: show
     mode: [mock]
+
+  # ----- Mock: Verify power_off sends correct commands -----
+
+  - name: "Power off sends FN_SELECT_A disable and DISP off"
+    action: script
+    script: |
+      i2c.clear_write_log()
+      dev.power_off()
+      log = i2c.get_write_log()
+      cmds = [data[1] for reg, data in log if reg is None and len(data) == 2 and data[0] == 0x80]
+      # Expect: SET_FN_SELECT_A (0xAB), 0x00 (disable VDD), SET_DISP (0xAE)
+      result = cmds == [0xAB, 0x00, 0xAE]
+    expect_true: true
+    mode: [mock]
+
+  # ----- Mock: Verify power_on sends correct commands -----
+
+  - name: "Power on sends FN_SELECT_A enable and DISP on"
+    action: script
+    script: |
+      i2c.clear_write_log()
+      dev.power_on()
+      log = i2c.get_write_log()
+      cmds = [data[1] for reg, data in log if reg is None and len(data) == 2 and data[0] == 0x80]
+      # Expect: SET_FN_SELECT_A (0xAB), 0x01 (enable VDD), SET_DISP|0x01 (0xAF)
+      result = cmds == [0xAB, 0x01, 0xAF]
+    expect_true: true
+    mode: [mock]
+
+  # ----- Mock: Verify contrast command -----
+
+  - name: "Contrast sends SET_CONTRAST with value"
+    action: script
+    script: |
+      i2c.clear_write_log()
+      dev.contrast(200)
+      log = i2c.get_write_log()
+      cmds = [data[1] for reg, data in log if reg is None and len(data) == 2 and data[0] == 0x80]
+      result = cmds == [0x81, 200]
+    expect_true: true
+    mode: [mock]
+
+  # ----- Mock: Verify invert commands -----
+
+  - name: "Invert on sends SET_DISP_MODE inverted"
+    action: script
+    script: |
+      i2c.clear_write_log()
+      dev.invert(True)
+      log = i2c.get_write_log()
+      cmds = [data[1] for reg, data in log if reg is None and len(data) == 2 and data[0] == 0x80]
+      # SET_DISP_MODE (0xA4) | 0x03 = 0xA7 (inverted)
+      result = cmds == [0xA7]
+    expect_true: true
+    mode: [mock]
+
+  - name: "Invert off sends SET_DISP_MODE normal"
+    action: script
+    script: |
+      i2c.clear_write_log()
+      dev.invert(False)
+      log = i2c.get_write_log()
+      cmds = [data[1] for reg, data in log if reg is None and len(data) == 2 and data[0] == 0x80]
+      # SET_DISP_MODE (0xA4) = normal
+      result = cmds == [0xA4]
+    expect_true: true
+    mode: [mock]
+
+  # ----- Mock: Verify rotate commands -----
+
+  - name: "Rotate sends offset and remap commands"
+    action: script
+    script: |
+      i2c.clear_write_log()
+      dev.rotate(True)
+      log = i2c.get_write_log()
+      cmds = [data[1] for reg, data in log if reg is None and len(data) == 2 and data[0] == 0x80]
+      # power_off (3 cmds) + SET_DISP_OFFSET, 128, SET_SEG_REMAP, 0x42 + power_on (3 cmds)
+      result = 0xA2 in cmds and 0x42 in cmds and 128 in cmds
+    expect_true: true
+    mode: [mock]
+
+  # ----- Mock: Verify show sends column/row addr + data -----
+
+  - name: "Show sends column and row address then data"
+    action: script
+    script: |
+      i2c.clear_write_log()
+      dev.show()
+      log = i2c.get_write_log()
+      cmds = [data[1] for reg, data in log if reg is None and len(data) == 2 and data[0] == 0x80]
+      # SET_COL_ADDR (0x15), start, end, SET_ROW_ADDR (0x75), start, end
+      has_col = 0x15 in cmds
+      has_row = 0x75 in cmds
+      # Check data was sent (writevto with 0x40 prefix)
+      has_data = any(reg is None and len(data) > 2 and data[0] == 0x40 for reg, data in log)
+      result = has_col and has_row and has_data
+    expect_true: true
+    mode: [mock]
+
+  # ----- Mock: Verify pixel buffer -----
+
+  - name: "Pixel modifies framebuffer"
+    action: script
+    script: |
+      dev.fill(0)
+      dev.pixel(10, 20, 15)
+      result = dev.framebuf.pixel(10, 20) == 15
+    expect_true: true
+    mode: [mock]
+
+  - name: "Fill sets all pixels"
+    action: script
+    script: |
+      dev.fill(7)
+      result = dev.framebuf.pixel(0, 0) == 7 and dev.framebuf.pixel(63, 63) == 7
+    expect_true: true
+    mode: [mock]
+
+  # ----- Mock: Verify init_display sends expected command sequence -----
+
+  - name: "Init display sends unlock then display off then display on"
+    action: script
+    script: |
+      i2c.clear_write_log()
+      dev.init_display()
+      log = i2c.get_write_log()
+      cmds = [data[1] for reg, data in log if reg is None and len(data) == 2 and data[0] == 0x80]
+      # First command must be SET_COMMAND_LOCK (0xFD), then unlock (0x12)
+      # Then SET_DISP (0xAE = off), and last command must be SET_DISP|0x01 (0xAF = on)
+      result = cmds[0] == 0xFD and cmds[1] == 0x12 and cmds[2] == 0xAE and cmds[-1] == 0xAF
+    expect_true: true
+    mode: [mock]
+
+  # ----- Mock: Verify line draws on framebuffer -----
+
+  - name: "Line modifies framebuffer"
+    action: script
+    script: |
+      dev.fill(0)
+      dev.line(0, 0, 10, 0, 15)
+      # At least the start pixel should be set
+      result = dev.framebuf.pixel(0, 0) == 15
+    expect_true: true
+    mode: [mock]
+
+  # ----- Mock: Verify scroll moves framebuffer content -----
+
+  - name: "Scroll shifts pixel position"
+    action: script
+    script: |
+      dev.fill(0)
+      dev.pixel(5, 0, 15)
+      dev.scroll(1, 0)
+      # Pixel should have moved from (5,0) to (6,0)
+      moved = dev.framebuf.pixel(6, 0) == 15
+      cleared = dev.framebuf.pixel(5, 0) == 0
+      result = moved and cleared
+    expect_true: true
+    mode: [mock]
+
+  # ----- Hardware -----
 
   - name: "Display white screen"
     action: hardware_script
