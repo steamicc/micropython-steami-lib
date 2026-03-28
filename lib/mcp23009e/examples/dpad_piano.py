@@ -10,15 +10,20 @@ If two or more buttons are pressed at the same time, the higher octave is used.
 MENU exits the piano mode.
 """
 
-from time import sleep_ms, sleep_us, ticks_diff, ticks_ms
+from time import sleep_ms
 
 from machine import I2C, Pin
 from mcp23009e import MCP23009E
 from mcp23009e.const import *
+from pyb import Timer
 
 # Board pins
-SPEAKER = Pin("SPEAKER", Pin.OUT)
 MENU_BUTTON = Pin("MENU_BUTTON", Pin.IN, Pin.PULL_UP)
+
+# Hardware PWM on SPEAKER pin (PA11 = TIM1_CH4)
+buzzer_tim = Timer(1, freq=1000)
+buzzer_ch = buzzer_tim.channel(4, Timer.PWM, pin=Pin("SPEAKER"))
+buzzer_ch.pulse_width_percent(0)
 
 # I2C and expander setup
 i2c = I2C(1)
@@ -50,21 +55,18 @@ NOTES_HIGH = {
 }
 
 
-def tone(pin, freq, duration_ms):
-    """Generate a square wave on the buzzer pin."""
-    if freq == 0:
-        sleep_ms(duration_ms)
+def tone(freq):
+    """Start a tone using hardware PWM."""
+    if freq <= 0:
+        no_tone()
         return
+    buzzer_tim.freq(freq)
+    buzzer_ch.pulse_width_percent(50)
 
-    period_us = int(1_000_000 / freq)
-    half_period_us = period_us // 2
-    end_time = ticks_ms() + duration_ms
 
-    while ticks_diff(end_time, ticks_ms()) > 0:
-        pin.on()
-        sleep_us(half_period_us)
-        pin.off()
-        sleep_us(half_period_us)
+def no_tone():
+    """Silence the buzzer."""
+    buzzer_ch.pulse_width_percent(0)
 
 
 def setup_buttons():
@@ -121,40 +123,47 @@ def dpad_piano():
 
     last_note = None
     last_octave = None
+    last_freq = 0
 
     try:
         while True:
-            # MENU button is a direct MCU pin, not an MCP23009E pin
             if MENU_BUTTON.value() == 0:
                 print("Menu button pressed, exiting piano.")
                 wait_menu_release()
                 break
 
             pressed = get_pressed_buttons()
+            frequency, note_name, octave = select_frequency(pressed)
 
-            if pressed:
-                frequency, note_name, octave = select_frequency(pressed)
-
-                if note_name != last_note or octave != last_octave:
-                    print(
-                        "Playing:",
-                        note_name,
-                        "-",
-                        frequency,
-                        "Hz",
-                        "(" + octave + " octave)",
-                    )
-                    last_note = note_name
-                    last_octave = octave
-
-                tone(SPEAKER, frequency, 60)
-            else:
+            if frequency == 0:
+                if last_freq != 0:
+                    no_tone()
                 last_note = None
                 last_octave = None
+                last_freq = 0
                 sleep_ms(20)
+                continue
+
+            if note_name != last_note or octave != last_octave:
+                print(
+                    "Playing:",
+                    note_name,
+                    "-",
+                    frequency,
+                    "Hz",
+                    "(" + octave + " octave)",
+                )
+                tone(frequency)
+                last_note = note_name
+                last_octave = octave
+                last_freq = frequency
+
+            sleep_ms(20)
 
     except KeyboardInterrupt:
         print("\nPiano stopped.")
+    finally:
+        no_tone()
 
 
 dpad_piano()
