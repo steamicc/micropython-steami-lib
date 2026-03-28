@@ -11,7 +11,7 @@ latest drivers before running this script.
 
 from time import sleep_ms
 
-from daplink_flash import DaplinkFlash
+from daplink_bridge import DaplinkBridge
 from hts221 import HTS221
 from ism330dl import ISM330DL
 from lis2mdl import LIS2MDL
@@ -21,8 +21,8 @@ from wsen_hids import WSEN_HIDS
 from wsen_pads import WSEN_PADS
 
 i2c = I2C(1)
-flash = DaplinkFlash(i2c)
-config = SteamiConfig(flash)
+bridge = DaplinkBridge(i2c)
+config = SteamiConfig(bridge)
 config.load()
 
 # Read reference temperature from WSEN-HIDS (most accurate at ambient)
@@ -51,7 +51,7 @@ config.save()
 print("\nCalibration saved.")
 
 # Verify by reloading with fresh sensor instances (simulates a reboot)
-config2 = SteamiConfig(flash)
+config2 = SteamiConfig(bridge)
 config2.load()
 
 verify_sensors = [

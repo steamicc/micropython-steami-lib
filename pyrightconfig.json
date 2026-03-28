@@ -8,6 +8,7 @@
         "lib/apds9960",
         "lib/bme280",
         "lib/bq27441",
+        "lib/daplink_bridge",
         "lib/daplink_flash",
         "lib/gc9a01",
         "lib/hts221",

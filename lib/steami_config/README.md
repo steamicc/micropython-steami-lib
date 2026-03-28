@@ -10,7 +10,7 @@ updates and `clear_flash` operations.
 
 # Dependencies
 
-* `daplink_flash` — low-level config zone access
+* `daplink_bridge` — low-level I2C bridge and config zone access
 
 ---
 
@@ -18,11 +18,11 @@ updates and `clear_flash` operations.
 
 ```python
 from machine import I2C
-from daplink_flash import DaplinkFlash
+from daplink_bridge import DaplinkBridge
 from steami_config import SteamiConfig
 
 i2c = I2C(1)
-config = SteamiConfig(DaplinkFlash(i2c))
+config = SteamiConfig(DaplinkBridge(i2c))
 config.load()
 
 print(config.board_name)
@@ -156,7 +156,7 @@ Run with mpremote:
 mpremote mount lib exec "
 import sys
 sys.path.insert(0, '/remote/steami_config')
-sys.path.insert(0, '/remote/daplink_flash')
+sys.path.insert(0, '/remote/daplink_bridge')
 exec(open('/remote/steami_config/examples/show_config.py').read())
 "
 ```

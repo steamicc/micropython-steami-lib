@@ -6,6 +6,7 @@ File is then accessible via USB mass storage for analysis in a spreadsheet.
 
 from time import sleep_ms, ticks_diff, ticks_ms
 
+from daplink_bridge import DaplinkBridge
 from daplink_flash import DaplinkFlash
 from lis2mdl import LIS2MDL
 from machine import I2C
@@ -19,7 +20,8 @@ SAMPLE_PERIOD_MS = 1000
 
 i2c = I2C(1)
 sensor = LIS2MDL(i2c)
-flash = DaplinkFlash(i2c)
+bridge = DaplinkBridge(i2c)
+flash = DaplinkFlash(bridge)
 
 flash.set_filename("LIS2MDL", "CSV")
 if ERASE_FLASH_ON_START:

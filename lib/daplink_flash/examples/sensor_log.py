@@ -7,6 +7,7 @@ for each column.
 
 from time import sleep_ms
 
+from daplink_bridge import DaplinkBridge
 from daplink_flash import DaplinkFlash
 from machine import I2C
 
@@ -17,8 +18,9 @@ EXT = "CSV"
 
 # --- Init ---
 i2c = I2C(1)
-flash = DaplinkFlash(i2c)
-print("DAPLink Flash WHO_AM_I: 0x{:02X}".format(flash.device_id()))
+bridge = DaplinkBridge(i2c)
+flash = DaplinkFlash(bridge)
+print("DAPLink Flash WHO_AM_I: 0x{:02X}".format(bridge.device_id()))
 
 # --- Generate and write data ---
 print("Writing {} rows to {}.{} ...".format(NUM_ROWS, FILENAME, EXT))

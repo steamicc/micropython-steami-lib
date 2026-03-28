@@ -1,11 +1,12 @@
 """Display the current board configuration stored in the config zone."""
 
-from daplink_flash import DaplinkFlash
+from daplink_bridge import DaplinkBridge
 from machine import I2C
 from steami_config import SteamiConfig
 
 i2c = I2C(1)
-config = SteamiConfig(DaplinkFlash(i2c))
+bridge = DaplinkBridge(i2c)
+config = SteamiConfig(bridge)
 config.load()
 
 print("=== STeaMi Configuration ===")

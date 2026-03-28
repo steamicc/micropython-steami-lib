@@ -2,6 +2,7 @@
 
 from time import sleep, sleep_ms
 
+from daplink_bridge import DaplinkBridge
 from daplink_flash import DaplinkFlash
 from machine import I2C
 from wsen_pads import WSEN_PADS
@@ -10,7 +11,8 @@ from wsen_pads.const import ODR_10_HZ
 i2c = I2C(1)
 
 sensor = WSEN_PADS(i2c)
-flash = DaplinkFlash(i2c)
+bridge = DaplinkBridge(i2c)
+flash = DaplinkFlash(bridge)
 
 sensor.set_continuous(odr=ODR_10_HZ)
 
