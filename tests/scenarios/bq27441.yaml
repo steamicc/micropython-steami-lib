@@ -101,7 +101,7 @@ tests:
     action: script
     script: |
       result = dev.temperature_k()
-    expect: 298.1
+    expect_range: [298.09, 298.11]
     mode: [mock]
 
   - name: "Battery temperature in decikelvin"

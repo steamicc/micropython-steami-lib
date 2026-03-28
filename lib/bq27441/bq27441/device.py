@@ -247,7 +247,8 @@ class BQ27441(object):
             return self.read_word(BQ27441_COMMAND_TEMP)
         elif temp_measure_type == TempMeasureType.INTERNAL_TEMP:
             return self.read_word(BQ27441_COMMAND_INT_TEMP)
-        return 0
+        else:
+            raise ValueError("Unsupported TempMeasureType: {!r}".format(temp_measure_type))
 
     def temperature(self, temp_measure_type=TempMeasureType.BATTERY):
         return self._read_temperature_dk(temp_measure_type) / 10.0 - 273.15

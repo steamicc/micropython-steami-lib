@@ -209,4 +209,4 @@ mpremote mount lib/bq27441 run lib/bq27441/examples/fuel_gauge.py
 * Default design capacity is 650 mAh (configurable via `set_capacity()`).
 * Some configuration operations require entering config mode with `enter_config()`.
 * The device may be sealed; use `unseal()` before advanced configuration.
-* Temperature readings are raw register values in 0.1 K units (see conversion above).
+* `temperature()` returns °C by default. Use `temperature_k()` for Kelvin or `temperature_dk()` for raw decikelvin.
