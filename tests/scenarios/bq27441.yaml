@@ -90,11 +90,24 @@ tests:
     expect: 25
     mode: [mock]
 
-  - name: "Battery temperature raw register value from mock data"
+  - name: "Battery temperature in Celsius"
     action: script
     script: |
-      from bq27441.device import TempMeasureType
-      result = dev.temperature(TempMeasureType.BATTERY)
+      result = dev.temperature()
+    expect_range: [24.94, 24.96]
+    mode: [mock]
+
+  - name: "Battery temperature in Kelvin"
+    action: script
+    script: |
+      result = dev.temperature_k()
+    expect: 298.1
+    mode: [mock]
+
+  - name: "Battery temperature in decikelvin"
+    action: script
+    script: |
+      result = dev.temperature_dk()
     expect: 2981
     mode: [mock]
 

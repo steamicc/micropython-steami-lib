@@ -110,11 +110,12 @@ bq.soh(SohMeasureType.SOH_STAT)   # Health status bits
 #### Temperature
 
 ```python
-bq.temperature(TempMeasureType.BATTERY)        # Battery temperature
-bq.temperature(TempMeasureType.INTERNAL_TEMP)  # Internal IC temperature
-```
+bq.temperature()                                # Battery temperature in °C (default)
+bq.temperature(TempMeasureType.INTERNAL_TEMP)   # Internal IC temperature in °C
 
-**Note:** Temperature is returned as a raw register value (units of 0.1 K). To convert to °C: `temp_c = raw / 10.0 - 273.15`.
+bq.temperature_k()                              # Battery temperature in Kelvin
+bq.temperature_dk()                             # Battery temperature in decikelvin (raw)
+```
 
 ### Configuration
 
