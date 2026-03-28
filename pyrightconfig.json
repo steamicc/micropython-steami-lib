@@ -1,0 +1,34 @@
+{
+    "pythonVersion": "3.7",
+    "pythonPlatform": "All",
+    "typeCheckingMode": "basic",
+    "venvPath": ".",
+    "venv": ".venv",
+    "extraPaths": [
+        "lib/apds9960",
+        "lib/bme280",
+        "lib/bq27441",
+        "lib/daplink_flash",
+        "lib/gc9a01",
+        "lib/hts221",
+        "lib/im34dt05",
+        "lib/ism330dl",
+        "lib/lis2mdl",
+        "lib/mcp23009e",
+        "lib/ssd1327",
+        "lib/steami_config",
+        "lib/vl53l1x",
+        "lib/wsen-hids",
+        "lib/wsen-pads"
+    ],
+    "exclude": [
+        ".build",
+        "node_modules",
+        "**/__pycache__",
+        "**/.*",
+        ".venv"
+    ],
+    "reportMissingModuleSource": false,
+    "reportWildcardImportFromLibrary": false,
+    "reportGeneralTypeIssues": "warning"
+}

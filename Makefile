@@ -4,6 +4,12 @@
 
 include env.mk
 
+# Venv path (override with VENV_DIR=/path for devcontainer)
+VENV_DIR ?= .venv
+
+# Use venv Python/tools when available, fallback to system
+PYTHON := $(shell [ -x $(VENV_DIR)/bin/python ] && echo $(VENV_DIR)/bin/python || echo python3)
+
 # --- Setup ---
 
 # npm install is re-run only when package.json changes
@@ -18,31 +24,34 @@ prepare: node_modules/.package-lock.json ## Install git hooks
 .PHONY: setup
 setup: install prepare ## Full dev environment setup
 
+$(VENV_DIR)/bin/activate:
+	python3 -m venv $(VENV_DIR)
+
 .PHONY: install
-install: node_modules/.package-lock.json ## Install dev tools (pip + npm)
-	python3 -m pip install -e ".[dev,test]"
+install: $(VENV_DIR)/bin/activate node_modules/.package-lock.json ## Install dev tools (pip + npm)
+	$(VENV_DIR)/bin/pip install -e ".[dev,test]"
 
 # --- Linting ---
 
 .PHONY: lint
 lint: ## Run ruff linter
-	ruff check
+	$(PYTHON) -m ruff check
 
 .PHONY: lint-fix
 lint-fix: ## Auto-fix lint issues
-	ruff check --fix
+	$(PYTHON) -m ruff check --fix
 
 # --- Testing ---
 
 # Dynamic per-scenario targets (test-apds9960, test-hts221, etc.)
 # Uses 'driver' field for driver scenarios, filename stem for board scenarios.
 # Convention: for board scenarios, the YAML 'name' field must match the filename.
-SCENARIOS := $(shell python3 -c "import yaml,glob,os; [print(d.get('driver',os.path.basename(f).replace('.yaml',''))) for f in sorted(glob.glob('tests/scenarios/*.yaml')) for d in [yaml.safe_load(open(f))]]" 2>/dev/null)
-$(foreach s,$(SCENARIOS),$(eval .PHONY: test-$(s))$(eval test-$(s): ; python3 -m pytest tests/ -v -k "$(s)" --port $$(PORT) -s))
+SCENARIOS := $(shell $(PYTHON) -c "import yaml,glob,os; [print(d.get('driver',os.path.basename(f).replace('.yaml',''))) for f in sorted(glob.glob('tests/scenarios/*.yaml')) for d in [yaml.safe_load(open(f))]]" 2>/dev/null)
+$(foreach s,$(SCENARIOS),$(eval .PHONY: test-$(s))$(eval test-$(s): ; $(PYTHON) -m pytest tests/ -v -k "$(s)" --port $$(PORT) -s))
 
 .PHONY: test-mock
 test-mock: ## Run mock tests (no hardware needed)
-	python3 -m pytest tests/ -v -k mock
+	$(PYTHON) -m pytest tests/ -v -k mock
 
 .PHONY: test
 test: test-mock ## Run mock tests (use 'make test-all' for mock + hardware)
@@ -51,23 +60,23 @@ test: test-mock ## Run mock tests (use 'make test-all' for mock + hardware)
 
 .PHONY: test-hardware
 test-hardware: ## Run all hardware tests (needs board on PORT)
-	python3 -m pytest tests/ -v --port $(PORT) -s -k hardware
+	$(PYTHON) -m pytest tests/ -v --port $(PORT) -s -k hardware
 
 .PHONY: test-board
 test-board: ## Run board tests only (buttons, LEDs, buzzer, screen)
-	python3 -m pytest tests/ -v --port $(PORT) -s -k "board_ and hardware"
+	$(PYTHON) -m pytest tests/ -v --port $(PORT) -s -k "board_ and hardware"
 
 .PHONY: test-sensors
 test-sensors: ## Run sensor driver hardware tests (I2C devices)
-	python3 -m pytest tests/ -v --port $(PORT) -s -k "hardware and not board_"
+	$(PYTHON) -m pytest tests/ -v --port $(PORT) -s -k "hardware and not board_"
 
 .PHONY: test-all
 test-all: ## Run all tests (mock + hardware)
-	python3 -m pytest tests/ -v --port $(PORT) -s
+	$(PYTHON) -m pytest tests/ -v --port $(PORT) -s
 
 .PHONY: test-examples
 test-examples: ## Validate all example files (syntax + imports)
-	python3 -m pytest tests/test_examples.py -v
+	$(PYTHON) -m pytest tests/test_examples.py -v
 
 # --- CI ---
 
@@ -113,20 +122,20 @@ run: ## Run a script on the board with live output (SCRIPT=path/to/file.py)
 	@if [ -z "$(SCRIPT)" ]; then \
 		echo "Error: SCRIPT is required. Usage: make run SCRIPT=lib/.../example.py"; exit 1; \
 	fi
-	mpremote connect $(PORT) run $(SCRIPT)
+	$(PYTHON) -m mpremote connect $(PORT) run $(SCRIPT)
 
 .PHONY: deploy-script
 deploy-script: ## Deploy a script as main.py for autonomous execution (SCRIPT=path/to/file.py)
 	@if [ -z "$(SCRIPT)" ]; then \
 		echo "Error: SCRIPT is required. Usage: make deploy-script SCRIPT=lib/.../example.py"; exit 1; \
 	fi
-	mpremote connect $(PORT) cp $(SCRIPT) :main.py
-	mpremote connect $(PORT) reset
+	$(PYTHON) -m mpremote connect $(PORT) cp $(SCRIPT) :main.py
+	$(PYTHON) -m mpremote connect $(PORT) reset
 	@echo "Script deployed as main.py and board reset."
 
 .PHONY: run-main
 run-main: ## Re-execute main.py on the board and capture output
-	mpremote connect $(PORT) exec "exec(open('/flash/main.py').read())"
+	$(PYTHON) -m mpremote connect $(PORT) exec "exec(open('/flash/main.py').read())"
 
 .PHONY: firmware-clean
 firmware-clean: ## Clean firmware build artifacts
@@ -138,11 +147,11 @@ firmware-clean: ## Clean firmware build artifacts
 
 .PHONY: repl
 repl: ## Open MicroPython REPL on the board
-	mpremote connect $(PORT)
+	$(PYTHON) -m mpremote connect $(PORT)
 
 .PHONY: mount
 mount: ## Mount lib/ on the board for live testing
-	mpremote connect $(PORT) mount lib/
+	$(PYTHON) -m mpremote connect $(PORT) mount lib/
 
 # --- Release ---
 
@@ -179,7 +188,7 @@ bump: ## Create a version tag (PART=patch|minor|major, default: patch)
 	fi; \
 	echo "$$LAST → $$NEXT"; \
 	VERSION=$${NEXT#v}; \
-	python3 -c "import re, pathlib; p=pathlib.Path('pyproject.toml'); p.write_text(re.sub(r'^version = \".*\"', 'version = \"$$VERSION\"', p.read_text(), count=1, flags=re.MULTILINE))"; \
+	$(PYTHON) -c "import re, pathlib; p=pathlib.Path('pyproject.toml'); p.write_text(re.sub(r'^version = \".*\"', 'version = \"$$VERSION\"', p.read_text(), count=1, flags=re.MULTILINE))"; \
 	git add pyproject.toml; \
 	git commit -m "chore: Bump version to $$NEXT."; \
 	git tag -a "$$NEXT" -m "Release $$NEXT"; \
@@ -194,10 +203,11 @@ clean: ## Remove build artifacts and caches
 	find . -type d -name .pytest_cache -exec rm -rf {} + 2>/dev/null || true
 	find . -type d -name .ruff_cache -exec rm -rf {} + 2>/dev/null || true
 	find . -type d -name .mypy_cache -exec rm -rf {} + 2>/dev/null || true
+	find . -type d -name '*.egg-info' -exec rm -rf {} + 2>/dev/null || true
 
 .PHONY: deepclean
-deepclean: clean ## Remove everything including node_modules and firmware
-	rm -rf node_modules
+deepclean: clean ## Remove everything including node_modules, venv and firmware
+	rm -rf node_modules $(VENV_DIR)
 	@if [ -d "$(BUILD_DIR)" ]; then rm -rf "$(BUILD_DIR)"; fi
 
 .PHONY: help
