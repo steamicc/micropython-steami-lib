@@ -249,10 +249,11 @@ tests:
     expect_true: true
     mode: [mock]
 
-  - name: "is_gesture_available returns bool"
+  - name: "is_gesture_available returns False when GSTATUS not set"
     action: script
     script: |
-      result = isinstance(dev.is_gesture_available(), bool)
+      # Mock GSTATUS (0xAF) not configured, so GVALID bit is 0
+      result = dev.is_gesture_available() is False
     expect_true: true
     mode: [mock]
 
@@ -328,24 +329,27 @@ tests:
     expect_true: true
     mode: [mock]
 
-  - name: "data_ready returns bool"
+  - name: "data_ready returns True when status indicates valid data"
     action: script
     script: |
-      result = isinstance(dev.data_ready(), bool)
+      # Mock STATUS register is 0x03 (AVALID + PVALID set)
+      result = dev.data_ready() is True
     expect_true: true
     mode: [mock]
 
-  - name: "light_ready returns bool"
+  - name: "light_ready returns True when AVALID set"
     action: script
     script: |
-      result = isinstance(dev.light_ready(), bool)
+      # Mock STATUS register is 0x03 (AVALID bit set)
+      result = dev.light_ready() is True
     expect_true: true
     mode: [mock]
 
-  - name: "proximity_ready returns bool"
+  - name: "proximity_ready returns True when PVALID set"
     action: script
     script: |
-      result = isinstance(dev.proximity_ready(), bool)
+      # Mock STATUS register is 0x03 (PVALID bit set)
+      result = dev.proximity_ready() is True
     expect_true: true
     mode: [mock]
 

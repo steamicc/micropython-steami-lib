@@ -189,11 +189,12 @@ tests:
     expect_true: true
     mode: [mock]
 
-  - name: "read_hw_offsets returns tuple of 3"
+  - name: "read_hw_offsets returns zeros from mock registers"
     action: script
     script: |
       ox, oy, oz = dev.read_hw_offsets()
-      result = isinstance(ox, int) and isinstance(oy, int) and isinstance(oz, int)
+      # Mock registers initialize all offset bytes to 0x00
+      result = (ox, oy, oz) == (0, 0, 0)
     expect_true: true
     mode: [mock]
 
@@ -364,10 +365,11 @@ tests:
     expect_true: true
     mode: [mock]
 
-  - name: "data_ready returns bool"
+  - name: "data_ready returns True when status has Zyxda set"
     action: script
     script: |
-      result = isinstance(dev.data_ready(), bool)
+      # Mock STATUS_REG is 0x0F (Zyxda bit set)
+      result = dev.data_ready() is True
     expect_true: true
     mode: [mock]
 
