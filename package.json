@@ -3,7 +3,7 @@
   "private": true,
   "description": "MicroPython driver library for the STeaMi board.",
   "engines": {
-    "node": ">=20.17"
+    "node": ">=22"
   },
   "scripts": {
     "build": "make build",
