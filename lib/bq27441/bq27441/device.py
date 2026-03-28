@@ -242,15 +242,22 @@ class BQ27441(object):
         else:
             return soh_status
 
-    # Reads and returns specified temperature measurement
-    def temperature(self, temp_measure_type):
-        temp = 0
+    def _read_temperature_dk(self, temp_measure_type=TempMeasureType.BATTERY):
         if temp_measure_type == TempMeasureType.BATTERY:
-            temp = self.read_word(BQ27441_COMMAND_TEMP)
+            return self.read_word(BQ27441_COMMAND_TEMP)
         elif temp_measure_type == TempMeasureType.INTERNAL_TEMP:
-            temp = self.read_word(BQ27441_COMMAND_INT_TEMP)
+            return self.read_word(BQ27441_COMMAND_INT_TEMP)
+        else:
+            raise ValueError("Unsupported TempMeasureType: {!r}".format(temp_measure_type))
 
-        return temp
+    def temperature(self, temp_measure_type=TempMeasureType.BATTERY):
+        return self._read_temperature_dk(temp_measure_type) / 10.0 - 273.15
+
+    def temperature_k(self, temp_measure_type=TempMeasureType.BATTERY):
+        return self._read_temperature_dk(temp_measure_type) / 10.0
+
+    def temperature_dk(self, temp_measure_type=TempMeasureType.BATTERY):
+        return self._read_temperature_dk(temp_measure_type)
 
     # GPOUT Control Functions
 

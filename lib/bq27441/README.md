@@ -110,11 +110,12 @@ bq.soh(SohMeasureType.SOH_STAT)   # Health status bits
 #### Temperature
 
 ```python
-bq.temperature(TempMeasureType.BATTERY)        # Battery temperature
-bq.temperature(TempMeasureType.INTERNAL_TEMP)  # Internal IC temperature
-```
+bq.temperature()                                # Battery temperature in °C (default)
+bq.temperature(TempMeasureType.INTERNAL_TEMP)   # Internal IC temperature in °C
 
-**Note:** Temperature is returned as a raw register value (units of 0.1 K). To convert to °C: `temp_c = raw / 10.0 - 273.15`.
+bq.temperature_k()                              # Battery temperature in Kelvin
+bq.temperature_dk()                             # Battery temperature in decikelvin (raw)
+```
 
 ### Configuration
 
@@ -208,4 +209,4 @@ mpremote mount lib/bq27441 run lib/bq27441/examples/fuel_gauge.py
 * Default design capacity is 650 mAh (configurable via `set_capacity()`).
 * Some configuration operations require entering config mode with `enter_config()`.
 * The device may be sealed; use `unseal()` before advanced configuration.
-* Temperature readings are raw register values in 0.1 K units (see conversion above).
+* `temperature()` returns °C by default. Use `temperature_k()` for Kelvin or `temperature_dk()` for raw decikelvin.
