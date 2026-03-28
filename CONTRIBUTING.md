@@ -145,7 +145,7 @@ Releases are handled automatically by [semantic-release](https://semantic-releas
 - `BREAKING CHANGE:` in commit body → major bump (v1.0.0 → v2.0.0)
 - `docs:`, `style:`, `test:`, `ci:`, `chore:` → no release
 
-semantic-release automatically updates `pyproject.toml`, generates `CHANGELOG.md`, creates a git tag, and publishes a GitHub release.
+semantic-release automatically updates `pyproject.toml`, generates `CHANGELOG.md`, creates a git tag, and publishes a GitHub release with the MicroPython firmware (`.hex` and `.bin`) attached.
 
 To force a specific version manually (override):
 
