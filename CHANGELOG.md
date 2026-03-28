@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [0.1.4](https://github.com/steamicc/micropython-steami-lib/compare/v0.1.3...v0.1.4) (2026-03-28)
+
+
+### Bug Fixes
+
+* **bq27441:** Harmonize temperature() return value with project convention. ([#274](https://github.com/steamicc/micropython-steami-lib/issues/274)) ([ac3f14d](https://github.com/steamicc/micropython-steami-lib/commit/ac3f14dc5c8f27bdad30f7be381b314be22e2af2))
+
 ## [0.1.3](https://github.com/steamicc/micropython-steami-lib/compare/v0.1.2...v0.1.3) (2026-03-28)
 
 
