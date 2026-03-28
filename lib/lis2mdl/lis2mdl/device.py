@@ -4,9 +4,23 @@
 import math
 from time import sleep_ms
 
-from machine import I2C
-
-from lis2mdl.const import *
+from lis2mdl.const import (
+    LIS2MDL_CFG_REG_A,
+    LIS2MDL_CFG_REG_B,
+    LIS2MDL_CFG_REG_C,
+    LIS2MDL_I2C_ADDR,
+    LIS2MDL_INT_SOURCE_REG,
+    LIS2MDL_OFFSET_X_REG_L,
+    LIS2MDL_OFFSET_Y_REG_L,
+    LIS2MDL_OFFSET_Z_REG_L,
+    LIS2MDL_OUTX_L_REG,
+    LIS2MDL_STATUS_REG,
+    LIS2MDL_TEMP_OFFSET,
+    LIS2MDL_TEMP_OUT_H_REG,
+    LIS2MDL_TEMP_OUT_L_REG,
+    LIS2MDL_TEMP_SENSITIVITY,
+    LIS2MDL_WHO_AM_I,
+)
 
 
 class LIS2MDL(object):

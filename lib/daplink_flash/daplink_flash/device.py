@@ -1,6 +1,17 @@
 from time import sleep_ms
 
-from daplink_flash.const import *
+from daplink_flash.const import (
+    CMD_CLEAR_FLASH,
+    CMD_GET_FILENAME,
+    CMD_READ_SECTOR,
+    CMD_SET_FILENAME,
+    CMD_WRITE_DATA,
+    EXT_LEN,
+    FILENAME_LEN,
+    MAX_SECTORS,
+    MAX_WRITE_CHUNK,
+    SECTOR_SIZE,
+)
 
 
 class DaplinkFlash(object):

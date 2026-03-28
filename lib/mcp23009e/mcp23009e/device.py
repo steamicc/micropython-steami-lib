@@ -1,8 +1,29 @@
 from time import sleep_ms
 
-from machine import I2C, Pin
+from machine import Pin
 
-from mcp23009e.const import *
+from mcp23009e.const import (
+    MCP23009_DEFVAL,
+    MCP23009_DIR_INPUT,
+    MCP23009_GPINTEN,
+    MCP23009_GPIO,
+    MCP23009_GPPU,
+    MCP23009_INTCAP,
+    MCP23009_INTCON,
+    MCP23009_INTCON_PREVIOUS_STATE,
+    MCP23009_INTEN_DISABLE,
+    MCP23009_INTEN_ENABLE,
+    MCP23009_INTF,
+    MCP23009_IOCON,
+    MCP23009_IODIR,
+    MCP23009_IPOL,
+    MCP23009_LOGIC_HIGH,
+    MCP23009_LOGIC_LOW,
+    MCP23009_NO_PULLUP,
+    MCP23009_OLAT,
+    MCP23009_POL_SAME,
+    MCP23009Config,
+)
 
 
 def _set_bit(reg, bit, value):

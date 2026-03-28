@@ -72,9 +72,6 @@ select = [
 ignore = [
   "E501",    # line length, recommended to disable
   "E741",    # 'l' is currently widely used
-  "F401",    # unused import (wildcard re-exports)
-  "F403",    # wildcard import
-  "F405",    # name from wildcard import
   "ISC001",  # conflicts with formatter
   "ISC003",  # micropython does not support implicit concatenation of f-strings
   "PIE810",  # micropython does not support passing tuples to .startswith or .endswith

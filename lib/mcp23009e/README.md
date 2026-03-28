@@ -21,7 +21,7 @@ The base I²C address is \`0x20\` (A0=A1=A2=LOW). On the STeaMi board, the addre
 ```python
 from machine import I2C, Pin
 from mcp23009e import MCP23009E
-from mcp23009e.const import *
+from mcp23009e.const import MCP23009_DIR_INPUT, MCP23009_I2C_ADDR, MCP23009_PULLUP
 
 # Initialize I2C and reset pin
 bus = I2C(1)
@@ -49,7 +49,7 @@ The `MCP23009Pin` class provides a **machine.Pin-compatible** interface:
 ```python
 from machine import I2C, Pin
 from mcp23009e import MCP23009E, MCP23009Pin
-from mcp23009e.const import *
+from mcp23009e.const import MCP23009_I2C_ADDR
 
 # Initialize
 bus = I2C(1)
@@ -72,7 +72,7 @@ led.toggle()  # Toggle state
 ```python
 from machine import I2C, Pin
 from mcp23009e import MCP23009E, MCP23009Pin
-from mcp23009e.const import *
+from mcp23009e.const import MCP23009_I2C_ADDR
 
 # Initialize with interrupt pin
 bus = I2C(1)

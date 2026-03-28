@@ -13,7 +13,16 @@ from time import sleep_ms
 import ssd1327
 from machine import I2C, SPI, Pin
 from mcp23009e import MCP23009E
-from mcp23009e.const import *
+from mcp23009e.const import (
+    MCP23009_BTN_DOWN,
+    MCP23009_BTN_LEFT,
+    MCP23009_BTN_RIGHT,
+    MCP23009_BTN_UP,
+    MCP23009_DIR_INPUT,
+    MCP23009_I2C_ADDR,
+    MCP23009_LOGIC_LOW,
+    MCP23009_PULLUP,
+)
 
 # Setup MCP23009E on I2C bus
 i2c = I2C(1)

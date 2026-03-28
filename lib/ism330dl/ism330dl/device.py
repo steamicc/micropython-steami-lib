@@ -1,8 +1,41 @@
 from math import pi
 from time import sleep_ms
 
-from ism330dl.const import *
-from ism330dl.exceptions import *
+from ism330dl.const import (
+    ACCEL_FS_2G,
+    ACCEL_FS_BITS,
+    ACCEL_ODR_104HZ,
+    ACCEL_ODR_POWER_DOWN,
+    ACCEL_ODR_VALUES,
+    ACCEL_SENSITIVITY_MG,
+    CTRL3_C_BDU,
+    CTRL3_C_IF_INC,
+    CTRL3_C_SW_RESET,
+    GYRO_FS_125DPS,
+    GYRO_FS_250DPS,
+    GYRO_FS_BITS,
+    GYRO_ODR_104HZ,
+    GYRO_ODR_POWER_DOWN,
+    GYRO_ODR_VALUES,
+    GYRO_SENSITIVITY_MDPS,
+    ISM330DL_I2C_DEFAULT_ADDR,
+    ISM330DL_WHO_AM_I_VALUE,
+    REG_CTRL1_XL,
+    REG_CTRL2_G,
+    REG_CTRL3_C,
+    REG_OUT_TEMP_L,
+    REG_OUTX_L_G,
+    REG_OUTX_L_XL,
+    REG_STATUS_REG,
+    REG_WHO_AM_I,
+    STANDARD_GRAVITY,
+    STATUS_GDA,
+    STATUS_TDA,
+    STATUS_XLDA,
+    TEMP_OFFSET,
+    TEMP_SENSITIVITY,
+)
+from ism330dl.exceptions import ISM330DLConfigError, ISM330DLIOError, ISM330DLNotFound
 
 
 class ISM330DL(object):

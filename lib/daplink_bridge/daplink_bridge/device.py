@@ -1,6 +1,18 @@
 from time import sleep_ms
 
-from daplink_bridge.const import *
+from daplink_bridge.const import (
+    CMD_CLEAR_CONFIG,
+    CMD_READ_CONFIG,
+    CMD_WHO_AM_I,
+    CMD_WRITE_CONFIG,
+    CONFIG_SIZE,
+    DAPLINK_BRIDGE_DEFAULT_ADDR,
+    MAX_WRITE_CHUNK,
+    REG_ERROR,
+    REG_STATUS,
+    SECTOR_SIZE,
+    STATUS_BUSY,
+)
 
 
 class DaplinkBridge(object):
