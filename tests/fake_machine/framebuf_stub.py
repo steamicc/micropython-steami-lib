@@ -25,7 +25,7 @@ class FrameBuffer:
             return (byte >> 4) & 0x0F if x % 2 == 0 else byte & 0x0F
         byte = self.buffer[idx]
         if x % 2 == 0:
-            self.buffer[idx] = (col << 4) | (byte & 0x0F)
+            self.buffer[idx] = ((col & 0x0F) << 4) | (byte & 0x0F)
         else:
             self.buffer[idx] = (byte & 0xF0) | (col & 0x0F)
 

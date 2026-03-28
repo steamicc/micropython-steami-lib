@@ -119,8 +119,9 @@ tests:
       dev.rotate(True)
       log = i2c.get_write_log()
       cmds = [data[1] for reg, data in log if reg is None and len(data) == 2 and data[0] == 0x80]
-      # power_off (3 cmds) + SET_DISP_OFFSET, 128, SET_SEG_REMAP, 0x42 + power_on (3 cmds)
-      result = 0xA2 in cmds and 0x42 in cmds and 128 in cmds
+      # power_off + SET_DISP_OFFSET, 128, SET_SEG_REMAP, 0x42 + power_on
+      expected = [0xAB, 0x00, 0xAE, 0xA2, 128, 0xA0, 0x42, 0xAB, 0x01, 0xAF]
+      result = cmds == expected
     expect_true: true
     mode: [mock]
 
@@ -133,12 +134,16 @@ tests:
       dev.show()
       log = i2c.get_write_log()
       cmds = [data[1] for reg, data in log if reg is None and len(data) == 2 and data[0] == 0x80]
-      # SET_COL_ADDR (0x15), start, end, SET_ROW_ADDR (0x75), start, end
-      has_col = 0x15 in cmds
-      has_row = 0x75 in cmds
-      # Check data was sent (writevto with 0x40 prefix)
-      has_data = any(reg is None and len(data) > 2 and data[0] == 0x40 for reg, data in log)
-      result = has_col and has_row and has_data
+      # SET_COL_ADDR (0x15), col_start, col_end, SET_ROW_ADDR (0x75), row_start, row_end
+      expected_prefix = [0x15, 0x00, 0x3F, 0x75, 0x00, 0x7F]
+      # Check data was sent (writevto with 0x40 prefix) with correct payload size
+      data_writes = [data for reg, data in log if reg is None and len(data) > 2 and data[0] == 0x40]
+      expected_payload = (dev.width * dev.height) // 2
+      result = (
+          cmds[:6] == expected_prefix
+          and len(data_writes) > 0
+          and len(data_writes[0]) - 1 == expected_payload
+      )
     expect_true: true
     mode: [mock]
 
@@ -157,7 +162,13 @@ tests:
     action: script
     script: |
       dev.fill(7)
-      result = dev.framebuf.pixel(0, 0) == 7 and dev.framebuf.pixel(63, 63) == 7
+      result = (
+          dev.framebuf.pixel(0, 0) == 7
+          and dev.framebuf.pixel(63, 63) == 7
+          and dev.framebuf.pixel(127, 0) == 7
+          and dev.framebuf.pixel(0, 127) == 7
+          and dev.framebuf.pixel(127, 127) == 7
+      )
     expect_true: true
     mode: [mock]
 
