@@ -79,8 +79,8 @@ jobs:
         run: |
           VERSION="v${{ needs.release.outputs.new-release-version }}"
           BUILD_DIR=".build/micropython-steami/ports/stm32/build-STEAM32_WB55RG"
-          cp "${BUILD_DIR}/firmware.hex" "steami-firmware-${VERSION}.hex"
-          cp "${BUILD_DIR}/firmware.bin" "steami-firmware-${VERSION}.bin"
+          cp "${BUILD_DIR}/firmware.hex" "steami-micropython-firmware-${VERSION}.hex"
+          cp "${BUILD_DIR}/firmware.bin" "steami-micropython-firmware-${VERSION}.bin"
           gh release upload "$VERSION" \
             "steami-micropython-firmware-${VERSION}.hex" \
             "steami-micropython-firmware-${VERSION}.bin" \

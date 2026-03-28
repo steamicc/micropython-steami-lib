@@ -25,7 +25,7 @@
     }],
     ["@semantic-release/exec", {
       "prepareCmd": "sed -i 's/^version = \".*\"/version = \"${nextRelease.version}\"/' pyproject.toml",
-      "publishCmd": "echo new-release-published=true >> $GITHUB_OUTPUT && echo new-release-version=${nextRelease.version} >> $GITHUB_OUTPUT"
+      "publishCmd": "[ -n \"${GITHUB_OUTPUT:-}\" ] && { echo 'new-release-published=true' >>\"$GITHUB_OUTPUT\"; echo \"new-release-version=${nextRelease.version}\" >>\"$GITHUB_OUTPUT\"; } || true"
     }],
     ["@semantic-release/git", {
       "assets": ["CHANGELOG.md", "pyproject.toml"],
