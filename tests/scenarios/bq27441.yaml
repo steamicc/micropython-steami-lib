@@ -14,7 +14,7 @@ mock_registers:
   # CONTROL (0x00): status word (unsealed, INITCOMP set)
   0x00: [0x80, 0x00]
 
-  # TEMPERATURE (0x02): 298.1 K raw value
+  # TEMPERATURE (0x02): raw 2981 (0.1 K units = 298.1 K)
   0x02: [0xA5, 0x0B]
 
   # VOLTAGE (0x04): 3700 mV
@@ -90,22 +90,23 @@ tests:
     expect: 25
     mode: [mock]
 
-  - name: "Battery temperature returns float from mock data"
+  - name: "Battery temperature raw register value from mock data"
     action: script
     script: |
       from bq27441.device import TempMeasureType
-      result = float(dev.temperature(TempMeasureType.BATTERY))
-    expect: 2981.0
+      result = dev.temperature(TempMeasureType.BATTERY)
+    expect: 2981
     mode: [mock]
 
   - name: "Device type validation returns true"
     action: script
     script: |
+      from bq27441.const import BQ27441_CONTROL_DEVICE_TYPE, BQ27441_DEVICE_ID
       original_read_control_word = dev.read_control_word
 
       def fake_read_control_word(function):
-          if function == 0x01:
-              return 0x0421
+          if function == BQ27441_CONTROL_DEVICE_TYPE:
+              return BQ27441_DEVICE_ID
           return original_read_control_word(function)
 
       dev.read_control_word = fake_read_control_word
