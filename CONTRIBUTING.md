@@ -83,9 +83,40 @@ docs: Update README driver table.
 test(mcp23009e): Add mock scenarios for mcp23009e driver.
 ```
 
+## Prerequisites
+
+For local development (without dev container):
+
+* Python 3.10+
+* Node.js 22+ (for husky, commitlint, lint-staged, semantic-release)
+* `arm-none-eabi-gcc` toolchain (for `make firmware`)
+* OpenOCD (for `make deploy`)
+* `mpremote` (installed via `pip install -e ".[test]"`)
+* GitHub CLI (`gh`)
+
+Then run `make setup` to install all dependencies and git hooks. This creates a `.venv` with ruff, pytest, mpremote, and MicroPython type stubs for Pylance.
+
+## Dev Container
+
+A dev container is available for VS Code (local Docker only, not GitHub Codespaces). It includes all prerequisites out of the box: Python 3.10, Node.js 22, ruff, pytest, mpremote, arm-none-eabi-gcc, OpenOCD, and the GitHub CLI.
+
+1. Open the repository in VS Code
+2. When prompted, click **Reopen in Container** (or use the command palette: *Dev Containers: Reopen in Container*)
+3. The container runs `make setup` automatically on creation
+
+The container also provides:
+
+* **zsh + oh-my-zsh** as default shell with persistent shell history
+* **Pylance** configured with MicroPython STM32 stubs (no false `import machine` errors)
+* **Serial Monitor** extension for board communication
+* **USB passthrough** for mpremote, OpenOCD, and firmware flashing (the container runs in privileged mode with `/dev/bus/usb` mounted)
+* **udev rules** for the DAPLink interface (auto-started on container creation)
+
+Note: GitHub Codespaces is not supported because the container requires privileged mode and USB device access for board communication.
+
 ## Workflow
 
-1. Set up your environment: `make setup`
+1. Set up your environment: open in the dev container, or run `make setup` locally
 2. Create a branch from main (format: `feat/`, `fix/`, `docs/`, `tooling/`, `ci/`, `test/`, `style/`, `chore/`, `refactor/`)
 3. Write your code and add tests in `tests/scenarios/<driver>.yaml`
 4. Run `make ci` to verify everything passes (lint + tests + examples)
@@ -142,7 +173,7 @@ The firmware source is cloned into `.build/micropython-steami/` (gitignored). A 
 
 Use `make firmware` for normal rebuilds from the existing local clone. Use `make firmware-update` only when you want to refresh the `micropython-steami` checkout itself or resync the board-specific submodules before rebuilding.
 
-**Requirements**: `arm-none-eabi-gcc` toolchain, OpenOCD for flashing, and `mpremote` for running scripts on the board.
+All these tools are included in the dev container. For local development, see the [Prerequisites](#prerequisites) section.
 
 ## Notes
 
