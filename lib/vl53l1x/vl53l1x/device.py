@@ -2,6 +2,7 @@ import machine
 
 from vl53l1x.const import (
     GPIO_HV_MUX_CTRL_POLARITY,
+    GPIO_TIO_HV_STATUS_DATA_READY,
     INTERRUPT_CLEAR,
     RANGING_START,
     RANGING_STOP,
@@ -180,7 +181,7 @@ class VL53L1X(object):
     def data_ready(self):
         polarity = self._read_reg(REG_GPIO_HV_MUX_CTRL) & GPIO_HV_MUX_CTRL_POLARITY
         ready_val = 1 if polarity == 0 else 0
-        return (self._read_reg(REG_GPIO_TIO_HV_STATUS) & 0x01) == ready_val
+        return (self._read_reg(REG_GPIO_TIO_HV_STATUS) & GPIO_TIO_HV_STATUS_DATA_READY) == ready_val
 
     def _clear_interrupt(self):
         self._write_reg(REG_SYSTEM_INTERRUPT_CLEAR, INTERRUPT_CLEAR)
