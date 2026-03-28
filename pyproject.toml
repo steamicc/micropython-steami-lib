@@ -106,7 +106,8 @@ max-statements = 166
 [tool.ruff.lint.per-file-ignores]
 # manifest.py files are evaluated with some global names pre-defined
 "**/manifest.py" = ["F821"]
-"**/examples/*.py" = ["T20", "N806", "PERF203"]
+"**/examples/*.py" = ["T20", "N806"]
+"lib/mcp23009e/examples/i2c_scan.py" = ["PERF203"]
 "tests/**/*.py" = ["T20"]
 
 [tool.ruff.format]
