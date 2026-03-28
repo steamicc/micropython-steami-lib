@@ -101,10 +101,7 @@ class APDS9960(object):
 
         # change bit(s) in ENABLE register */
         if mode == APDS9960_MODE_ALL:
-            if enable:
-                reg_val = 0x7F
-            else:
-                reg_val = 0x00
+            reg_val = 0x7F if enable else 0x00
         else:
             if enable:
                 reg_val |= 1 << mode
@@ -199,10 +196,9 @@ class APDS9960(object):
                         self.gesture_data_.total_gestures += 1
 
                     # filter and process gesture data, decode near/far state
-                    if self.process_gesture_data():
-                        if self.decode_gesture():
-                            # ***TODO: U-Turn Gestures
-                            pass
+                    if self.process_gesture_data() and self.decode_gesture():
+                        # ***TODO: U-Turn Gestures
+                        pass
 
                     # reset data
                     self.gesture_data_.index = 0

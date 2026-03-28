@@ -491,10 +491,7 @@ class BQ27441(object):
         sub_command_msb = function >> 8
         sub_command_lsb = function & 0x00FF
         command = [sub_command_lsb, sub_command_msb]
-        if self._write_reg(0, command, 2):
-            return True
-
-        return False
+        return bool(self._write_reg(0, command, 2))
 
     # Extended Data Cmds
     # Issue a block_data_control() command to enable block data access
