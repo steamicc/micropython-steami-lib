@@ -356,7 +356,7 @@ tests:
     expect_true: true
     mode: [mock]
 
-  - name: "set_oversampling configures humidity"
+  - name: "set_oversampling configures humidity and latches via ctrl_meas"
     action: script
     script: |
       from bme280.const import OSRS_X8
@@ -364,7 +364,17 @@ tests:
       dev.set_oversampling(humidity=OSRS_X8)
       log = i2c.get_write_log()
       hum_writes = [data[0] for reg, data in log if reg == 0xF2]
-      result = len(hum_writes) == 1 and hum_writes[0] == OSRS_X8
+      # ctrl_meas must be rewritten after ctrl_hum for the change to take effect
+      ctrl_writes = [data[0] for reg, data in log if reg == 0xF4]
+      # Verify write order: ctrl_hum (0xF2) must come before ctrl_meas (0xF4)
+      hum_idx = next(i for i, (reg, _) in enumerate(log) if reg == 0xF2)
+      meas_idx = next(i for i, (reg, _) in enumerate(log) if reg == 0xF4)
+      result = (
+          len(hum_writes) == 1
+          and hum_writes[0] == OSRS_X8
+          and len(ctrl_writes) == 1
+          and hum_idx < meas_idx
+      )
     expect_true: true
     mode: [mock]
 

@@ -182,13 +182,14 @@ class BME280(object):
         """
         if humidity is not None:
             self._write_reg(REG_CTRL_HUM, humidity)
-        if temperature is not None or pressure is not None:
-            ctrl = self._read_reg(REG_CTRL_MEAS)
-            if temperature is not None:
-                ctrl = (ctrl & ~(0x07 << OSRS_T_SHIFT)) | (temperature << OSRS_T_SHIFT)
-            if pressure is not None:
-                ctrl = (ctrl & ~(0x07 << OSRS_P_SHIFT)) | (pressure << OSRS_P_SHIFT)
-            self._write_reg(REG_CTRL_MEAS, ctrl)
+        ctrl = self._read_reg(REG_CTRL_MEAS)
+        if temperature is not None:
+            ctrl = (ctrl & ~(0x07 << OSRS_T_SHIFT)) | (temperature << OSRS_T_SHIFT)
+        if pressure is not None:
+            ctrl = (ctrl & ~(0x07 << OSRS_P_SHIFT)) | (pressure << OSRS_P_SHIFT)
+        # ctrl_meas must always be rewritten: changes to ctrl_hum are only
+        # latched when ctrl_meas is written (datasheet section 5.4.3).
+        self._write_reg(REG_CTRL_MEAS, ctrl)
 
     def set_iir_filter(self, coefficient):
         """Configure the IIR filter coefficient.
