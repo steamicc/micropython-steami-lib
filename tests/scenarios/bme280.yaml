@@ -1,0 +1,56 @@
+driver: bme280
+driver_class: BME280
+i2c_address: 0x76
+
+i2c:
+  id: 1
+
+mock_registers:
+  # Chip ID (expected 0x60)
+  0xD0: 0x60
+  # Status (not measuring, NVM copy done)
+  0xF3: 0x00
+  # ctrl_hum (default)
+  0xF2: 0x00
+  # ctrl_meas (default sleep mode)
+  0xF4: 0x00
+  # config (default)
+  0xF5: 0x00
+
+tests:
+  - name: "Verify chip ID register"
+    action: read_register
+    register: 0xD0
+    expect: 0x60
+    mode: [mock, hardware]
+
+  - name: "Read chip ID via method"
+    action: call
+    method: device_id
+    expect: 0x60
+    mode: [mock, hardware]
+
+  - name: "Soft reset sends reset command"
+    action: script
+    script: |
+      i2c.clear_write_log()
+      dev.soft_reset()
+      log = i2c.get_write_log()
+      sent_reset = any(reg == 0xE0 and data[0] == 0xB6 for reg, data in log)
+      result = sent_reset
+    expect_true: true
+    mode: [mock]
+
+  - name: "Reset reconfigures device"
+    action: script
+    script: |
+      i2c.clear_write_log()
+      dev.reset()
+      log = i2c.get_write_log()
+      # Should write reset command + ctrl_hum + ctrl_meas
+      wrote_reset = any(reg == 0xE0 for reg, data in log)
+      wrote_ctrl_hum = any(reg == 0xF2 for reg, data in log)
+      wrote_ctrl_meas = any(reg == 0xF4 for reg, data in log)
+      result = wrote_reset and wrote_ctrl_hum and wrote_ctrl_meas
+    expect_true: true
+    mode: [mock]
