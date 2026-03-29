@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [0.4.0](https://github.com/steamicc/micropython-steami-lib/compare/v0.3.0...v0.4.0) (2026-03-29)
+
+
+### Features
+
+* **bme280:** Read factory calibration trimming parameters. ([#309](https://github.com/steamicc/micropython-steami-lib/issues/309)) ([91d9016](https://github.com/steamicc/micropython-steami-lib/commit/91d901693c80edcfc16c51446469a1eebee05978))
+
 # [0.3.0](https://github.com/steamicc/micropython-steami-lib/compare/v0.2.7...v0.3.0) (2026-03-29)
 
 
