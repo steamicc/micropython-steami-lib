@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [0.7.0](https://github.com/steamicc/micropython-steami-lib/compare/v0.6.0...v0.7.0) (2026-03-29)
+
+
+### Features
+
+* **bme280:** Implement _ensure_data() auto-trigger pattern ([#318](https://github.com/steamicc/micropython-steami-lib/issues/318)) ([a0d344d](https://github.com/steamicc/micropython-steami-lib/commit/a0d344de37fb5eddcaae27bb6ef9f8593db8634b))
+
 # [0.6.0](https://github.com/steamicc/micropython-steami-lib/compare/v0.5.0...v0.6.0) (2026-03-29)
 
 
