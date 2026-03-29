@@ -7,8 +7,10 @@ from bme280.const import (
     CALIB_H_SIZE,
     CALIB_TP_SIZE,
     DATA_BLOCK_SIZE,
+    FILTER_SHIFT,
     MODE_FORCED,
     MODE_MASK,
+    MODE_NORMAL,
     MODE_SLEEP,
     OSRS_P_SHIFT,
     OSRS_T_SHIFT,
@@ -16,6 +18,7 @@ from bme280.const import (
     REG_CALIB_HUM,
     REG_CALIB_TEMP_PRESS,
     REG_CHIP_ID,
+    REG_CONFIG,
     REG_CTRL_HUM,
     REG_CTRL_MEAS,
     REG_DATA_START,
@@ -23,6 +26,7 @@ from bme280.const import (
     REG_STATUS,
     RESET_DELAY_MS,
     SOFT_RESET_CMD,
+    STANDBY_SHIFT,
     STATUS_IM_UPDATE,
     STATUS_MEASURING,
 )
@@ -138,6 +142,74 @@ class BME280(object):
         self.soft_reset()
         self._read_calibration()
         self._configure_default()
+
+    # --------------------------------------------------
+    # Power and mode control
+    # --------------------------------------------------
+
+    def power_off(self):
+        """Enter sleep mode. Stops all measurements."""
+        ctrl = self._read_reg(REG_CTRL_MEAS)
+        self._write_reg(REG_CTRL_MEAS, ctrl & ~MODE_MASK)
+
+    def power_on(self):
+        """Enter normal mode. Continuous measurements at configured standby rate."""
+        ctrl = self._read_reg(REG_CTRL_MEAS)
+        self._write_reg(REG_CTRL_MEAS, (ctrl & ~MODE_MASK) | MODE_NORMAL)
+
+    def set_continuous(self, standby=None):
+        """Start continuous measurements in normal mode.
+
+        Args:
+            standby: standby time constant (STANDBY_0_5_MS .. STANDBY_1000_MS).
+                     If None, the current config register value is kept.
+        """
+        if standby is not None:
+            self.set_standby(standby)
+        self.power_on()
+
+    # --------------------------------------------------
+    # Sensor configuration
+    # --------------------------------------------------
+
+    def set_oversampling(self, temperature=None, pressure=None, humidity=None):
+        """Configure oversampling for one or more channels.
+
+        Args:
+            temperature: OSRS_SKIP .. OSRS_X16 (None = keep current).
+            pressure: OSRS_SKIP .. OSRS_X16 (None = keep current).
+            humidity: OSRS_SKIP .. OSRS_X16 (None = keep current).
+        """
+        if humidity is not None:
+            self._write_reg(REG_CTRL_HUM, humidity)
+        ctrl = self._read_reg(REG_CTRL_MEAS)
+        if temperature is not None:
+            ctrl = (ctrl & ~(0x07 << OSRS_T_SHIFT)) | (temperature << OSRS_T_SHIFT)
+        if pressure is not None:
+            ctrl = (ctrl & ~(0x07 << OSRS_P_SHIFT)) | (pressure << OSRS_P_SHIFT)
+        # ctrl_meas must always be rewritten: changes to ctrl_hum are only
+        # latched when ctrl_meas is written (datasheet section 5.4.3).
+        self._write_reg(REG_CTRL_MEAS, ctrl)
+
+    def set_iir_filter(self, coefficient):
+        """Configure the IIR filter coefficient.
+
+        Args:
+            coefficient: FILTER_OFF .. FILTER_16.
+        """
+        config = self._read_reg(REG_CONFIG)
+        config = (config & ~(0x07 << FILTER_SHIFT)) | (coefficient << FILTER_SHIFT)
+        self._write_reg(REG_CONFIG, config)
+
+    def set_standby(self, standby):
+        """Configure the standby time for normal mode.
+
+        Args:
+            standby: STANDBY_0_5_MS .. STANDBY_1000_MS.
+        """
+        config = self._read_reg(REG_CONFIG)
+        config = (config & ~(0x07 << STANDBY_SHIFT)) | (standby << STANDBY_SHIFT)
+        self._write_reg(REG_CONFIG, config)
 
     # --------------------------------------------------
     # Status

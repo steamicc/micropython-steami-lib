@@ -274,3 +274,145 @@ tests:
       result = triggered and abs(t - 25.08) < 0.1
     expect_true: true
     mode: [mock]
+
+  # ----- Power and mode control -----
+
+  - name: "power_off sets sleep mode"
+    action: script
+    script: |
+      i2c.clear_write_log()
+      dev.power_off()
+      log = i2c.get_write_log()
+      wrote_sleep = any(reg == 0xF4 and (data[0] & 0x03) == 0x00 for reg, data in log)
+      result = wrote_sleep
+    expect_true: true
+    mode: [mock]
+
+  - name: "power_on sets normal mode"
+    action: script
+    script: |
+      i2c.clear_write_log()
+      dev.power_on()
+      log = i2c.get_write_log()
+      wrote_normal = any(reg == 0xF4 and (data[0] & 0x03) == 0x03 for reg, data in log)
+      result = wrote_normal
+    expect_true: true
+    mode: [mock]
+
+  - name: "power_off preserves oversampling bits"
+    action: script
+    script: |
+      from bme280.const import OSRS_X4, OSRS_T_SHIFT, OSRS_P_SHIFT
+      dev.set_oversampling(temperature=OSRS_X4, pressure=OSRS_X4)
+      i2c.clear_write_log()
+      dev.power_off()
+      log = i2c.get_write_log()
+      ctrl = [data[0] for reg, data in log if reg == 0xF4][-1]
+      osrs_t = (ctrl >> 5) & 0x07
+      osrs_p = (ctrl >> 2) & 0x07
+      result = osrs_t == OSRS_X4 and osrs_p == OSRS_X4 and (ctrl & 0x03) == 0x00
+    expect_true: true
+    mode: [mock]
+
+  - name: "set_continuous enters normal mode"
+    action: script
+    script: |
+      dev.power_off()
+      i2c.clear_write_log()
+      dev.set_continuous()
+      log = i2c.get_write_log()
+      wrote_normal = any(reg == 0xF4 and (data[0] & 0x03) == 0x03 for reg, data in log)
+      result = wrote_normal
+    expect_true: true
+    mode: [mock]
+
+  - name: "set_continuous with standby configures both"
+    action: script
+    script: |
+      from bme280.const import STANDBY_500_MS, STANDBY_SHIFT
+      i2c.clear_write_log()
+      dev.set_continuous(standby=STANDBY_500_MS)
+      log = i2c.get_write_log()
+      wrote_config = any(reg == 0xF5 for reg, data in log)
+      wrote_normal = any(reg == 0xF4 and (data[0] & 0x03) == 0x03 for reg, data in log)
+      result = wrote_config and wrote_normal
+    expect_true: true
+    mode: [mock]
+
+  # ----- Configuration -----
+
+  - name: "set_oversampling configures temperature and pressure"
+    action: script
+    script: |
+      from bme280.const import OSRS_X2, OSRS_X4, OSRS_T_SHIFT, OSRS_P_SHIFT
+      i2c.clear_write_log()
+      dev.set_oversampling(temperature=OSRS_X2, pressure=OSRS_X4)
+      log = i2c.get_write_log()
+      ctrl_writes = [data[0] for reg, data in log if reg == 0xF4]
+      ctrl = ctrl_writes[-1]
+      osrs_t = (ctrl >> OSRS_T_SHIFT) & 0x07
+      osrs_p = (ctrl >> OSRS_P_SHIFT) & 0x07
+      result = osrs_t == OSRS_X2 and osrs_p == OSRS_X4
+    expect_true: true
+    mode: [mock]
+
+  - name: "set_oversampling configures humidity and latches via ctrl_meas"
+    action: script
+    script: |
+      from bme280.const import OSRS_X8
+      i2c.clear_write_log()
+      dev.set_oversampling(humidity=OSRS_X8)
+      log = i2c.get_write_log()
+      hum_writes = [data[0] for reg, data in log if reg == 0xF2]
+      # ctrl_meas must be rewritten after ctrl_hum for the change to take effect
+      ctrl_writes = [data[0] for reg, data in log if reg == 0xF4]
+      # Verify write order: ctrl_hum (0xF2) must come before ctrl_meas (0xF4)
+      hum_idx = next(i for i, (reg, _) in enumerate(log) if reg == 0xF2)
+      meas_idx = next(i for i, (reg, _) in enumerate(log) if reg == 0xF4)
+      result = (
+          len(hum_writes) == 1
+          and hum_writes[0] == OSRS_X8
+          and len(ctrl_writes) == 1
+          and hum_idx < meas_idx
+      )
+    expect_true: true
+    mode: [mock]
+
+  - name: "set_iir_filter writes config register"
+    action: script
+    script: |
+      from bme280.const import FILTER_16, FILTER_SHIFT
+      i2c.clear_write_log()
+      dev.set_iir_filter(FILTER_16)
+      log = i2c.get_write_log()
+      config_writes = [data[0] for reg, data in log if reg == 0xF5]
+      result = len(config_writes) == 1 and ((config_writes[0] >> FILTER_SHIFT) & 0x07) == FILTER_16
+    expect_true: true
+    mode: [mock]
+
+  - name: "set_standby writes config register"
+    action: script
+    script: |
+      from bme280.const import STANDBY_250_MS, STANDBY_SHIFT
+      i2c.clear_write_log()
+      dev.set_standby(STANDBY_250_MS)
+      log = i2c.get_write_log()
+      config_writes = [data[0] for reg, data in log if reg == 0xF5]
+      result = len(config_writes) == 1 and ((config_writes[0] >> STANDBY_SHIFT) & 0x07) == STANDBY_250_MS
+    expect_true: true
+    mode: [mock]
+
+  - name: "set_iir_filter preserves standby bits"
+    action: script
+    script: |
+      from bme280.const import STANDBY_500_MS, STANDBY_SHIFT, FILTER_4, FILTER_SHIFT
+      dev.set_standby(STANDBY_500_MS)
+      i2c.clear_write_log()
+      dev.set_iir_filter(FILTER_4)
+      log = i2c.get_write_log()
+      config = [data[0] for reg, data in log if reg == 0xF5][-1]
+      standby = (config >> STANDBY_SHIFT) & 0x07
+      filt = (config >> FILTER_SHIFT) & 0x07
+      result = standby == STANDBY_500_MS and filt == FILTER_4
+    expect_true: true
+    mode: [mock]
