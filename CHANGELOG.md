@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [0.6.0](https://github.com/steamicc/micropython-steami-lib/compare/v0.5.0...v0.6.0) (2026-03-29)
+
+
+### Features
+
+* **bme280:** Add measurement modes and sensor configuration ([#313](https://github.com/steamicc/micropython-steami-lib/issues/313)) ([2af3fd9](https://github.com/steamicc/micropython-steami-lib/commit/2af3fd9ab0339fc48a3cbd83866b8c007823c371))
+
 # [0.5.0](https://github.com/steamicc/micropython-steami-lib/compare/v0.4.0...v0.5.0) (2026-03-29)
 
 
