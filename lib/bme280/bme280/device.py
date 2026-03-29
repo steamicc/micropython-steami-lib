@@ -6,6 +6,9 @@ from bme280.const import (
     BME280_I2C_DEFAULT_ADDR,
     CALIB_H_SIZE,
     CALIB_TP_SIZE,
+    DATA_BLOCK_SIZE,
+    MODE_FORCED,
+    MODE_MASK,
     MODE_SLEEP,
     OSRS_P_SHIFT,
     OSRS_T_SHIFT,
@@ -15,11 +18,13 @@ from bme280.const import (
     REG_CHIP_ID,
     REG_CTRL_HUM,
     REG_CTRL_MEAS,
+    REG_DATA_START,
     REG_SOFT_RESET,
     REG_STATUS,
     RESET_DELAY_MS,
     SOFT_RESET_CMD,
     STATUS_IM_UPDATE,
+    STATUS_MEASURING,
 )
 from bme280.exceptions import BME280Error, BME280InvalidDevice, BME280NotFound
 
@@ -137,3 +142,147 @@ class BME280(object):
         self.soft_reset()
         self._read_calibration()
         self._configure_default()
+
+    # --------------------------------------------------
+    # Status
+    # --------------------------------------------------
+
+    def _status(self):
+        """Return the raw STATUS register value."""
+        return self._read_reg(REG_STATUS)
+
+    def data_ready(self):
+        """Return True when all measurements are available."""
+        return not (self._status() & STATUS_MEASURING)
+
+    def temperature_ready(self):
+        """Return True when temperature data is available."""
+        return self.data_ready()
+
+    def pressure_ready(self):
+        """Return True when pressure data is available."""
+        return self.data_ready()
+
+    def humidity_ready(self):
+        """Return True when humidity data is available."""
+        return self.data_ready()
+
+    # --------------------------------------------------
+    # Forced measurement trigger
+    # --------------------------------------------------
+
+    def trigger_one_shot(self):
+        """Trigger a single forced measurement. Poll data_ready() for completion."""
+        ctrl = self._read_reg(REG_CTRL_MEAS)
+        self._write_reg(REG_CTRL_MEAS, (ctrl & ~MODE_MASK) | MODE_FORCED)
+
+    def _wait_measurement(self, timeout_ms=100):
+        """Wait for measurement to complete. Raises on timeout."""
+        for _ in range(timeout_ms // 5):
+            if self.data_ready():
+                return
+            sleep_ms(5)
+        raise BME280Error("BME280 measurement timeout")
+
+    # --------------------------------------------------
+    # Raw data burst read
+    # --------------------------------------------------
+
+    def _read_raw(self):
+        """Read raw ADC values for pressure, temperature, humidity (burst read).
+
+        Returns (raw_temp, raw_press, raw_hum) as 20-bit/20-bit/16-bit integers.
+        """
+        data = self._read_block(REG_DATA_START, DATA_BLOCK_SIZE)
+        raw_press = (data[0] << 12) | (data[1] << 4) | (data[2] >> 4)
+        raw_temp = (data[3] << 12) | (data[4] << 4) | (data[5] >> 4)
+        raw_hum = (data[6] << 8) | data[7]
+        return raw_temp, raw_press, raw_hum
+
+    # --------------------------------------------------
+    # Compensation formulas (BME280 datasheet section 4.2.3)
+    # --------------------------------------------------
+
+    def _compensate_temperature(self, raw_temp):
+        """Compute compensated temperature in hundredths of °C. Updates t_fine."""
+        var1 = (((raw_temp >> 3) - (self.dig_T1 << 1)) * self.dig_T2) >> 11
+        var2 = (
+            (((raw_temp >> 4) - self.dig_T1) * ((raw_temp >> 4) - self.dig_T1)) >> 12
+        ) * self.dig_T3 >> 14
+        self.t_fine = var1 + var2
+        return (self.t_fine * 5 + 128) >> 8
+
+    def _compensate_pressure(self, raw_press):
+        """Compute compensated pressure in Pa (Q24.8 fixed point)."""
+        var1 = self.t_fine - 128000
+        var2 = var1 * var1 * self.dig_P6
+        var2 = var2 + ((var1 * self.dig_P5) << 17)
+        var2 = var2 + (self.dig_P4 << 35)
+        var1 = ((var1 * var1 * self.dig_P3) >> 8) + ((var1 * self.dig_P2) << 12)
+        var1 = ((1 << 47) + var1) * self.dig_P1 >> 33
+        if var1 == 0:
+            return 0
+        p = 1048576 - raw_press
+        p = (((p << 31) - var2) * 3125) // var1
+        var1 = (self.dig_P9 * (p >> 13) * (p >> 13)) >> 25
+        var2 = (self.dig_P8 * p) >> 19
+        return ((p + var1 + var2) >> 8) + (self.dig_P7 << 4)
+
+    def _compensate_humidity(self, raw_hum):
+        """Compute compensated humidity in Q22.10 fixed point."""
+        h = self.t_fine - 76800
+        if h == 0:
+            return 0
+        h = (
+            (((raw_hum << 14) - (self.dig_H4 << 20) - (self.dig_H5 * h)) + 16384)
+            >> 15
+        ) * (
+            (
+                (
+                    (((h * self.dig_H6) >> 10) * (((h * self.dig_H3) >> 11) + 32768))
+                    >> 10
+                )
+                + 2097152
+            )
+            * self.dig_H2
+            + 8192
+        ) >> 14
+        h = h - (((((h >> 15) * (h >> 15)) >> 7) * self.dig_H1) >> 4)
+        h = max(h, 0)
+        h = min(h, 419430400)
+        return h >> 12
+
+    # --------------------------------------------------
+    # Public measurement methods
+    # --------------------------------------------------
+
+    def temperature(self):
+        """Return compensated temperature in °C (float)."""
+        raw_temp, _, _ = self._read_raw()
+        return self._compensate_temperature(raw_temp) / 100.0
+
+    def pressure_hpa(self):
+        """Return compensated pressure in hPa (float)."""
+        raw_temp, raw_press, _ = self._read_raw()
+        self._compensate_temperature(raw_temp)
+        return self._compensate_pressure(raw_press) / 25600.0
+
+    def humidity(self):
+        """Return compensated relative humidity in %RH (float)."""
+        raw_temp, _, raw_hum = self._read_raw()
+        self._compensate_temperature(raw_temp)
+        return self._compensate_humidity(raw_hum) / 1024.0
+
+    def read(self):
+        """Return (temperature_c, pressure_hpa, humidity_rh) tuple."""
+        raw_temp, raw_press, raw_hum = self._read_raw()
+        temp_c = self._compensate_temperature(raw_temp) / 100.0
+        press_hpa = self._compensate_pressure(raw_press) / 25600.0
+        hum_rh = self._compensate_humidity(raw_hum) / 1024.0
+        return temp_c, press_hpa, hum_rh
+
+    def read_one_shot(self):
+        """Trigger a forced measurement, wait, and return (temp_c, press_hpa, hum_rh)."""
+        self.trigger_one_shot()
+        self._wait_measurement()
+        return self.read()
