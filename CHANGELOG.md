@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [0.5.0](https://github.com/steamicc/micropython-steami-lib/compare/v0.4.0...v0.5.0) (2026-03-29)
+
+
+### Features
+
+* **bme280:** Add compensated temperature, pressure, humidity readings ([#312](https://github.com/steamicc/micropython-steami-lib/issues/312)) ([f18aeaf](https://github.com/steamicc/micropython-steami-lib/commit/f18aeaf2d23fb4ac7079f49b438c857310a4b309))
+
 # [0.4.0](https://github.com/steamicc/micropython-steami-lib/compare/v0.3.0...v0.4.0) (2026-03-29)
 
 
