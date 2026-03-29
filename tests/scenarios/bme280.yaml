@@ -162,6 +162,21 @@ tests:
     expect_true: true
     mode: [mock]
 
+  - name: "wait_boot polls STATUS until IM_UPDATE clears"
+    action: script
+    script: |
+      # Simulate NVM copy in progress: STATUS returns 0x01 twice, then 0x00
+      i2c.set_register_sequence(0xF3, [bytes([0x01]), bytes([0x01]), bytes([0x00])])
+      i2c.clear_read_log()
+      from bme280 import BME280
+      dev2 = BME280(i2c, address=0x76)
+      log = i2c.get_read_log()
+      # STATUS (0xF3) should have been read at least 3 times during boot
+      status_reads = [r for r in log if r == 0xF3]
+      result = len(status_reads) >= 3
+    expect_true: true
+    mode: [mock]
+
   # ----- Status -----
 
   - name: "data_ready returns True when not measuring"
