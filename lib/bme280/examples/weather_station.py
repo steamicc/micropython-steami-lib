@@ -1,7 +1,7 @@
 """Continuous weather monitoring with altitude estimation.
 
 Reads temperature, pressure, and humidity every 5 seconds in normal mode,
-computes approximate altitude from pressure using the barometric formula,
+computes altitude using the driver's built-in barometric formula,
 and logs each measurement to the DAPLink flash as CSV.
 """
 
@@ -13,14 +13,14 @@ from daplink_bridge import DaplinkBridge
 from daplink_flash import DaplinkFlash
 from machine import I2C
 
-# Sea-level reference pressure in hPa (adjust to local conditions)
-SEA_LEVEL_PRESSURE = 1013.25
-
 i2c = I2C(1)
 
 sensor = BME280(i2c)
 bridge = DaplinkBridge(i2c)
 flash = DaplinkFlash(bridge)
+
+# Adjust sea-level pressure to local conditions for accurate altitude
+# sensor.sea_level_pressure = 1020.0
 
 # Configure for weather monitoring: high pressure resolution, moderate temp/hum
 sensor.set_oversampling(temperature=OSRS_X2, pressure=OSRS_X16, humidity=OSRS_X2)
@@ -35,15 +35,9 @@ print("Flash erased.")
 
 flash.write_line("temperature;pressure;humidity;altitude")
 
-
-def altitude_m(pressure_hpa):
-    """Estimate altitude in meters from pressure using the barometric formula."""
-    return 44330.0 * (1.0 - (pressure_hpa / SEA_LEVEL_PRESSURE) ** 0.1903)
-
-
 while True:
     temperature, pressure, humidity = sensor.read()
-    alt = altitude_m(pressure)
+    alt = sensor.altitude()
 
     print(
         "T: {:.1f} C  P: {:.1f} hPa  H: {:.1f} %RH  Alt: {:.0f} m".format(

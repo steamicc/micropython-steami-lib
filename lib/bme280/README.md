@@ -163,6 +163,22 @@ Triggers a single forced measurement. Poll `data_ready()` for completion, then r
 
 ---
 
+### Altitude
+
+```python
+alt = sensor.altitude()
+```
+
+Returns the estimated altitude in **meters** using the ICAO barometric formula.
+
+The computation uses `sea_level_pressure` as reference (default: 1013.25 hPa). Adjust it for your location:
+
+```python
+sensor.sea_level_pressure = 1020.0  # local sea-level pressure in hPa
+```
+
+---
+
 ## Data-Ready Status
 
 ```python
@@ -288,8 +304,8 @@ Performs a soft reset, re-reads calibration data, and re-applies default configu
 | Oversampling (per channel) | ✅ | ✅ | ✅ | ✅ | ⚠️ Fixed x16 | ⚠️ Constants only |
 | IIR filter | ✅ | ❌ | ✅ | ✅ | ⚠️ Fixed x16 | ❌ |
 | Standby time | ✅ | ❌ | ✅ | ❌ | ⚠️ Fixed 500ms | ❌ |
-| Altitude | ❌ | ✅ | ✅ | ✅ | ✅ | ❌ |
-| Sea-level pressure | ❌ | ✅ | ✅ | ✅ | ✅ | ❌ |
+| Altitude | ✅ | ✅ | ✅ | ✅ | ✅ | ❌ |
+| Sea-level pressure | ✅ | ✅ | ✅ | ✅ | ✅ | ❌ |
 | Dew point | ❌ | ✅ | ❌ | ❌ | ❌ | ❌ |
 | Soft reset | ✅ | ❌ | ❌ | ❌ | ✅ | ❌ |
 | Full reset + recalibration | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ |
