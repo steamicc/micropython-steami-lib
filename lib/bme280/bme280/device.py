@@ -30,7 +30,7 @@ from bme280.const import (
     STATUS_IM_UPDATE,
     STATUS_MEASURING,
 )
-from bme280.exceptions import BME280Error, BME280InvalidDevice, BME280NotFound
+from bme280.exceptions import BME280InvalidDevice, BME280NotFound
 
 
 class BME280(object):
@@ -125,7 +125,7 @@ class BME280(object):
             if not (self._read_reg(REG_STATUS) & STATUS_IM_UPDATE):
                 return
             sleep_ms(5)
-        raise BME280Error("BME280 NVM copy timeout")
+        raise OSError("BME280 NVM copy timeout")
 
     def device_id(self):
         """Read chip ID register. Expected: 0x60."""
@@ -239,6 +239,21 @@ class BME280(object):
     # Forced measurement trigger
     # --------------------------------------------------
 
+    def _is_sleep_mode(self):
+        """Return True if the sensor is in sleep mode."""
+        return (self._read_reg(REG_CTRL_MEAS) & MODE_MASK) == MODE_SLEEP
+
+    def _ensure_data(self):
+        """Trigger a forced measurement if the sensor is in sleep mode.
+
+        In normal mode this is a no-op. In sleep mode it triggers a
+        single conversion and waits for completion so that subsequent
+        register reads return fresh data.
+        """
+        if self._is_sleep_mode():
+            self.trigger_one_shot()
+            self._wait_measurement()
+
     def trigger_one_shot(self):
         """Trigger a single forced measurement. Poll data_ready() for completion."""
         ctrl = self._read_reg(REG_CTRL_MEAS)
@@ -250,7 +265,7 @@ class BME280(object):
             if self.data_ready():
                 return
             sleep_ms(5)
-        raise BME280Error("BME280 measurement timeout")
+        raise OSError("BME280 measurement timeout")
 
     # --------------------------------------------------
     # Raw data burst read
@@ -323,24 +338,44 @@ class BME280(object):
     # --------------------------------------------------
 
     def temperature(self):
-        """Return compensated temperature in °C (float)."""
+        """Return compensated temperature in °C (float).
+
+        If the sensor is in sleep mode, a forced measurement is triggered
+        automatically before reading.
+        """
+        self._ensure_data()
         raw_temp, _, _ = self._read_raw()
         return self._compensate_temperature(raw_temp) / 100.0
 
     def pressure_hpa(self):
-        """Return compensated pressure in hPa (float)."""
+        """Return compensated pressure in hPa (float).
+
+        If the sensor is in sleep mode, a forced measurement is triggered
+        automatically before reading.
+        """
+        self._ensure_data()
         raw_temp, raw_press, _ = self._read_raw()
         self._compensate_temperature(raw_temp)
         return self._compensate_pressure(raw_press) / 25600.0
 
     def humidity(self):
-        """Return compensated relative humidity in %RH (float)."""
+        """Return compensated relative humidity in %RH (float).
+
+        If the sensor is in sleep mode, a forced measurement is triggered
+        automatically before reading.
+        """
+        self._ensure_data()
         raw_temp, _, raw_hum = self._read_raw()
         self._compensate_temperature(raw_temp)
         return self._compensate_humidity(raw_hum) / 1024.0
 
     def read(self):
-        """Return (temperature_c, pressure_hpa, humidity_rh) tuple."""
+        """Return (temperature_c, pressure_hpa, humidity_rh) tuple.
+
+        If the sensor is in sleep mode, a forced measurement is triggered
+        automatically before reading.
+        """
+        self._ensure_data()
         raw_temp, raw_press, raw_hum = self._read_raw()
         temp_c = self._compensate_temperature(raw_temp) / 100.0
         press_hpa = self._compensate_pressure(raw_press) / 25600.0
@@ -348,7 +383,15 @@ class BME280(object):
         return temp_c, press_hpa, hum_rh
 
     def read_one_shot(self):
-        """Trigger a forced measurement, wait, and return (temp_c, press_hpa, hum_rh)."""
+        """Trigger a forced measurement, wait, and return (temp_c, press_hpa, hum_rh).
+
+        Reads registers directly without calling _ensure_data() to avoid
+        a double trigger (forced mode returns the sensor to sleep).
+        """
         self.trigger_one_shot()
         self._wait_measurement()
-        return self.read()
+        raw_temp, raw_press, raw_hum = self._read_raw()
+        temp_c = self._compensate_temperature(raw_temp) / 100.0
+        press_hpa = self._compensate_pressure(raw_press) / 25600.0
+        hum_rh = self._compensate_humidity(raw_hum) / 1024.0
+        return temp_c, press_hpa, hum_rh
