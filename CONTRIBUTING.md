@@ -61,7 +61,7 @@ make lint-fix
 
 ### Active ruff rules
 
-The full configuration is in `pyproject.toml`. Here is a summary of the active rule groups:
+The full configuration is in `pyproject.toml` (`[tool.ruff.lint]` section). The table below highlights the most impactful rule groups; additional groups (ASYNC, DTZ, EXE, G, ICN, INT, ISC, PGH, PIE, PYI, RSE, T10, TCH, YTT) are also enabled — refer to `pyproject.toml` for the complete list.
 
 | Group | Description |
 |-------|-------------|
