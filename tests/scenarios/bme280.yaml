@@ -10,6 +10,10 @@ mock_registers:
   0xD0: 0x60
   # Status (not measuring, NVM copy done)
   0xF3: 0x00
+
+  # Data registers 0xF7..0xFE (8 bytes): raw_press=415148, raw_temp=519888, raw_hum=28680
+  # Expected compensated: ~25.08°C, ~1009.21 hPa, ~50.57 %RH
+  0xF7: [0x65, 0x5A, 0xC0, 0x7E, 0xED, 0x00, 0x70, 0x08]
   # ctrl_hum (default)
   0xF2: 0x00
   # ctrl_meas (default sleep mode)
@@ -155,5 +159,118 @@ tests:
           and calib_idx is not None
           and status_idx < calib_idx
       )
+    expect_true: true
+    mode: [mock]
+
+  - name: "wait_boot polls STATUS until IM_UPDATE clears"
+    action: script
+    script: |
+      # Simulate NVM copy in progress: STATUS returns 0x01 twice, then 0x00
+      i2c.set_register_sequence(0xF3, [bytes([0x01]), bytes([0x01]), bytes([0x00])])
+      i2c.clear_read_log()
+      from bme280 import BME280
+      dev2 = BME280(i2c, address=0x76)
+      log = i2c.get_read_log()
+      # STATUS (0xF3) should have been read at least 3 times during boot
+      status_reads = [r for r in log if r == 0xF3]
+      result = len(status_reads) >= 3
+    expect_true: true
+    mode: [mock]
+
+  # ----- Status -----
+
+  - name: "data_ready returns True when not measuring"
+    action: script
+    script: |
+      result = dev.data_ready()
+    expect_true: true
+    mode: [mock]
+
+  - name: "All ready methods delegate to data_ready"
+    action: script
+    script: |
+      result = dev.temperature_ready() and dev.pressure_ready() and dev.humidity_ready()
+    expect_true: true
+    mode: [mock]
+
+  # ----- Compensated readings -----
+
+  - name: "Temperature returns correct value from raw data"
+    action: script
+    script: |
+      temp = dev.temperature()
+      result = abs(temp - 25.08) < 0.1
+    expect_true: true
+    mode: [mock]
+
+  - name: "Pressure returns correct value from raw data"
+    action: script
+    script: |
+      press = dev.pressure_hpa()
+      result = abs(press - 1009.21) < 0.5
+    expect_true: true
+    mode: [mock]
+
+  - name: "Humidity returns correct value from raw data"
+    action: script
+    script: |
+      hum = dev.humidity()
+      result = abs(hum - 50.57) < 0.5
+    expect_true: true
+    mode: [mock]
+
+  - name: "read() returns (temp, press, hum) tuple"
+    action: script
+    script: |
+      t, p, h = dev.read()
+      result = (
+          abs(t - 25.08) < 0.1
+          and abs(p - 1009.21) < 0.5
+          and abs(h - 50.57) < 0.5
+      )
+    expect_true: true
+    mode: [mock]
+
+  - name: "Humidity valid when t_fine equals 76800"
+    action: script
+    script: |
+      # Regression: _compensate_humidity() must not return 0 when t_fine - 76800 == 0
+      dev.t_fine = 76800
+      raw_hum = 28680
+      hum_q22 = dev._compensate_humidity(raw_hum)
+      result = hum_q22 > 0
+    expect_true: true
+    mode: [mock]
+
+  - name: "t_fine updated after temperature read"
+    action: script
+    script: |
+      dev.temperature()
+      result = dev.t_fine == 128422
+    expect_true: true
+    mode: [mock]
+
+  - name: "trigger_one_shot writes forced mode to ctrl_meas"
+    action: script
+    script: |
+      i2c.clear_write_log()
+      dev.trigger_one_shot()
+      log = i2c.get_write_log()
+      wrote_forced = any(
+          reg == 0xF4 and (data[0] & 0x03) == 0x01
+          for reg, data in log
+      )
+      result = wrote_forced
+    expect_true: true
+    mode: [mock]
+
+  - name: "read_one_shot triggers and reads"
+    action: script
+    script: |
+      i2c.clear_write_log()
+      t, p, h = dev.read_one_shot()
+      log = i2c.get_write_log()
+      triggered = any(reg == 0xF4 for reg, data in log)
+      result = triggered and abs(t - 25.08) < 0.1
     expect_true: true
     mode: [mock]

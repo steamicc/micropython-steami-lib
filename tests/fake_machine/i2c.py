@@ -14,6 +14,7 @@ class FakeI2C:
 
     def __init__(self, bus_id=None, *, registers=None, address=None, **kwargs):
         self._registers = {}
+        self._sequences = {}
         self._address = address
         self._write_log = []
         self._read_log = []
@@ -28,6 +29,12 @@ class FakeI2C:
     def readfrom_mem(self, addr, reg, nbytes, *, addrsize=8):
         self._check_address(addr)
         self._read_log.append(reg)
+        seq = self._sequences.get(reg)
+        if seq:
+            data = seq.pop(0)
+            if not seq:
+                del self._sequences[reg]
+            return data[:nbytes]
         data = self._registers.get(reg, b"\x00" * nbytes)
         return data[:nbytes]
 
@@ -73,6 +80,18 @@ class FakeI2C:
 
     def clear_read_log(self):
         self._read_log.clear()
+
+    def set_register_sequence(self, reg, values):
+        """Set a sequence of values for a register.
+
+        Each read pops the next value from the list. When the list is
+        exhausted, reads fall back to the static register value.
+
+        Args:
+            reg: register address.
+            values: list of bytes values to return on successive reads.
+        """
+        self._sequences[reg] = [bytes(v) if not isinstance(v, bytes) else v for v in values]
 
     def _check_address(self, addr):
         if self._address is not None and addr != self._address:
