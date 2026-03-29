@@ -28,11 +28,12 @@ lib/<component>/
 ## Coding conventions
 
 - **Constants**: use `from micropython import const` wrapper in `const.py` files.
+- **Imports**: explicit imports only (`from <module>.const import NAME1, NAME2`). Wildcard `import *` is not allowed.
 - **Naming**: `snake_case` for all methods and variables. Enforced by ruff (N802, N803, N806).
 - **Class inheritance**: `class Foo(object):` is the existing convention.
 - **Time**: use `from time import sleep_ms` (not `utime`, not `sleep()` with float seconds).
-- **Exceptions**: use `except Exception:` instead of bare `except:`.
-- **No debug `print()`** in production driver code.
+- **Exceptions**: use `except Exception:` instead of bare `except:`. Enforced by ruff (E722).
+- **No debug `print()`** in production driver code. Enforced by ruff (T20, examples and tests excluded).
 
 ## Driver API conventions
 
@@ -58,6 +59,35 @@ To automatically fix issues:
 make lint-fix
 ```
 
+### Active ruff rules
+
+The full configuration is in `pyproject.toml`. Here is a summary of the active rule groups:
+
+| Group | Description |
+|-------|-------------|
+| A | Prevent shadowing Python builtins |
+| B | Flake8-bugbear: common bug patterns |
+| C4 / C90 | Comprehension style / McCabe cyclomatic complexity |
+| E / W | Pycodestyle errors and warnings |
+| F | Pyflakes (unused imports, undefined names, etc.) |
+| I | Import sorting (isort) |
+| N802, N803, N806 | PEP 8 naming: functions, arguments, and variables must be `snake_case` |
+| PL | Pylint (complexity thresholds: max-branches=25, max-statements=65, max-args=10) |
+| PERF | Perflint: performance anti-patterns |
+| SIM | Flake8-simplify: code simplification suggestions |
+| T20 | No `print()` in production code (excluded for examples and tests) |
+| RUF | Ruff-specific rules |
+
+### MicroPython-specific exceptions
+
+Some rules are ignored because MicroPython does not support the corresponding Python features:
+
+| Ignored rule | Reason |
+|--------------|--------|
+| SIM105 | `contextlib.suppress` is not available in MicroPython |
+| PIE810 | MicroPython does not support passing tuples to `.startswith()` / `.endswith()` |
+| SIM101 | `isinstance()` with merged tuple arguments is unreliable in MicroPython |
+
 ## Commit messages
 
 Commit messages follow the [Conventional Commits](https://www.conventionalcommits.org/) format, enforced by commitlint via a git hook:
@@ -70,7 +100,7 @@ Commit messages follow the [Conventional Commits](https://www.conventionalcommit
 
 **Scopes** (optional but enforced): if provided, the scope **must** be one of the allowed values. The scope is recommended for driver-specific changes but can be omitted for cross-cutting changes.
 
-- Driver scopes: `apds9960`, `bme280`, `bq27441`, `daplink_flash`, `gc9a01`, `hts221`, `im34dt05`, `ism330dl`, `lis2mdl`, `mcp23009e`, `ssd1327`, `steami_config`, `vl53l1x`, `wsen-hids`, `wsen-pads`
+- Driver scopes: `apds9960`, `bme280`, `bq27441`, `daplink_bridge`, `daplink_flash`, `gc9a01`, `hts221`, `im34dt05`, `ism330dl`, `lis2mdl`, `mcp23009e`, `ssd1327`, `steami_config`, `vl53l1x`, `wsen-hids`, `wsen-pads`
 - Domain scopes: `ci`, `docs`, `style`, `tests`, `tooling`
 
 ### Examples
