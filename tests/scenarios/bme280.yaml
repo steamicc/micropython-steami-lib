@@ -231,6 +231,17 @@ tests:
     expect_true: true
     mode: [mock]
 
+  - name: "Humidity valid when t_fine equals 76800"
+    action: script
+    script: |
+      # Regression: _compensate_humidity() must not return 0 when t_fine - 76800 == 0
+      dev.t_fine = 76800
+      raw_hum = 28680
+      hum_q22 = dev._compensate_humidity(raw_hum)
+      result = hum_q22 > 0
+    expect_true: true
+    mode: [mock]
+
   - name: "t_fine updated after temperature read"
     action: script
     script: |
