@@ -416,3 +416,58 @@ tests:
       result = standby == STANDBY_500_MS and filt == FILTER_4
     expect_true: true
     mode: [mock]
+
+  # ----- Hardware tests -----
+
+  - name: "Temperature in plausible range"
+    action: script
+    script: |
+      t, _, _ = dev.read_one_shot()
+      result = 10.0 <= t <= 45.0
+    expect_true: true
+    mode: [hardware]
+
+  - name: "Pressure in plausible range"
+    action: script
+    script: |
+      _, p, _ = dev.read_one_shot()
+      result = 900.0 <= p <= 1100.0
+    expect_true: true
+    mode: [hardware]
+
+  - name: "Humidity in plausible range"
+    action: script
+    script: |
+      _, _, h = dev.read_one_shot()
+      result = 5.0 <= h <= 95.0
+    expect_true: true
+    mode: [hardware]
+
+  - name: "read_one_shot returns three plausible values"
+    action: script
+    script: |
+      t, p, h = dev.read_one_shot()
+      result = 10.0 <= t <= 45.0 and 900.0 <= p <= 1100.0 and 5.0 <= h <= 95.0
+    expect_true: true
+    mode: [hardware]
+
+  - name: "Continuous mode produces plausible values"
+    action: script
+    script: |
+      from time import sleep_ms
+      dev.set_continuous()
+      sleep_ms(100)
+      t, p, h = dev.read()
+      dev.power_off()
+      result = 10.0 <= t <= 45.0 and 900.0 <= p <= 1100.0 and 5.0 <= h <= 95.0
+    expect_true: true
+    mode: [hardware]
+
+  - name: "Readings feel correct"
+    action: manual
+    display:
+      - method: read_one_shot
+        label: "T, P, H"
+    prompt: "Do the values look reasonable?"
+    expect_true: true
+    mode: [hardware]

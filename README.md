@@ -26,7 +26,7 @@ This repository contains all the drivers for the main components of the [STeaMi]
 | ISM330DL      | [`ism330dl`](lib/ism330dl/README.md)           | `0x6B`      | 6-axis IMU (accel + gyro)             |
 | LIS2MDL       | [`lis2mdl`](lib/lis2mdl/README.md)             | `0x1E`      | 3-axis magnetometer                   |
 | IM34DT05      | `im34dt05` *(not yet implemented)*              | — (PDM)     | Digital microphone                    |
-| BME280        | `bme280` *(not yet implemented)*                | `0x76`      | Pressure + humidity + temperature     |
+| BME280        | [`bme280`](lib/bme280/README.md)                | `0x76`      | Pressure + humidity + temperature     |
 | GC9A01        | `gc9a01` *(not yet implemented)*                | — (SPI)     | Round color LCD display               |
 | STeaMi Config | [`steami_config`](lib/steami_config/README.md) | —           | Persistent board configuration        |
 
