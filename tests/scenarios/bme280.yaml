@@ -416,3 +416,54 @@ tests:
       result = standby == STANDBY_500_MS and filt == FILTER_4
     expect_true: true
     mode: [mock]
+
+  # ----- Hardware tests -----
+
+  - name: "Temperature in plausible range"
+    action: call
+    method: temperature
+    expect_range: [10.0, 45.0]
+    mode: [hardware]
+
+  - name: "Pressure in plausible range"
+    action: call
+    method: pressure_hpa
+    expect_range: [900.0, 1100.0]
+    mode: [hardware]
+
+  - name: "Humidity in plausible range"
+    action: call
+    method: humidity
+    expect_range: [5.0, 95.0]
+    mode: [hardware]
+
+  - name: "read() returns three plausible values"
+    action: script
+    script: |
+      t, p, h = dev.read()
+      result = 10.0 <= t <= 45.0 and 900.0 <= p <= 1100.0 and 5.0 <= h <= 95.0
+    expect_true: true
+    mode: [hardware]
+
+  - name: "read_one_shot returns three plausible values"
+    action: script
+    script: |
+      t, p, h = dev.read_one_shot()
+      result = 10.0 <= t <= 45.0 and 900.0 <= p <= 1100.0 and 5.0 <= h <= 95.0
+    expect_true: true
+    mode: [hardware]
+
+  - name: "Readings feel correct"
+    action: manual
+    display:
+      - method: temperature
+        label: "Temperature"
+        unit: "C"
+      - method: pressure_hpa
+        label: "Pressure"
+        unit: "hPa"
+      - method: humidity
+        label: "Humidity"
+        unit: "%RH"
+    prompt: "Do the values look reasonable?"
+    mode: [hardware]
