@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [0.3.0](https://github.com/steamicc/micropython-steami-lib/compare/v0.2.7...v0.3.0) (2026-03-29)
+
+
+### Features
+
+* **bme280:** Create module skeleton with const.py and device ID check. ([#308](https://github.com/steamicc/micropython-steami-lib/issues/308)) ([3c7a99d](https://github.com/steamicc/micropython-steami-lib/commit/3c7a99d64fff761e672a850bc3e60f8e920ad478))
+
 ## [0.2.7](https://github.com/steamicc/micropython-steami-lib/compare/v0.2.6...v0.2.7) (2026-03-28)
 
 ## [0.2.6](https://github.com/steamicc/micropython-steami-lib/compare/v0.2.5...v0.2.6) (2026-03-28)
