@@ -383,7 +383,15 @@ class BME280(object):
         return temp_c, press_hpa, hum_rh
 
     def read_one_shot(self):
-        """Trigger a forced measurement, wait, and return (temp_c, press_hpa, hum_rh)."""
+        """Trigger a forced measurement, wait, and return (temp_c, press_hpa, hum_rh).
+
+        Reads registers directly without calling _ensure_data() to avoid
+        a double trigger (forced mode returns the sensor to sleep).
+        """
         self.trigger_one_shot()
         self._wait_measurement()
-        return self.read()
+        raw_temp, raw_press, raw_hum = self._read_raw()
+        temp_c = self._compensate_temperature(raw_temp) / 100.0
+        press_hpa = self._compensate_pressure(raw_press) / 25600.0
+        hum_rh = self._compensate_humidity(raw_hum) / 1024.0
+        return temp_c, press_hpa, hum_rh

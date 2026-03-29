@@ -508,7 +508,7 @@ tests:
       i2c.clear_write_log()
       dev._ensure_data()
       log = i2c.get_write_log()
-      # In normal mode, only a read of ctrl_meas (no write to 0xF4)
+      # In normal mode, _ensure_data must not write to ctrl_meas (0xF4)
       wrote_forced = any(reg == 0xF4 and (data[0] & 0x03) == 0x01 for reg, data in log)
       result = not wrote_forced
     expect_true: true
@@ -526,6 +526,30 @@ tests:
     expect_true: true
     mode: [mock]
 
+  - name: "pressure_hpa() auto-triggers in sleep mode"
+    action: script
+    script: |
+      dev.power_off()
+      i2c.clear_write_log()
+      p = dev.pressure_hpa()
+      log = i2c.get_write_log()
+      triggered = any(reg == 0xF4 and (data[0] & 0x03) == 0x01 for reg, data in log)
+      result = triggered and abs(p - 1009.21) < 0.5
+    expect_true: true
+    mode: [mock]
+
+  - name: "humidity() auto-triggers in sleep mode"
+    action: script
+    script: |
+      dev.power_off()
+      i2c.clear_write_log()
+      h = dev.humidity()
+      log = i2c.get_write_log()
+      triggered = any(reg == 0xF4 and (data[0] & 0x03) == 0x01 for reg, data in log)
+      result = triggered and abs(h - 50.57) < 0.5
+    expect_true: true
+    mode: [mock]
+
   - name: "read() auto-triggers in sleep mode"
     action: script
     script: |
@@ -534,6 +558,26 @@ tests:
       t, p, h = dev.read()
       log = i2c.get_write_log()
       triggered = any(reg == 0xF4 and (data[0] & 0x03) == 0x01 for reg, data in log)
-      result = triggered and abs(t - 25.08) < 0.1
+      result = (
+          triggered
+          and abs(t - 25.08) < 0.1
+          and abs(p - 1009.21) < 0.5
+          and abs(h - 50.57) < 0.5
+      )
+    expect_true: true
+    mode: [mock]
+
+  - name: "read_one_shot does not double-trigger"
+    action: script
+    script: |
+      dev.power_off()
+      i2c.clear_write_log()
+      t, p, h = dev.read_one_shot()
+      log = i2c.get_write_log()
+      # Should only trigger forced mode once (not twice via _ensure_data)
+      forced_writes = [
+          1 for reg, data in log if reg == 0xF4 and (data[0] & 0x03) == 0x01
+      ]
+      result = len(forced_writes) == 1 and abs(t - 25.08) < 0.1
     expect_true: true
     mode: [mock]
