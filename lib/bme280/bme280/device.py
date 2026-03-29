@@ -16,7 +16,7 @@ from bme280.const import (
     SOFT_RESET_CMD,
     STATUS_IM_UPDATE,
 )
-from bme280.exceptions import BME280InvalidDevice, BME280NotFound
+from bme280.exceptions import BME280Error, BME280InvalidDevice, BME280NotFound
 
 
 class BME280(object):
@@ -74,11 +74,12 @@ class BME280(object):
         )
 
     def _wait_boot(self, timeout_ms=50):
-        """Wait for NVM data copy to complete."""
+        """Wait for NVM data copy to complete. Raises on timeout."""
         for _ in range(timeout_ms // 5):
             if not (self._read_reg(REG_STATUS) & STATUS_IM_UPDATE):
                 return
             sleep_ms(5)
+        raise BME280Error("BME280 NVM copy timeout")
 
     def device_id(self):
         """Read chip ID register. Expected: 0x60."""
