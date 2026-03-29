@@ -280,30 +280,30 @@ Performs a soft reset, re-reads calibration data, and re-applies default configu
 
 | Feature | **STeaMi** | **robert-hh** | **Adafruit** | **neliogodoi** | **Pimoroni** | **RandomNerd** |
 |---|---|---|---|---|---|---|
-| I2C | Yes | Yes | Yes | Yes | Yes | Yes |
-| SPI | No | No | Yes | No | No | No |
-| Sleep mode | Yes | Yes | Yes | No | No | No |
-| Forced mode | Yes | Yes | Yes | Implicit | No | No |
-| Normal mode | Yes | Yes | Yes | No | Fixed | No |
-| Oversampling (per channel) | Yes | Yes | Yes | Yes | Fixed x16 | Constants only |
-| IIR filter | Yes | No | Yes | Yes | Fixed x16 | No |
-| Standby time | Yes | No | Yes | No | Fixed 500ms | No |
-| Altitude | No | Yes | Yes | Yes | Yes | No |
-| Sea-level pressure | No | Yes | Yes | Yes | Yes | No |
-| Dew point | No | Yes | No | No | No | No |
-| Soft reset | Yes | No | No | No | Yes | No |
-| Full reset + recalibration | Yes | No | No | No | No | No |
-| power_off / power_on | Yes | No | Via mode | No | No | No |
-| data_ready | Yes | No | No | No | No | No |
-| read_one_shot | Yes | No | No | No | No | No |
-| set_continuous | Yes | No | Via mode | No | No | No |
-| Integer compensation | Yes | Yes | No | No | No | Yes |
-| Measurement time estimate | No | No | Yes | No | No | No |
-| Multi-unit temperature | No | No | No | C/F/K | No | C only |
-| BMP280 compatibility | No | No | No | No | Yes | No |
-| Dedicated exceptions | Yes | No | No | No | No | No |
-| Mock test suite | Yes (39) | No | No | No | No | No |
-| Hardware test suite | Yes (6) | No | No | No | No | No |
+| I2C | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| SPI | ❌ | ❌ | ✅ | ❌ | ❌ | ❌ |
+| Sleep mode | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ |
+| Forced mode | ✅ | ✅ | ✅ | ⚠️ Implicit | ❌ | ❌ |
+| Normal mode | ✅ | ✅ | ✅ | ❌ | ⚠️ Fixed | ❌ |
+| Oversampling (per channel) | ✅ | ✅ | ✅ | ✅ | ⚠️ Fixed x16 | ⚠️ Constants only |
+| IIR filter | ✅ | ❌ | ✅ | ✅ | ⚠️ Fixed x16 | ❌ |
+| Standby time | ✅ | ❌ | ✅ | ❌ | ⚠️ Fixed 500ms | ❌ |
+| Altitude | ❌ | ✅ | ✅ | ✅ | ✅ | ❌ |
+| Sea-level pressure | ❌ | ✅ | ✅ | ✅ | ✅ | ❌ |
+| Dew point | ❌ | ✅ | ❌ | ❌ | ❌ | ❌ |
+| Soft reset | ✅ | ❌ | ❌ | ❌ | ✅ | ❌ |
+| Full reset + recalibration | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| power_off / power_on | ✅ | ❌ | ⚠️ Via mode | ❌ | ❌ | ❌ |
+| data_ready | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| read_one_shot | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| set_continuous | ✅ | ❌ | ⚠️ Via mode | ❌ | ❌ | ❌ |
+| Integer compensation | ✅ | ✅ | ❌ | ❌ | ❌ | ✅ |
+| Measurement time estimate | ❌ | ❌ | ✅ | ❌ | ❌ | ❌ |
+| Multi-unit temperature | ❌ | ❌ | ❌ | ✅ C/F/K | ❌ | ❌ |
+| BMP280 compatibility | ❌ | ❌ | ❌ | ❌ | ✅ | ❌ |
+| Dedicated exceptions | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| Mock test suite | ✅ (39) | ❌ | ❌ | ❌ | ❌ | ❌ |
+| Hardware test suite | ✅ (6) | ❌ | ❌ | ❌ | ❌ | ❌ |
 
 Reference implementations:
 
