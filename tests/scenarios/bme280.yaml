@@ -17,6 +17,23 @@ mock_registers:
   # config (default)
   0xF5: 0x00
 
+  # Calibration block 1: 0x88, 26 bytes
+  # dig_T1=27504(u16) dig_T2=26435(s16) dig_T3=-1000(s16)
+  # dig_P1=36381(u16) dig_P2=-10685(s16) dig_P3=3024(s16)
+  # dig_P4=2855(s16) dig_P5=140(s16) dig_P6=-7(s16)
+  # dig_P7=15500(s16) dig_P8=-14600(s16) dig_P9=6000(s16)
+  # _=0 dig_H1=75(u8)
+  0x88: [0x70, 0x6B, 0x43, 0x67, 0x18, 0xFC,
+         0x1D, 0x8E, 0x43, 0xD6, 0xD0, 0x0B,
+         0x27, 0x0B, 0x8C, 0x00, 0xF9, 0xFF,
+         0x8C, 0x3C, 0xF8, 0xC6, 0x70, 0x17,
+         0x00, 0x4B]
+
+  # Calibration block 2: 0xE1, 7 bytes
+  # dig_H2=366(s16) dig_H3=0(u8)
+  # dig_H4=306(s12) dig_H5=57(s12) dig_H6=30(s8)
+  0xE1: [0x6E, 0x01, 0x00, 0x13, 0x92, 0x03, 0x1E]
+
 tests:
   - name: "Verify chip ID register"
     action: read_register
@@ -47,10 +64,96 @@ tests:
       i2c.clear_write_log()
       dev.reset()
       log = i2c.get_write_log()
-      # Should write reset command + ctrl_hum + ctrl_meas
       wrote_reset = any(reg == 0xE0 for reg, data in log)
       wrote_ctrl_hum = any(reg == 0xF2 for reg, data in log)
       wrote_ctrl_meas = any(reg == 0xF4 for reg, data in log)
       result = wrote_reset and wrote_ctrl_hum and wrote_ctrl_meas
+    expect_true: true
+    mode: [mock]
+
+  # ----- Calibration -----
+
+  - name: "Calibration data parsed correctly for temperature"
+    action: script
+    script: |
+      result = (
+          dev.dig_T1 == 27504
+          and dev.dig_T2 == 26435
+          and dev.dig_T3 == -1000
+      )
+    expect_true: true
+    mode: [mock]
+
+  - name: "Calibration data parsed correctly for pressure"
+    action: script
+    script: |
+      result = (
+          dev.dig_P1 == 36381
+          and dev.dig_P2 == -10685
+          and dev.dig_P9 == 6000
+      )
+    expect_true: true
+    mode: [mock]
+
+  - name: "Calibration data parsed correctly for humidity"
+    action: script
+    script: |
+      result = (
+          dev.dig_H1 == 75
+          and dev.dig_H2 == 366
+          and dev.dig_H3 == 0
+          and dev.dig_H6 == 30
+      )
+    expect_true: true
+    mode: [mock]
+
+  - name: "H4 and H5 cross-register parsing"
+    action: script
+    script: |
+      # From mock: hum bytes [0x6E, 0x01, 0x00, 0x13, 0x92, 0x03, 0x1E]
+      # H4 = (hum[3] << 4) | (hum[4] & 0x0F) = (0x13 << 4) | (0x92 & 0x0F) = 0x132 = 306, then sign
+      # H5 = (hum[4] >> 4) | (hum[5] << 4) = (0x92 >> 4) | (0x03 << 4) = 0x09 | 0x30 = 0x39 = 57
+      result = (
+          dev.dig_H4 == 306
+          and dev.dig_H5 == 57
+      )
+    expect_true: true
+    mode: [mock]
+
+  - name: "t_fine initialized to zero"
+    action: script
+    script: |
+      result = dev.t_fine == 0
+    expect_true: true
+    mode: [mock]
+
+  - name: "Init reads STATUS before calibration registers"
+    action: script
+    script: |
+      # The full init I2C log should show:
+      # 1. Read chip ID (0xD0)
+      # 2. Read STATUS (0xF3) — _wait_boot before calibration
+      # 3. Read calibration block 1 (0x88)
+      # 4. Read calibration block 2 (0xE1)
+      # 5. Write ctrl_hum (0xF2) + ctrl_meas (0xF4)
+      # We re-instantiate to capture the full init sequence
+      i2c.clear_read_log()
+      from bme280 import BME280
+      dev2 = BME280(i2c, address=0x76)
+      log = i2c.get_read_log()
+      regs_read = [reg for reg in log]
+      # STATUS (0xF3) must appear before calibration (0x88)
+      status_idx = None
+      calib_idx = None
+      for idx, reg in enumerate(regs_read):
+          if reg == 0xF3 and status_idx is None:
+              status_idx = idx
+          if reg == 0x88 and calib_idx is None:
+              calib_idx = idx
+      result = (
+          status_idx is not None
+          and calib_idx is not None
+          and status_idx < calib_idx
+      )
     expect_true: true
     mode: [mock]
