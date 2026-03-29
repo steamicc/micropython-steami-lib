@@ -13,7 +13,7 @@ print("BME280 found")
 print("Device ID:", hex(sensor.device_id()))
 
 for _ in range(10):
-    temperature, pressure, humidity = sensor.read()
+    temperature, pressure, humidity = sensor.read_one_shot()
 
     print(
         "T: {:.1f} C  P: {:.1f} hPa  H: {:.1f} %RH".format(

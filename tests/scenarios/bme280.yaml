@@ -420,28 +420,26 @@ tests:
   # ----- Hardware tests -----
 
   - name: "Temperature in plausible range"
-    action: call
-    method: temperature
-    expect_range: [10.0, 45.0]
+    action: script
+    script: |
+      t, _, _ = dev.read_one_shot()
+      result = 10.0 <= t <= 45.0
+    expect_true: true
     mode: [hardware]
 
   - name: "Pressure in plausible range"
-    action: call
-    method: pressure_hpa
-    expect_range: [900.0, 1100.0]
+    action: script
+    script: |
+      _, p, _ = dev.read_one_shot()
+      result = 900.0 <= p <= 1100.0
+    expect_true: true
     mode: [hardware]
 
   - name: "Humidity in plausible range"
-    action: call
-    method: humidity
-    expect_range: [5.0, 95.0]
-    mode: [hardware]
-
-  - name: "read() returns three plausible values"
     action: script
     script: |
-      t, p, h = dev.read()
-      result = 10.0 <= t <= 45.0 and 900.0 <= p <= 1100.0 and 5.0 <= h <= 95.0
+      _, _, h = dev.read_one_shot()
+      result = 5.0 <= h <= 95.0
     expect_true: true
     mode: [hardware]
 
@@ -453,17 +451,23 @@ tests:
     expect_true: true
     mode: [hardware]
 
+  - name: "Continuous mode produces plausible values"
+    action: script
+    script: |
+      from time import sleep_ms
+      dev.set_continuous()
+      sleep_ms(100)
+      t, p, h = dev.read()
+      dev.power_off()
+      result = 10.0 <= t <= 45.0 and 900.0 <= p <= 1100.0 and 5.0 <= h <= 95.0
+    expect_true: true
+    mode: [hardware]
+
   - name: "Readings feel correct"
     action: manual
     display:
-      - method: temperature
-        label: "Temperature"
-        unit: "C"
-      - method: pressure_hpa
-        label: "Pressure"
-        unit: "hPa"
-      - method: humidity
-        label: "Humidity"
-        unit: "%RH"
+      - method: read_one_shot
+        label: "T, P, H"
     prompt: "Do the values look reasonable?"
+    expect_true: true
     mode: [hardware]

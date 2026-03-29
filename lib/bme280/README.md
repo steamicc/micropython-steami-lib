@@ -13,7 +13,7 @@ The BME280 is a high-precision environmental sensor suitable for applications su
 
 ---
 
-# Features
+## Features
 
 * I2C communication
 * device identification
@@ -31,7 +31,7 @@ The BME280 is a high-precision environmental sensor suitable for applications su
 
 ---
 
-# Sensor Overview
+## Sensor Overview
 
 | Feature                | Value                   |
 | ---------------------- | ----------------------- |
@@ -46,7 +46,7 @@ The BME280 is a high-precision environmental sensor suitable for applications su
 
 ---
 
-# I2C Address
+## I2C Address
 
 The sensor can use two I2C addresses depending on the **SDO pin**:
 
@@ -59,7 +59,7 @@ The default address used by the driver is **0x76**.
 
 ---
 
-# Basic Usage
+## Basic Usage
 
 ```python
 from machine import I2C
@@ -71,7 +71,7 @@ i2c = I2C(1)
 sensor = BME280(i2c)
 
 while True:
-    temperature, pressure, humidity = sensor.read()
+    temperature, pressure, humidity = sensor.read_one_shot()
 
     print("T:", temperature, "C")
     print("P:", pressure, "hPa")
@@ -83,7 +83,7 @@ while True:
 
 ---
 
-# API Reference
+## API Reference
 
 ## Initialization
 
@@ -267,7 +267,7 @@ Performs a soft reset, re-reads calibration data, and re-applies default configu
 
 ---
 
-# Examples
+## Examples
 
 | Example              | Description                                        |
 | -------------------- | -------------------------------------------------- |
@@ -276,6 +276,6 @@ Performs a soft reset, re-reads calibration data, and re-applies default configu
 
 ---
 
-# References
+## References
 
 * [BME280 Datasheet](https://www.bosch-sensortec.com/media/boschsensortec/downloads/datasheets/bst-bme280-ds002.pdf)
