@@ -276,6 +276,45 @@ Performs a soft reset, re-reads calibration data, and re-applies default configu
 
 ---
 
+## Comparison with other MicroPython BME280 drivers
+
+| Feature | **STeaMi** | **robert-hh** | **Adafruit** | **neliogodoi** | **Pimoroni** | **RandomNerd** |
+|---|---|---|---|---|---|---|
+| I2C | Yes | Yes | Yes | Yes | Yes | Yes |
+| SPI | No | No | Yes | No | No | No |
+| Sleep mode | Yes | Yes | Yes | No | No | No |
+| Forced mode | Yes | Yes | Yes | Implicit | No | No |
+| Normal mode | Yes | Yes | Yes | No | Fixed | No |
+| Oversampling (per channel) | Yes | Yes | Yes | Yes | Fixed x16 | Constants only |
+| IIR filter | Yes | No | Yes | Yes | Fixed x16 | No |
+| Standby time | Yes | No | Yes | No | Fixed 500ms | No |
+| Altitude | No | Yes | Yes | Yes | Yes | No |
+| Sea-level pressure | No | Yes | Yes | Yes | Yes | No |
+| Dew point | No | Yes | No | No | No | No |
+| Soft reset | Yes | No | No | No | Yes | No |
+| Full reset + recalibration | Yes | No | No | No | No | No |
+| power_off / power_on | Yes | No | Via mode | No | No | No |
+| data_ready | Yes | No | No | No | No | No |
+| read_one_shot | Yes | No | No | No | No | No |
+| set_continuous | Yes | No | Via mode | No | No | No |
+| Integer compensation | Yes | Yes | No | No | No | Yes |
+| Measurement time estimate | No | No | Yes | No | No | No |
+| Multi-unit temperature | No | No | No | C/F/K | No | C only |
+| BMP280 compatibility | No | No | No | No | Yes | No |
+| Dedicated exceptions | Yes | No | No | No | No | No |
+| Mock test suite | Yes (39) | No | No | No | No | No |
+| Hardware test suite | Yes (6) | No | No | No | No | No |
+
+Reference implementations:
+
+* [robert-hh/BME280](https://github.com/robert-hh/BME280) — integer compensation, altitude, dew point
+* [Adafruit CircuitPython BME280](https://github.com/adafruit/Adafruit_CircuitPython_BME280) — I2C + SPI, basic/advanced split
+* [neliogodoi/MicroPython-BME280](https://github.com/neliogodoi/MicroPython-BME280) — configurable oversampling and IIR
+* [Pimoroni envirobit](https://github.com/pimoroni/micropython-envirobit) — Micro:bit driver, BMP280 alias
+* [RandomNerdTutorials](https://randomnerdtutorials.com/micropython-bme280-esp32-esp8266/) — ESP32/ESP8266 tutorial
+
+---
+
 ## References
 
 * [BME280 Datasheet](https://www.bosch-sensortec.com/media/boschsensortec/downloads/datasheets/bst-bme280-ds002.pdf)
