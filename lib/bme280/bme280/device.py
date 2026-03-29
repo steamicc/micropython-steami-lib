@@ -57,10 +57,6 @@ class BME280(object):
         self.i2c.writeto_mem(self.address, reg, bytes([value]))
 
     # --------------------------------------------------
-    # Device identification and initialization
-    # --------------------------------------------------
-
-    # --------------------------------------------------
     # Calibration data
     # --------------------------------------------------
 
