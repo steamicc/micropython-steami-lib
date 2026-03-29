@@ -186,7 +186,7 @@ tests:
     expect_true: true
     mode: [mock]
 
-  - name: "temperature_ready delegates to data_ready"
+  - name: "All ready methods delegate to data_ready"
     action: script
     script: |
       result = dev.temperature_ready() and dev.pressure_ready() and dev.humidity_ready()

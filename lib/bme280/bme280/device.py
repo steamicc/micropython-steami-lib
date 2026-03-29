@@ -185,7 +185,7 @@ class BME280(object):
     # --------------------------------------------------
 
     def _read_raw(self):
-        """Read raw ADC values for pressure, temperature, humidity (burst read).
+        """Read raw ADC values via burst read (0xF7-0xFE, 8 bytes).
 
         Returns (raw_temp, raw_press, raw_hum) as 20-bit/20-bit/16-bit integers.
         """
@@ -227,8 +227,6 @@ class BME280(object):
     def _compensate_humidity(self, raw_hum):
         """Compute compensated humidity in Q22.10 fixed point."""
         h = self.t_fine - 76800
-        if h == 0:
-            return 0
         h = (
             (((raw_hum << 14) - (self.dig_H4 << 20) - (self.dig_H5 * h)) + 16384)
             >> 15
