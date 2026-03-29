@@ -16,6 +16,7 @@ class FakeI2C:
         self._registers = {}
         self._address = address
         self._write_log = []
+        self._read_log = []
 
         if registers:
             for reg, value in registers.items():
@@ -26,6 +27,7 @@ class FakeI2C:
 
     def readfrom_mem(self, addr, reg, nbytes, *, addrsize=8):
         self._check_address(addr)
+        self._read_log.append(reg)
         data = self._registers.get(reg, b"\x00" * nbytes)
         return data[:nbytes]
 
@@ -64,6 +66,13 @@ class FakeI2C:
 
     def clear_write_log(self):
         self._write_log.clear()
+
+    def get_read_log(self):
+        """Return list of register addresses read."""
+        return list(self._read_log)
+
+    def clear_read_log(self):
+        self._read_log.clear()
 
     def _check_address(self, addr):
         if self._address is not None and addr != self._address:
