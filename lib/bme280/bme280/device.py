@@ -30,7 +30,7 @@ from bme280.const import (
     STATUS_IM_UPDATE,
     STATUS_MEASURING,
 )
-from bme280.exceptions import BME280Error, BME280InvalidDevice, BME280NotFound
+from bme280.exceptions import BME280InvalidDevice, BME280NotFound
 
 
 class BME280(object):
@@ -125,7 +125,7 @@ class BME280(object):
             if not (self._read_reg(REG_STATUS) & STATUS_IM_UPDATE):
                 return
             sleep_ms(5)
-        raise BME280Error("BME280 NVM copy timeout")
+        raise OSError("BME280 NVM copy timeout")
 
     def device_id(self):
         """Read chip ID register. Expected: 0x60."""
@@ -265,7 +265,7 @@ class BME280(object):
             if self.data_ready():
                 return
             sleep_ms(5)
-        raise BME280Error("BME280 measurement timeout")
+        raise OSError("BME280 measurement timeout")
 
     # --------------------------------------------------
     # Raw data burst read
