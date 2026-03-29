@@ -19,7 +19,7 @@ mock_registers:
 
   # Calibration block 1: 0x88, 26 bytes
   # dig_T1=27504(u16) dig_T2=26435(s16) dig_T3=-1000(s16)
-  # dig_P1=36477(u16) dig_P2=-10685(s16) dig_P3=3024(s16)
+  # dig_P1=36381(u16) dig_P2=-10685(s16) dig_P3=3024(s16)
   # dig_P4=2855(s16) dig_P5=140(s16) dig_P6=-7(s16)
   # dig_P7=15500(s16) dig_P8=-14600(s16) dig_P9=6000(s16)
   # _=0 dig_H1=75(u8)
@@ -31,7 +31,7 @@ mock_registers:
 
   # Calibration block 2: 0xE1, 7 bytes
   # dig_H2=366(s16) dig_H3=0(u8)
-  # dig_H4=313(s12) dig_H5=50(s12) dig_H6=30(s8)
+  # dig_H4=306(s12) dig_H5=57(s12) dig_H6=30(s8)
   0xE1: [0x6E, 0x01, 0x00, 0x13, 0x92, 0x03, 0x1E]
 
 tests:
