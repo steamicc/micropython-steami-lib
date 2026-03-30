@@ -630,3 +630,27 @@ tests:
       result = abs(alt - 33.7) < 1.0
     expect_true: true
     mode: [mock]
+
+  # ----- Dew point -----
+
+  - name: "dew_point() returns plausible value"
+    action: script
+    script: |
+      # Mock: ~25.08°C, ~50.57%RH → dew point ~14.11°C
+      dp = dev.dew_point()
+      result = abs(dp - 14.11) < 0.5
+    expect_true: true
+    mode: [mock]
+
+  - name: "dew_point() matches Magnus formula for mock readings"
+    action: script
+    script: |
+      from math import log
+      t, _, rh = dev.read()
+      # Compute expected dew point from Magnus formula
+      gamma = log(rh / 100.0) + 17.625 * t / (243.04 + t)
+      expected = 243.04 * gamma / (17.625 - gamma)
+      dp = dev.dew_point()
+      result = abs(dp - expected) < 0.01
+    expect_true: true
+    mode: [mock]
