@@ -51,6 +51,10 @@ class ISM330DL(object):
         self._gyro_scale = GYRO_FS_250DPS
         self._gyro_odr = GYRO_ODR_104HZ
 
+        self._accel_offset_x = 0.0
+        self._accel_offset_y = 0.0
+        self._accel_offset_z = 0.0
+
         self._temp_gain = 1.0
         self._temp_offset = 0.0
 
@@ -200,7 +204,27 @@ class ISM330DL(object):
     def acceleration_g(self):
         sens = ACCEL_SENSITIVITY_MG[self._accel_scale]
         raw = self.acceleration_raw()
-        return tuple((v * sens) / 1000.0 for v in raw)
+        values = tuple((v * sens) / 1000.0 for v in raw)
+
+        return (
+            values[0] - self._accel_offset_x,
+            values[1] - self._accel_offset_y,
+            values[2] - self._accel_offset_z,
+        )
+
+    def set_accel_offset(self, ox=0.0, oy=0.0, oz=0.0):
+        """Set accelerometer bias offsets in g."""
+        self._accel_offset_x = float(ox)
+        self._accel_offset_y = float(oy)
+        self._accel_offset_z = float(oz)
+
+    def get_accel_offset(self):
+        """Return accelerometer bias offsets in g."""
+        return (
+            self._accel_offset_x,
+            self._accel_offset_y,
+            self._accel_offset_z,
+        )
 
     def acceleration_ms2(self):
         g = self.acceleration_g()
