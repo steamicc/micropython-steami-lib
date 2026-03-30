@@ -205,3 +205,59 @@ class SteamiConfig(object):
         lis2mdl_instance.x_scale = cal["soft_iron_x"]
         lis2mdl_instance.y_scale = cal["soft_iron_y"]
         lis2mdl_instance.z_scale = cal["soft_iron_z"]
+
+    # --------------------------------------------------
+    # Accelerometer calibration
+    # --------------------------------------------------
+
+    def set_accelerometer_calibration(self, ox=0.0, oy=0.0, oz=0.0):
+        """Store accelerometer bias offsets (in g).
+
+        Args:
+            ox: X-axis offset
+            oy: Y-axis offset
+            oz: Z-axis offset
+        """
+        self._data["cal_accel"] = {
+            "ox": float(ox),
+            "oy": float(oy),
+            "oz": float(oz),
+        }
+
+
+    def get_accelerometer_calibration(self):
+        """Return accelerometer calibration offsets.
+
+        Returns:
+            dict with ox, oy, oz or None
+        """
+        cal = self._data.get("cal_accel")
+        if cal is None:
+            return None
+
+        return {
+            "ox": cal.get("ox", 0.0),
+            "oy": cal.get("oy", 0.0),
+            "oz": cal.get("oz", 0.0),
+        }
+
+
+    def apply_accelerometer_calibration(self, ism330dl_instance):
+        """Apply stored calibration to ISM330DL instance.
+
+        The instance must support offset attributes (user-defined).
+
+        Args:
+            ism330dl_instance: ISM330DL driver instance
+        """
+        if type(ism330dl_instance).__name__.lower() != "ism330dl":
+            return
+
+        cal = self.get_accelerometer_calibration()
+        if cal is None:
+            return
+
+        # the driver does NOT have native offset support, so we add attributes dynamically
+        ism330dl_instance._accel_offset_x = cal["ox"]
+        ism330dl_instance._accel_offset_y = cal["oy"]
+        ism330dl_instance._accel_offset_z = cal["oz"]
