@@ -213,11 +213,11 @@ class BME280(object):
         self._write_reg(REG_CONFIG, config)
 
     def measurement_time_ms(self):
-        """Return the maximum measurement time in milliseconds.
+        """Return the maximum measurement time in milliseconds (int, rounded up).
 
         Computed from the current oversampling settings using the formula
-        from the BME280 datasheet (section 9.1). Useful for sleeping
-        instead of polling in forced mode.
+        from the BME280 datasheet (section 9.1). The result is always an
+        integer ceiling so it can be passed directly to ``sleep_ms()``.
         """
         ctrl_meas = self._read_reg(REG_CTRL_MEAS)
         osrs_t = (ctrl_meas >> OSRS_T_SHIFT) & 0x07
@@ -230,7 +230,7 @@ class BME280(object):
             t_ms += 2.3 * (1 << (osrs_p - 1)) + 0.575
         if osrs_h:
             t_ms += 2.3 * (1 << (osrs_h - 1)) + 0.575
-        return t_ms
+        return int(t_ms) + (1 if t_ms != int(t_ms) else 0)
 
     # --------------------------------------------------
     # Status
@@ -280,8 +280,14 @@ class BME280(object):
         ctrl = self._read_reg(REG_CTRL_MEAS)
         self._write_reg(REG_CTRL_MEAS, (ctrl & ~MODE_MASK) | MODE_FORCED)
 
-    def _wait_measurement(self, timeout_ms=100):
-        """Wait for measurement to complete. Raises on timeout."""
+    def _wait_measurement(self):
+        """Wait for measurement to complete. Raises on timeout.
+
+        The timeout is derived from :meth:`measurement_time_ms` with a
+        2x safety margin so that high-oversampling configurations (e.g.
+        x16/x16/x16 ≈ 113 ms) never hit a spurious timeout.
+        """
+        timeout_ms = self.measurement_time_ms() * 2 + 10
         for _ in range(timeout_ms // 5):
             if self.data_ready():
                 return

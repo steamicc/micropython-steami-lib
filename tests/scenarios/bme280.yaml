@@ -657,12 +657,12 @@ tests:
 
   # ----- Measurement time -----
 
-  - name: "measurement_time_ms with default x1 oversampling"
+  - name: "measurement_time_ms returns int ceiling with default x1"
     action: script
     script: |
-      # Default: OSRS_X1 for all three → 1.25 + 2.3 + (2.3+0.575) + (2.3+0.575) = 9.3 ms
+      # Default: OSRS_X1 for all three → ceil(9.3) = 10 ms
       t = dev.measurement_time_ms()
-      result = abs(t - 9.3) < 0.01
+      result = t == 10 and isinstance(t, int)
     expect_true: true
     mode: [mock]
 
@@ -672,8 +672,8 @@ tests:
       from bme280.const import OSRS_X2, OSRS_X16
       dev.set_oversampling(temperature=OSRS_X2, pressure=OSRS_X16, humidity=OSRS_X2)
       t = dev.measurement_time_ms()
-      # 1.25 + 2.3*2 + (2.3*16+0.575) + (2.3*2+0.575) = 48.4 ms
-      result = abs(t - 48.4) < 0.01
+      # ceil(1.25 + 2.3*2 + (2.3*16+0.575) + (2.3*2+0.575)) = ceil(48.4) = 49 ms
+      result = t == 49
       # Restore default
       from bme280.const import OSRS_X1
       dev.set_oversampling(temperature=OSRS_X1, pressure=OSRS_X1, humidity=OSRS_X1)
@@ -686,9 +686,22 @@ tests:
       from bme280.const import OSRS_SKIP
       dev.set_oversampling(temperature=OSRS_SKIP, pressure=OSRS_SKIP, humidity=OSRS_SKIP)
       t = dev.measurement_time_ms()
-      # Only base time: 1.25 ms
-      result = abs(t - 1.25) < 0.01
+      # ceil(1.25) = 2 ms
+      result = t == 2
       # Restore default
+      from bme280.const import OSRS_X1
+      dev.set_oversampling(temperature=OSRS_X1, pressure=OSRS_X1, humidity=OSRS_X1)
+    expect_true: true
+    mode: [mock]
+
+  - name: "measurement_time_ms handles x16 on all channels"
+    action: script
+    script: |
+      from bme280.const import OSRS_X16
+      dev.set_oversampling(temperature=OSRS_X16, pressure=OSRS_X16, humidity=OSRS_X16)
+      t = dev.measurement_time_ms()
+      # ceil(1.25 + 2.3*16 + (2.3*16+0.575) + (2.3*16+0.575)) = ceil(112.8) = 113 ms
+      result = t == 113
       from bme280.const import OSRS_X1
       dev.set_oversampling(temperature=OSRS_X1, pressure=OSRS_X1, humidity=OSRS_X1)
     expect_true: true
