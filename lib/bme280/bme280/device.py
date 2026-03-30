@@ -212,6 +212,26 @@ class BME280(object):
         config = (config & ~(0x07 << STANDBY_SHIFT)) | (standby << STANDBY_SHIFT)
         self._write_reg(REG_CONFIG, config)
 
+    def measurement_time_ms(self):
+        """Return the maximum measurement time in milliseconds.
+
+        Computed from the current oversampling settings using the formula
+        from the BME280 datasheet (section 9.1). Useful for sleeping
+        instead of polling in forced mode.
+        """
+        ctrl_meas = self._read_reg(REG_CTRL_MEAS)
+        osrs_t = (ctrl_meas >> OSRS_T_SHIFT) & 0x07
+        osrs_p = (ctrl_meas >> OSRS_P_SHIFT) & 0x07
+        osrs_h = self._read_reg(REG_CTRL_HUM) & 0x07
+        t_ms = 1.25
+        if osrs_t:
+            t_ms += 2.3 * (1 << (osrs_t - 1))
+        if osrs_p:
+            t_ms += 2.3 * (1 << (osrs_p - 1)) + 0.575
+        if osrs_h:
+            t_ms += 2.3 * (1 << (osrs_h - 1)) + 0.575
+        return t_ms
+
     # --------------------------------------------------
     # Status
     # --------------------------------------------------

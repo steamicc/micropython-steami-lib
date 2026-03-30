@@ -654,3 +654,42 @@ tests:
       result = abs(dp - expected) < 0.01
     expect_true: true
     mode: [mock]
+
+  # ----- Measurement time -----
+
+  - name: "measurement_time_ms with default x1 oversampling"
+    action: script
+    script: |
+      # Default: OSRS_X1 for all three → 1.25 + 2.3 + (2.3+0.575) + (2.3+0.575) = 9.3 ms
+      t = dev.measurement_time_ms()
+      result = abs(t - 9.3) < 0.01
+    expect_true: true
+    mode: [mock]
+
+  - name: "measurement_time_ms with weather station config"
+    action: script
+    script: |
+      from bme280.const import OSRS_X2, OSRS_X16
+      dev.set_oversampling(temperature=OSRS_X2, pressure=OSRS_X16, humidity=OSRS_X2)
+      t = dev.measurement_time_ms()
+      # 1.25 + 2.3*2 + (2.3*16+0.575) + (2.3*2+0.575) = 48.4 ms
+      result = abs(t - 48.4) < 0.01
+      # Restore default
+      from bme280.const import OSRS_X1
+      dev.set_oversampling(temperature=OSRS_X1, pressure=OSRS_X1, humidity=OSRS_X1)
+    expect_true: true
+    mode: [mock]
+
+  - name: "measurement_time_ms with all channels skipped"
+    action: script
+    script: |
+      from bme280.const import OSRS_SKIP
+      dev.set_oversampling(temperature=OSRS_SKIP, pressure=OSRS_SKIP, humidity=OSRS_SKIP)
+      t = dev.measurement_time_ms()
+      # Only base time: 1.25 ms
+      result = abs(t - 1.25) < 0.01
+      # Restore default
+      from bme280.const import OSRS_X1
+      dev.set_oversampling(temperature=OSRS_X1, pressure=OSRS_X1, humidity=OSRS_X1)
+    expect_true: true
+    mode: [mock]
