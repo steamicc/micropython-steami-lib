@@ -17,17 +17,12 @@ from machine import I2C
 from steami_config import SteamiConfig
 
 # --- Init ---
-print("Initializing...")
 
 i2c = I2C(1)
-print("I2C initialized.")
 bridge = DaplinkBridge(i2c)
-print("DaplinkBridge initialized.")
 config = SteamiConfig(bridge)
-print("SteamiConfig initialized.")
 config.load()
 
-print("Initialization complete.\n")
 imu = ISM330DL(i2c)
 
 print("=== Accelerometer Calibration ===\n")
@@ -39,7 +34,7 @@ sleep_ms(2000)
 samples = 100
 sx = sy = sz = 0.0
 
-for _i in range(samples):
+for _ in range(samples):
     ax, ay, az = imu.acceleration_g()
     sx += ax
     sy += ay
@@ -50,10 +45,10 @@ ax = sx / samples
 ay = sy / samples
 az = sz / samples
 
-# Expected: (0, 0, -1g) when flat (screen up)
+# Expected resting orientation: flat, screen up -> (0, 0, -1g)
 ox = ax
 oy = ay
-oz = az + 1.0  # compensate gravity
+oz = az + 1.0
 
 print("\nMeasured average:")
 print("  ax = {:.3f} g".format(ax))
@@ -61,18 +56,18 @@ print("  ay = {:.3f} g".format(ay))
 print("  az = {:.3f} g".format(az))
 
 print("\nComputed offsets:")
-print("  ox = {:.3f}".format(ox))
-print("  oy = {:.3f}".format(oy))
-print("  oz = {:.3f}".format(oz))
+print("  ox = {:.3f} g".format(ox))
+print("  oy = {:.3f} g".format(oy))
+print("  oz = {:.3f} g".format(oz))
 
-# --- Step 2: Save ---
+# --- Step 2: Save to config zone ---
 
 config.set_accelerometer_calibration(ox=ox, oy=oy, oz=oz)
 config.save()
 
 print("\nCalibration saved to config zone.")
 
-# --- Step 3: Verify ---
+# --- Step 3: Verify after reload ---
 
 config2 = SteamiConfig(bridge)
 config2.load()
@@ -80,21 +75,16 @@ config2.load()
 imu2 = ISM330DL(i2c)
 config2.apply_accelerometer_calibration(imu2)
 
-print("\nVerification (5 readings):")
+print("\nApplied offsets after reload:")
+ox2, oy2, oz2 = imu2.get_accel_offset()
+print("  ox = {:.3f} g".format(ox2))
+print("  oy = {:.3f} g".format(oy2))
+print("  oz = {:.3f} g".format(oz2))
 
+print("\nVerification (5 corrected readings):")
 for i in range(5):
     ax, ay, az = imu2.acceleration_g()
-
-    # Apply offsets manually (driver not patched yet)
-    ox = getattr(imu2, "_accel_offset_x", 0.0)
-    oy = getattr(imu2, "_accel_offset_y", 0.0)
-    oz = getattr(imu2, "_accel_offset_z", 0.0)
-
-    ax -= ox
-    ay -= oy
-    az -= oz
-
     print("  {}: ax={:.3f} ay={:.3f} az={:.3f}".format(i + 1, ax, ay, az))
     sleep_ms(500)
 
-print("\nDone! Calibration will persist across reboots.")
+print("\nDone! Calibration is stored and will be restored at next boot.")
