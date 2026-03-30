@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [0.11.0](https://github.com/steamicc/micropython-steami-lib/compare/v0.10.0...v0.11.0) (2026-03-30)
+
+
+### Features
+
+* **vl53l1x:** Add proximity alert example with buzzer. ([#337](https://github.com/steamicc/micropython-steami-lib/issues/337)) ([01d1206](https://github.com/steamicc/micropython-steami-lib/commit/01d1206d17c4fa009c49cf9fa451183a2fb4feed))
+
 # [0.10.0](https://github.com/steamicc/micropython-steami-lib/compare/v0.9.0...v0.10.0) (2026-03-30)
 
 
