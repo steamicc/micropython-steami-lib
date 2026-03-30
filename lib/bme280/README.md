@@ -186,6 +186,16 @@ sensor.sea_level_pressure_hpa = 1020.0
 
 ---
 
+### Dew Point
+
+```python
+dp = sensor.dew_point()
+```
+
+Returns the dew point temperature in **degrees Celsius**, computed from the current temperature and humidity using the Magnus formula.
+
+---
+
 ## Data-Ready Status
 
 ```python
@@ -313,7 +323,7 @@ Performs a soft reset, re-reads calibration data, and re-applies default configu
 | Standby time | ✅ | ❌ | ✅ | ❌ | ⚠️ Fixed 500ms | ❌ |
 | Altitude | ✅ | ✅ | ✅ | ✅ | ✅ | ❌ |
 | Sea-level pressure | ✅ | ✅ | ✅ | ✅ | ✅ | ❌ |
-| Dew point | ❌ | ✅ | ❌ | ❌ | ❌ | ❌ |
+| Dew point | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ |
 | Soft reset | ✅ | ❌ | ❌ | ❌ | ✅ | ❌ |
 | Full reset + recalibration | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ |
 | power_off / power_on | ✅ | ❌ | ⚠️ Via mode | ❌ | ❌ | ❌ |

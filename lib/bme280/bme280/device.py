@@ -409,3 +409,16 @@ class BME280(object):
         """
         p = self.pressure_hpa() if pressure_hpa is None else pressure_hpa
         return 44330.0 * (1.0 - (p / self.sea_level_pressure_hpa) ** 0.1903)
+
+    def dew_point(self):
+        """Return dew point temperature in degrees Celsius.
+
+        Uses the Magnus formula (Alduchov & Eskridge, 1996) with the
+        current temperature and relative humidity readings.
+        """
+        from math import log
+
+        t = self.temperature()
+        rh = self.humidity()
+        gamma = log(rh / 100.0) + 17.625 * t / (243.04 + t)
+        return 243.04 * gamma / (17.625 - gamma)
