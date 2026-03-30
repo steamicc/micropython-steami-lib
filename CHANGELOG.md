@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [0.8.0](https://github.com/steamicc/micropython-steami-lib/compare/v0.7.0...v0.8.0) (2026-03-30)
+
+
+### Features
+
+* **bme280:** Add altitude computation and sea-level pressure ([#321](https://github.com/steamicc/micropython-steami-lib/issues/321)) ([43625d9](https://github.com/steamicc/micropython-steami-lib/commit/43625d92202fed0c8c0783cfdf18403718aee9ba))
+
 # [0.7.0](https://github.com/steamicc/micropython-steami-lib/compare/v0.6.0...v0.7.0) (2026-03-29)
 
 
