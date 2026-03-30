@@ -414,11 +414,12 @@ class BME280(object):
         """Return dew point temperature in degrees Celsius.
 
         Uses the Magnus formula (Alduchov & Eskridge, 1996) with the
-        current temperature and relative humidity readings.
+        current temperature and relative humidity readings.  Both values
+        come from a single ``read()`` call to ensure consistency.
         """
         from math import log
 
-        t = self.temperature()
-        rh = self.humidity()
+        t, _, rh = self.read()
+        rh = max(rh, 0.01)
         gamma = log(rh / 100.0) + 17.625 * t / (243.04 + t)
         return 243.04 * gamma / (17.625 - gamma)

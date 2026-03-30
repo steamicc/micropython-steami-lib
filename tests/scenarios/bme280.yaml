@@ -642,15 +642,12 @@ tests:
     expect_true: true
     mode: [mock]
 
-  - name: "dew_point() equals temperature at 100% humidity"
+  - name: "dew_point() matches Magnus formula for mock readings"
     action: script
     script: |
-      # Override humidity compensation to return ~100%RH
-      # At 100% RH, dew point should equal temperature
       from math import log
-      t = dev.temperature()
-      rh = dev.humidity()
-      # Compute expected dew point from actual mock values
+      t, _, rh = dev.read()
+      # Compute expected dew point from Magnus formula
       gamma = log(rh / 100.0) + 17.625 * t / (243.04 + t)
       expected = 243.04 * gamma / (17.625 - gamma)
       dp = dev.dew_point()
