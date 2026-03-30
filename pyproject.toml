@@ -34,7 +34,7 @@ markers = [
 
 [tool.ruff]
 line-length = 99
-target-version = "py37"
+target-version = "py310"
 
 [tool.ruff.lint]
 preview = true
@@ -76,6 +76,7 @@ select = [
   "YTT",    # flake8-2020
 ]
 ignore = [
+  "B905",    # zip() strict= not available in micropython
   "E501",    # line length, recommended to disable
   "E741",    # 'l' is currently widely used
   "ISC001",  # conflicts with formatter
@@ -89,9 +90,6 @@ ignore = [
   "PLW0603", # global statement
   "PLW2901", # overwriting loop variable
   "RUF012",  # mutable class variable
-  "RUF001",  # ambiguous unicode in string (µ for microtesla is intentional)
-  "RUF002",  # ambiguous unicode in docstring
-  "RUF003",  # ambiguous unicode in comment
   "RUF100",  # unused noqa
   "SIM101",  # merge isinstance calls (micropython compat)
   "SIM105",  # contextlib.suppress not available in micropython
@@ -117,6 +115,7 @@ max-statements = 65
 "**/examples/*.py" = ["T20", "N806"]
 "lib/mcp23009e/examples/i2c_scan.py" = ["PERF203"]
 "tests/**/*.py" = ["T20", "PLR0911", "PLR0912", "PLR0915"]
+"lib/lis2mdl/**/*.py" = ["RUF001", "RUF002", "RUF003"]  # µ (microtesla) is intentional
 
 [tool.ruff.format]
 quote-style = "double"
