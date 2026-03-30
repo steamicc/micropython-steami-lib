@@ -100,6 +100,72 @@ tests:
     expect_true: true
     mode: [hardware]
 
+  - name: "Get accel offset returns defaults"
+    action: script
+    script: |
+      ox, oy, oz = dev.get_accel_offset()
+      result = ox == 0.0 and oy == 0.0 and oz == 0.0
+    expect_true: true
+    mode: [mock]
+
+  - name: "Set accel offset updates stored values"
+    action: script
+    script: |
+      dev.set_accel_offset(0.01, -0.02, 0.03)
+      ox, oy, oz = dev.get_accel_offset()
+      result = ox == 0.01 and oy == -0.02 and oz == 0.03
+    expect_true: true
+    mode: [mock]
+
+  - name: "Acceleration g applies accel offsets"
+    action: script
+    script: |
+      dev.set_accel_offset(0.1, -0.2, 0.3)
+      ax, ay, az = dev.acceleration_g()
+      result = (
+          abs(ax - (-0.1)) < 0.01
+          and abs(ay - 0.2) < 0.01
+          and abs(az - 0.7) < 0.01
+      )
+    expect_true: true
+    mode: [mock]
+
+  - name: "Acceleration ms2 applies accel offsets"
+    action: script
+    script: |
+      dev.set_accel_offset(0.1, 0.0, 0.0)
+      ax, ay, az = dev.acceleration_ms2()
+      result = abs(ax - (-0.1 * 9.80665)) < 0.02
+    expect_true: true
+    mode: [mock]
+
+  - name: "Orientation changes with accel offset"
+    action: script
+    script: |
+      dev.set_accel_offset(0.0, 0.0, 2.0)
+      result = dev.orientation() == "SCREEN_UP"
+    expect_true: true
+    mode: [mock]
+
+  - name: "Set and get accel offset on hardware"
+    action: script
+    script: |
+      dev.set_accel_offset(0.01, -0.02, 0.03)
+      ox, oy, oz = dev.get_accel_offset()
+      result = ox == 0.01 and oy == -0.02 and oz == 0.03
+    expect_true: true
+    mode: [hardware]
+
+  - name: "Accel offset affects hardware readings"
+    action: script
+    script: |
+      ax1, ay1, az1 = dev.acceleration_g()
+      dev.set_accel_offset(0.1, 0.0, 0.0)
+      ax2, ay2, az2 = dev.acceleration_g()
+      result = abs((ax1 - ax2) - 0.1) < 0.05
+    expect_true: true
+    mode: [hardware]
+
   # ----- Gyroscope -----
 
   - name: "Gyroscope raw returns tuple of 3 ints"
