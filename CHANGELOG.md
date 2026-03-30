@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [0.9.0](https://github.com/steamicc/micropython-steami-lib/compare/v0.8.0...v0.9.0) (2026-03-30)
+
+
+### Features
+
+* **bme280:** Add dew point calculation using Magnus formula ([#322](https://github.com/steamicc/micropython-steami-lib/issues/322)) ([8e730ad](https://github.com/steamicc/micropython-steami-lib/commit/8e730adcbec51b5a018304d941472053f219914b))
+
 # [0.8.0](https://github.com/steamicc/micropython-steami-lib/compare/v0.7.0...v0.8.0) (2026-03-30)
 
 
