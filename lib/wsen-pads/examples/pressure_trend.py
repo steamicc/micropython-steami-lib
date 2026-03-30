@@ -13,7 +13,7 @@ sensor.set_continuous(odr=ODR_10_HZ)
 
 pressure_history = []
 MAX_VALUES = 10
-THRESHOLD = 0.5 # sensitivity (hPa)
+THRESHOLD = 0.5  # sensitivity (hPa)
 
 def get_trend(values):
     if len(values) < 2:

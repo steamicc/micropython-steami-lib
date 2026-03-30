@@ -37,6 +37,8 @@ line-length = 99
 target-version = "py37"
 
 [tool.ruff.lint]
+preview = true
+explicit-preview-rules = true
 select = [
   "A",      # flake8-builtins: prevent shadowing builtins
   "ASYNC",  # flake8-async
@@ -45,6 +47,10 @@ select = [
   "C90",    # McCabe cyclomatic complexity
   "DTZ",    # flake8-datetimez
   "E",      # pycodestyle
+  "E225",   # (preview) missing whitespace around operator
+  "E261",   # (preview) at least two spaces before inline comment
+  "E262",   # (preview) inline comment must start with '# '
+  "E265",   # (preview) block comment must start with '# '
   "EXE",    # flake8-executable
   "F",      # Pyflakes
   "G",      # flake8-logging-format
@@ -83,6 +89,9 @@ ignore = [
   "PLW0603", # global statement
   "PLW2901", # overwriting loop variable
   "RUF012",  # mutable class variable
+  "RUF001",  # ambiguous unicode in string (µ for microtesla is intentional)
+  "RUF002",  # ambiguous unicode in docstring
+  "RUF003",  # ambiguous unicode in comment
   "RUF100",  # unused noqa
   "SIM101",  # merge isinstance calls (micropython compat)
   "SIM105",  # contextlib.suppress not available in micropython
