@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [0.10.0](https://github.com/steamicc/micropython-steami-lib/compare/v0.9.0...v0.10.0) (2026-03-30)
+
+
+### Features
+
+* **bme280:** Add measurement time estimation from oversampling config ([#324](https://github.com/steamicc/micropython-steami-lib/issues/324)) ([5d36b59](https://github.com/steamicc/micropython-steami-lib/commit/5d36b59ef8b5f88fd10fd9de98d17e473d0035c4))
+
 # [0.9.0](https://github.com/steamicc/micropython-steami-lib/compare/v0.8.0...v0.9.0) (2026-03-30)
 
 
