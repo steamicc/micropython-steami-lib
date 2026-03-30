@@ -20,6 +20,7 @@ This driver provides a simple API to configure the sensor and read motion data u
 * raw sensor readings
 * converted physical units
 * board orientation reading
+* accelerometer bias offset correction
 * board rotation reading
 * temperature reading
 * data-ready status helpers
@@ -123,6 +124,38 @@ imu.acceleration_ms2()
 
 ```python
 imu.orientation()
+```
+
+### Accelerometer calibration
+
+The driver supports accelerometer bias correction using per-axis offsets.
+
+### Set offsets
+
+```python
+imu.set_accel_offset(ox=0.01, oy=-0.02, oz=0.03)
+```
+
+### Get offsets
+```python
+imu.get_accel_offset()
+# -> (0.01, -0.02, 0.03)
+```
+
+### Notes on persistent calibration (STeaMi)
+
+On the STeaMi board, accelerometer calibration can be stored using
+`steami_config` and automatically applied at startup:
+
+```python
+from steami_config import SteamiConfig
+from daplink_bridge import DaplinkBridge
+
+config = SteamiConfig(DaplinkBridge(i2c))
+config.load()
+
+imu = ISM330DL(i2c)
+config.apply_accelerometer_calibration(imu)
 ```
 
 ---
