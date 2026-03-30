@@ -196,6 +196,22 @@ Returns the dew point temperature in **degrees Celsius**, computed from the curr
 
 ---
 
+### Measurement Time
+
+```python
+ms = sensor.measurement_time_ms()
+```
+
+Returns the maximum measurement time in **milliseconds** (integer, rounded up) based on the current oversampling settings (datasheet section 9.1). The result can be passed directly to `sleep_ms()`. Useful for estimating how long a forced measurement takes:
+
+```python
+print("Measurement takes up to", sensor.measurement_time_ms(), "ms")
+```
+
+Note: in practice, prefer `read_one_shot()` which handles triggering and waiting automatically.
+
+---
+
 ## Data-Ready Status
 
 ```python
@@ -331,7 +347,7 @@ Performs a soft reset, re-reads calibration data, and re-applies default configu
 | read_one_shot | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ |
 | set_continuous | ✅ | ❌ | ⚠️ Via mode | ❌ | ❌ | ❌ |
 | Integer compensation | ✅ | ✅ | ❌ | ❌ | ❌ | ✅ |
-| Measurement time estimate | ❌ | ❌ | ✅ | ❌ | ❌ | ❌ |
+| Measurement time estimate | ✅ | ❌ | ✅ | ❌ | ❌ | ❌ |
 | Multi-unit temperature | ❌ | ❌ | ❌ | ✅ C/F/K | ❌ | ❌ |
 | BMP280 compatibility | ❌ | ❌ | ❌ | ❌ | ✅ | ❌ |
 | Dedicated exceptions | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ |
