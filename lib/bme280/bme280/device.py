@@ -39,7 +39,7 @@ class BME280(object):
     def __init__(self, i2c, address=BME280_I2C_DEFAULT_ADDR):
         self.i2c = i2c
         self.address = address
-        self.sea_level_pressure = 1013.25
+        self.sea_level_pressure_hpa = 1013.25
         self._check_device()
         self._wait_boot()
         self._read_calibration()
@@ -397,11 +397,15 @@ class BME280(object):
         hum_rh = self._compensate_humidity(raw_hum) / 1024.0
         return temp_c, press_hpa, hum_rh
 
-    def altitude(self):
-        """Return estimated altitude in meters from current pressure.
+    def altitude(self, pressure_hpa=None):
+        """Return estimated altitude in meters.
 
-        Uses the ICAO barometric formula with ``sea_level_pressure`` as
-        reference (default 1013.25 hPa, adjustable).
+        Uses the ICAO barometric formula with ``sea_level_pressure_hpa``
+        as reference (default 1013.25 hPa, adjustable).
+
+        Args:
+            pressure_hpa: pressure in hPa. If None, a new reading is taken
+                          via :meth:`pressure_hpa`.
         """
-        p = self.pressure_hpa()
-        return 44330.0 * (1.0 - (p / self.sea_level_pressure) ** 0.1903)
+        p = self.pressure_hpa() if pressure_hpa is None else pressure_hpa
+        return 44330.0 * (1.0 - (p / self.sea_level_pressure_hpa) ** 0.1903)

@@ -584,10 +584,10 @@ tests:
 
   # ----- Altitude -----
 
-  - name: "Default sea_level_pressure is 1013.25"
+  - name: "Default sea_level_pressure_hpa is 1013.25"
     action: script
     script: |
-      result = dev.sea_level_pressure == 1013.25
+      result = dev.sea_level_pressure_hpa == 1013.25
     expect_true: true
     mode: [mock]
 
@@ -600,14 +600,14 @@ tests:
     expect_true: true
     mode: [mock]
 
-  - name: "altitude() uses custom sea_level_pressure"
+  - name: "altitude() uses custom sea_level_pressure_hpa"
     action: script
     script: |
-      dev.sea_level_pressure = 1020.0
+      dev.sea_level_pressure_hpa = 1020.0
       alt = dev.altitude()
       # Mock pressure ~1009.21 hPa → altitude ~89.6 m at 1020.0 hPa reference
       result = abs(alt - 89.6) < 1.0
-      dev.sea_level_pressure = 1013.25
+      dev.sea_level_pressure_hpa = 1013.25
     expect_true: true
     mode: [mock]
 
@@ -615,9 +615,18 @@ tests:
     action: script
     script: |
       # Set reference to match actual pressure so altitude should be ~0
-      dev.sea_level_pressure = dev.pressure_hpa()
+      dev.sea_level_pressure_hpa = dev.pressure_hpa()
       alt = dev.altitude()
       result = abs(alt) < 0.5
-      dev.sea_level_pressure = 1013.25
+      dev.sea_level_pressure_hpa = 1013.25
+    expect_true: true
+    mode: [mock]
+
+  - name: "altitude() accepts pressure_hpa parameter"
+    action: script
+    script: |
+      # Pass pressure directly to avoid redundant I2C read
+      alt = dev.altitude(pressure_hpa=1009.21)
+      result = abs(alt - 33.7) < 1.0
     expect_true: true
     mode: [mock]

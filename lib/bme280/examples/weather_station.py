@@ -20,7 +20,7 @@ bridge = DaplinkBridge(i2c)
 flash = DaplinkFlash(bridge)
 
 # Adjust sea-level pressure to local conditions for accurate altitude
-# sensor.sea_level_pressure = 1020.0
+# sensor.sea_level_pressure_hpa = 1020.0
 
 # Configure for weather monitoring: high pressure resolution, moderate temp/hum
 sensor.set_oversampling(temperature=OSRS_X2, pressure=OSRS_X16, humidity=OSRS_X2)
@@ -37,7 +37,7 @@ flash.write_line("temperature;pressure;humidity;altitude")
 
 while True:
     temperature, pressure, humidity = sensor.read()
-    alt = sensor.altitude()
+    alt = sensor.altitude(pressure_hpa=pressure)
 
     print(
         "T: {:.1f} C  P: {:.1f} hPa  H: {:.1f} %RH  Alt: {:.0f} m".format(
