@@ -202,13 +202,13 @@ Returns the dew point temperature in **degrees Celsius**, computed from the curr
 ms = sensor.measurement_time_ms()
 ```
 
-Returns the maximum measurement time in **milliseconds** based on the current oversampling settings (datasheet section 9.1). Useful for sleeping instead of polling in forced mode:
+Returns the maximum measurement time in **milliseconds** based on the current oversampling settings (datasheet section 9.1). Useful for estimating how long a forced measurement takes:
 
 ```python
-sensor.trigger_one_shot()
-sleep_ms(int(sensor.measurement_time_ms()) + 1)
-temperature, pressure, humidity = sensor.read()
+print("Measurement takes up to", sensor.measurement_time_ms(), "ms")
 ```
+
+Note: in practice, prefer `read_one_shot()` which handles triggering and waiting automatically.
 
 ---
 
