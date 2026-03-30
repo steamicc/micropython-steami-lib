@@ -243,13 +243,7 @@ class SteamiConfig(object):
 
 
     def apply_accelerometer_calibration(self, ism330dl_instance):
-        """Apply stored calibration to ISM330DL instance.
-
-        The instance must support offset attributes (user-defined).
-
-        Args:
-            ism330dl_instance: ISM330DL driver instance
-        """
+        """Apply stored accelerometer calibration to an ISM330DL instance."""
         if type(ism330dl_instance).__name__.lower() != "ism330dl":
             return
 
@@ -257,7 +251,8 @@ class SteamiConfig(object):
         if cal is None:
             return
 
-        # the driver does NOT have native offset support, so we add attributes dynamically
-        ism330dl_instance._accel_offset_x = cal["ox"]
-        ism330dl_instance._accel_offset_y = cal["oy"]
-        ism330dl_instance._accel_offset_z = cal["oz"]
+        ism330dl_instance.set_accel_offset(
+            cal["ox"],
+            cal["oy"],
+            cal["oz"],
+        )
