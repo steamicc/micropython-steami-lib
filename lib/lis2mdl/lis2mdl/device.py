@@ -558,7 +558,7 @@ class LIS2MDL(object):
             x = (x - self.x_off) / (self.x_scale or 1.0)
             y = (y - self.y_off) / (self.y_scale or 1.0)
         # IMPORTANT: atan2(Y, X)
-        ang = math.degrees(math.atan2(x, y)) # atan2(Y, X) for compass heading (Y is forward, X is right)
+        ang = math.degrees(math.atan2(x, y))  # atan2(Y, X) for compass heading (Y is forward, X is right)
         ang = self._apply_heading_offsets(ang)
         return self._filter_heading(ang)
 
