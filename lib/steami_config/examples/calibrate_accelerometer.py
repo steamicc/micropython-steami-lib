@@ -49,6 +49,8 @@ az = sz / samples
 ox = ax
 oy = ay
 oz = az + 1.0
+# Flat, screen up → expected (0,0,-1g), so Z offset = measured - (-1g) = az + 1.0
+# because gravity points downward while the sensor Z axis is defined positive downward
 
 print("\nMeasured average:")
 print("  ax = {:.3f} g".format(ax))
