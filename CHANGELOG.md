@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [0.12.0](https://github.com/steamicc/micropython-steami-lib/compare/v0.11.1...v0.12.0) (2026-04-01)
+
+
+### Features
+
+* **vl53l1x:** Add radar screen example with OLED. ([#345](https://github.com/steamicc/micropython-steami-lib/issues/345)) ([e6871c3](https://github.com/steamicc/micropython-steami-lib/commit/e6871c313ef4df9d6ce64245dcb9189a9be9af3f))
+
 ## [0.11.1](https://github.com/steamicc/micropython-steami-lib/compare/v0.11.0...v0.11.1) (2026-03-30)
 
 # [0.11.0](https://github.com/steamicc/micropython-steami-lib/compare/v0.10.0...v0.11.0) (2026-03-30)
