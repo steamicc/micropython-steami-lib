@@ -126,7 +126,11 @@ Store and restore accelerometer bias offsets for the ISM330DL.
 
 ```python
 config.set_accelerometer_calibration(ox=0.01, oy=-0.02, oz=0.03)
-Read calibration
+```
+
+### Read calibration
+
+```python
 cal = config.get_accelerometer_calibration()
 # -> {"ox": 0.01, "oy": -0.02, "oz": 0.03}   or   None
 ```
