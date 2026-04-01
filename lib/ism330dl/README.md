@@ -142,6 +142,8 @@ imu.get_accel_offset()
 # -> (0.01, -0.02, 0.03)
 ```
 
+---
+
 ### Notes on persistent calibration (STeaMi)
 
 On the STeaMi board, accelerometer calibration can be stored using
