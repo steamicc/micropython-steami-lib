@@ -4,6 +4,7 @@ from ssd1327.device import (
     SSD1327_I2C,
     WS_OLED_128X128_I2C,
     WS_OLED_128X128_SPI,
+    SSD1327Display,
 )
 
 __all__ = [
@@ -13,4 +14,5 @@ __all__ = [
     "SSD1327_I2C",
     "WS_OLED_128X128_I2C",
     "WS_OLED_128X128_SPI",
+    "SSD1327Display",
 ]
