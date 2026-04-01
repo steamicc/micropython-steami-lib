@@ -217,7 +217,7 @@ class SteamiConfig(object):
             oy: Y-axis offset
             oz: Z-axis offset
         """
-        self._data["cal_accel"] = {
+        self._data["ca"] = {
             "ox": float(ox),
             "oy": float(oy),
             "oz": float(oz),
@@ -229,7 +229,7 @@ class SteamiConfig(object):
         Returns:
             dict with ox, oy, oz or None
         """
-        cal = self._data.get("cal_accel")
+        cal = self._data.get("ca")
         if cal is None:
             return None
 
