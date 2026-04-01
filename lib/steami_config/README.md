@@ -118,12 +118,39 @@ config.apply_magnetometer_calibration(mag)
 
 ---
 
+## Accelerometer Calibration
+
+Store and restore accelerometer bias offsets for the ISM330DL.
+
+### Store calibration
+
+```python
+config.set_accelerometer_calibration(ox=0.01, oy=-0.02, oz=0.03)
+```
+
+### Read calibration
+
+```python
+cal = config.get_accelerometer_calibration()
+# -> {"ox": 0.01, "oy": -0.02, "oz": 0.03}   or   None
+```
+
+### Apply calibration to a sensor
+```python
+from ism330dl import ISM330DL
+
+imu = ISM330DL(i2c)
+config.apply_accelerometer_calibration(imu)
+```
+
+---
+
 # JSON Format
 
 Data is stored as compact JSON to fit within 1 KB:
 
 ```json
-{"rev":3,"name":"STeaMi-01","tc":{"hts":{"g":1.0,"o":-0.5}},"cm":{"hx":12.3,"hy":-5.1,"hz":0.8,"sx":1.01,"sy":0.98,"sz":1.0}}
+{"rev":3,"name":"STeaMi-01","tc":{"hts":{"g":1.0,"o":-0.5}},"cm":{"hx":12.3,"hy":-5.1,"hz":0.8,"sx":1.01,"sy":0.98,"sz":1.0},"ca":{"ox":0.01,"oy":-0.02,"oz":0.03}}
 ```
 
 | Key | Content |
@@ -136,6 +163,8 @@ Data is stored as compact JSON to fit within 1 KB:
 | `cm` | Magnetometer calibration dict |
 | `cm.hx/hy/hz` | Hard-iron offsets (X, Y, Z) |
 | `cm.sx/sy/sz` | Soft-iron scale factors (X, Y, Z) |
+| `ca` | Accelerometer calibration dict |
+| `ca.ox/oy/oz` | Bias offsets in g (X, Y, Z) |
 
 Sensor short keys: `hts` (HTS221), `mag` (LIS2MDL), `ism` (ISM330DL),
 `hid` (WSEN-HIDS), `pad` (WSEN-PADS).
@@ -149,6 +178,7 @@ Sensor short keys: `hts` (HTS221), `mag` (LIS2MDL), `ism` (ISM330DL),
 | `show_config.py` | Display current board configuration |
 | `calibrate_temperature.py` | Calibrate all sensors against WSEN-HIDS reference |
 | `calibrate_magnetometer.py` | Calibrate LIS2MDL with OLED display and persistent storage |
+| `calibrate_accelerometer.py` | Calibrate ISM330DL accelerometer bias and persist it |
 
 Run with mpremote:
 

@@ -48,6 +48,7 @@ tests:
     expect_true: true
     mode: [mock]
 
+  # -- Mock Temperature Calibration --
   - name: "Set and get temperature calibration"
     action: script
     script: |
@@ -126,6 +127,7 @@ tests:
     expect_true: true
     mode: [mock]
 
+  # -- Mock Magnetometer Calibration --
   - name: "Set and get magnetometer calibration"
     action: script
     script: |
@@ -243,6 +245,98 @@ tests:
       result = dev.board_name == "Test-Board"
     expect_true: true
     mode: [mock]
+  
+  # -- Mock Accelerometer Calibration --
+  - name: "Set and get accelerometer calibration"
+    action: script
+    script: |
+      dev._data = {}
+      dev.set_accelerometer_calibration(ox=0.01, oy=-0.02, oz=0.03)
+      cal = dev.get_accelerometer_calibration()
+      result = (
+          cal["ox"] == 0.01
+          and cal["oy"] == -0.02
+          and cal["oz"] == 0.03
+      )
+    expect_true: true
+    mode: [mock]
+
+  - name: "Get accelerometer calibration returns None when not set"
+    action: script
+    script: |
+      dev._data = {}
+      result = dev.get_accelerometer_calibration() is None
+    expect_true: true
+    mode: [mock]
+
+  - name: "Apply accelerometer calibration to ISM330DL"
+    action: script
+    script: |
+      dev._data = {"ca": {"ox": 0.01, "oy": -0.02, "oz": 0.03}}
+
+      class ISM330DL(object):
+          def __init__(self):
+              self._accel_offset_x = 0.0
+              self._accel_offset_y = 0.0
+              self._accel_offset_z = 0.0
+
+          def set_accel_offset(self, ox=0.0, oy=0.0, oz=0.0):
+              self._accel_offset_x = ox
+              self._accel_offset_y = oy
+              self._accel_offset_z = oz
+
+      imu = ISM330DL()
+      dev.apply_accelerometer_calibration(imu)
+      result = (
+          imu._accel_offset_x == 0.01
+          and imu._accel_offset_y == -0.02
+          and imu._accel_offset_z == 0.03
+      )
+    expect_true: true
+    mode: [mock]
+
+  - name: "Apply accelerometer calibration does nothing when not set"
+    action: script
+    script: |
+      dev._data = {}
+
+      class ISM330DL(object):
+          def __init__(self):
+              self._accel_offset_x = 0.0
+              self._accel_offset_y = 0.0
+              self._accel_offset_z = 0.0
+
+          def set_accel_offset(self, ox=0.0, oy=0.0, oz=0.0):
+              self._accel_offset_x = ox
+              self._accel_offset_y = oy
+              self._accel_offset_z = oz
+
+      imu = ISM330DL()
+      dev.apply_accelerometer_calibration(imu)
+      result = (
+          imu._accel_offset_x == 0.0
+          and imu._accel_offset_y == 0.0
+          and imu._accel_offset_z == 0.0
+      )
+    expect_true: true
+    mode: [mock]
+
+  - name: "Accelerometer calibration survives save/load"
+    action: script
+    script: |
+      dev._data = {}
+      dev.set_accelerometer_calibration(ox=0.01, oy=-0.02, oz=0.03)
+      dev.save()
+      dev2 = SteamiConfig(dev._bridge)
+      dev2.load()
+      cal = dev2.get_accelerometer_calibration()
+      result = (
+          cal["ox"] == 0.01
+          and cal["oy"] == -0.02
+          and cal["oz"] == 0.03
+      )
+    expect_true: true
+    mode: [mock]
 
   # ----- Hardware -----
 
@@ -286,6 +380,7 @@ tests:
     expect_true: true
     mode: [hardware]
 
+  # -- Hardware Temperature Calibration --
   - name: "Apply calibration to real sensor"
     action: script
     script: |
@@ -310,6 +405,7 @@ tests:
     expect_true: true
     mode: [hardware]
 
+  # -- Hardware Magnetometer Calibration --
   - name: "Save and load magnetometer calibration on hardware"
     action: script
     script: |
@@ -378,6 +474,70 @@ tests:
           and tc["offset"] == -0.3
           and mc["hard_iron_x"] == 8.0
           and mc["soft_iron_x"] == 1.0
+      )
+    expect_true: true
+    mode: [hardware]
+
+  # -- Hardware Accelerometer Calibration --
+  - name: "Save and load accelerometer calibration on hardware"
+    action: script
+    script: |
+      from time import sleep_ms
+      dev._bridge.clear_config()
+      dev._data = {}
+      dev.set_accelerometer_calibration(ox=0.01, oy=-0.02, oz=0.03)
+      dev.save()
+      sleep_ms(200)
+      dev2 = SteamiConfig(dev._bridge)
+      dev2.load()
+      cal = dev2.get_accelerometer_calibration()
+      result = (
+          cal["ox"] == 0.01
+          and cal["oy"] == -0.02
+          and cal["oz"] == 0.03
+      )
+    expect_true: true
+    mode: [hardware]
+
+  - name: "Apply accelerometer calibration to real ISM330DL"
+    action: script
+    script: |
+      from time import sleep_ms
+      from ism330dl import ISM330DL
+      imu = ISM330DL(i2c)
+      dev._bridge.clear_config()
+      dev._data = {}
+      dev.set_accelerometer_calibration(ox=0.01, oy=-0.02, oz=0.03)
+      dev.save()
+      sleep_ms(200)
+      dev2 = SteamiConfig(dev._bridge)
+      dev2.load()
+      dev2.apply_accelerometer_calibration(imu)
+      ox, oy, oz = imu.get_accel_offset()
+      result = ox == 0.01 and oy == -0.02 and oz == 0.03
+    expect_true: true
+    mode: [hardware]
+
+  - name: "Accelerometer calibration coexists with temperature calibration"
+    action: script
+    script: |
+      from time import sleep_ms
+      dev._bridge.clear_config()
+      dev._data = {}
+      dev.set_temperature_calibration("hts221", gain=1.05, offset=-0.3)
+      dev.set_accelerometer_calibration(ox=0.01, oy=-0.02, oz=0.03)
+      dev.save()
+      sleep_ms(200)
+      dev2 = SteamiConfig(dev._bridge)
+      dev2.load()
+      tc = dev2.get_temperature_calibration("hts221")
+      ac = dev2.get_accelerometer_calibration()
+      result = (
+          tc["gain"] == 1.05
+          and tc["offset"] == -0.3
+          and ac["ox"] == 0.01
+          and ac["oy"] == -0.02
+          and ac["oz"] == 0.03
       )
     expect_true: true
     mode: [hardware]

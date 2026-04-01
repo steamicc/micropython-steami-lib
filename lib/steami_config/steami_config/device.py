@@ -12,7 +12,6 @@ _SENSOR_KEYS = {
 # Reverse map: short key -> sensor name.
 _KEY_SENSORS = {v: k for k, v in _SENSOR_KEYS.items()}
 
-
 class SteamiConfig(object):
     """Persistent configuration stored in the DAPLink F103 config zone.
 
@@ -205,3 +204,53 @@ class SteamiConfig(object):
         lis2mdl_instance.x_scale = cal["soft_iron_x"]
         lis2mdl_instance.y_scale = cal["soft_iron_y"]
         lis2mdl_instance.z_scale = cal["soft_iron_z"]
+
+    # --------------------------------------------------
+    # Accelerometer calibration
+    # --------------------------------------------------
+
+    def set_accelerometer_calibration(self, ox=0.0, oy=0.0, oz=0.0):
+        """Store accelerometer bias offsets (in g).
+
+        Args:
+            ox: X-axis offset
+            oy: Y-axis offset
+            oz: Z-axis offset
+        """
+        self._data["ca"] = {
+            "ox": float(ox),
+            "oy": float(oy),
+            "oz": float(oz),
+        }
+
+    def get_accelerometer_calibration(self):
+        """Return accelerometer calibration offsets.
+
+        Returns:
+            dict with ox, oy, oz or None
+        """
+        cal = self._data.get("ca")
+        if cal is None:
+            return None
+
+        return {
+            "ox": cal.get("ox", 0.0),
+            "oy": cal.get("oy", 0.0),
+            "oz": cal.get("oz", 0.0),
+        }
+
+
+    def apply_accelerometer_calibration(self, ism330dl_instance):
+        """Apply stored accelerometer calibration to an ISM330DL instance."""
+        if type(ism330dl_instance).__name__.lower() != "ism330dl":
+            return
+
+        cal = self.get_accelerometer_calibration()
+        if cal is None:
+            return
+
+        ism330dl_instance.set_accel_offset(
+            cal["ox"],
+            cal["oy"],
+            cal["oz"],
+        )
