@@ -12,7 +12,6 @@ _SENSOR_KEYS = {
 # Reverse map: short key -> sensor name.
 _KEY_SENSORS = {v: k for k, v in _SENSOR_KEYS.items()}
 
-
 class SteamiConfig(object):
     """Persistent configuration stored in the DAPLink F103 config zone.
 
@@ -223,7 +222,6 @@ class SteamiConfig(object):
             "oy": float(oy),
             "oz": float(oz),
         }
-
 
     def get_accelerometer_calibration(self):
         """Return accelerometer calibration offsets.
