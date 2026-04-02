@@ -15,7 +15,7 @@ Works with any backend that implements the display interface:
 import math
 
 # --- Color constants (RGB tuples) ---
-from colors import rgb_to_gray4
+from steami_screen.colors import rgb_to_gray4
 
 # Grays map to exact SSD1327 levels: gray4 * 17 gives R=G=B
 BLACK = (0, 0, 0)
