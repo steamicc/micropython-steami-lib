@@ -12,7 +12,7 @@ from steami_screen.device import (
     Screen,
 )
 from steami_screen.gc9a01 import GC9A01Display
-from steami_screen.sssd1327 import SSD1327Display
+from steami_screen.ssd1327 import SSD1327Display
 
 __all__ = [
     "BLACK",

@@ -1,3 +1,5 @@
+from steami_screen.colors import rgb_to_rgb565
+
 """
 GC9A01 display wrapper — converts RGB colors to RGB565.
 
@@ -9,10 +11,12 @@ Usage on the STeaMi board:
     from steami_gc9a01 import GC9A01Display
     raw = gc9a01.GC9A01(spi, dc, cs, rst, ...)
     display = GC9A01Display(raw)
+
 """
 
-from steami_screen.colors import rgb_to_rgb565
-
+"""
+This file has'nt been tested on actual hardware yet
+"""
 
 class GC9A01Display:
     """Thin wrapper around a GC9A01 driver that accepts RGB colors."""
