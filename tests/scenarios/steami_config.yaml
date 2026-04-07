@@ -338,6 +338,72 @@ tests:
     expect_true: true
     mode: [mock]
 
+  # -- Mock boot counter --
+  - name: "Set and get boot counter"
+    action: script
+    script: |
+      dev._data = {}
+      dev.set_boot_count(427)
+      result = dev.get_boot_count() == 427
+    expect_true: true
+    mode: [mock]
+
+  - name: "Get boot counter returns None when not set"
+    action: script
+    script: |
+      dev._data = {}
+      result = dev.get_boot_count() is None
+    expect_true: true
+    mode: [mock]
+
+  - name: "Increment boot counter from empty starts at 1"
+    action: script
+    script: |
+      dev._data = {}
+      dev.increment_boot_count()
+      result = dev.get_boot_count() == 1
+    expect_true: true
+    mode: [mock]
+
+  - name: "Increment boot counter increases existing value"
+    action: script
+    script: |
+      dev._data = {}
+      dev.set_boot_count(41)
+      dev.increment_boot_count()
+      result = dev.get_boot_count() == 42
+    expect_true: true
+    mode: [mock]
+
+  - name: "Boot counter survives save/load"
+    action: script
+    script: |
+      dev._data = {}
+      dev.set_boot_count(427)
+      dev.save()
+      dev2 = SteamiConfig(dev._bridge)
+      dev2.load()
+      result = dev2.get_boot_count() == 427
+    expect_true: true
+    mode: [mock]
+
+  - name: "Boot counter coexists with other config values"
+    action: script
+    script: |
+      dev._data = {}
+      dev.board_revision = 3
+      dev.board_name = "STeaMi-Test"
+      dev.set_boot_count(12)
+      dev.set_accelerometer_calibration(ox=0.01, oy=-0.02, oz=0.03)
+      result = (
+          dev.board_revision == 3
+          and dev.board_name == "STeaMi-Test"
+          and dev.get_boot_count() == 12
+          and dev.get_accelerometer_calibration()["ox"] == 0.01
+      )
+    expect_true: true
+    mode: [mock]
+
   # ----- Hardware -----
 
   - name: "Save and load config on hardware"
@@ -538,6 +604,87 @@ tests:
           and ac["ox"] == 0.01
           and ac["oy"] == -0.02
           and ac["oz"] == 0.03
+      )
+    expect_true: true
+    mode: [hardware]
+
+    # -- Hardware Boot Counter --
+  - name: "Save and load boot counter on hardware"
+    action: script
+    script: |
+      from time import sleep_ms
+      dev._bridge.clear_config()
+      dev._data = {}
+      dev.set_boot_count(427)
+      dev.save()
+      sleep_ms(200)
+      dev2 = SteamiConfig(dev._bridge)
+      dev2.load()
+      result = dev2.get_boot_count() == 427
+    expect_true: true
+    mode: [hardware]
+
+  - name: "Increment boot counter on hardware"
+    action: script
+    script: |
+      from time import sleep_ms
+      dev._bridge.clear_config()
+      dev._data = {}
+      dev.set_boot_count(5)
+      dev.save()
+      sleep_ms(200)
+
+      dev2 = SteamiConfig(dev._bridge)
+      dev2.load()
+      dev2.increment_boot_count()
+      dev2.save()
+      sleep_ms(200)
+
+      dev3 = SteamiConfig(dev._bridge)
+      dev3.load()
+      result = dev3.get_boot_count() == 6
+    expect_true: true
+    mode: [hardware]
+
+  - name: "Boot counter survives clear_flash"
+    action: script
+    script: |
+      from time import sleep_ms
+      from daplink_flash import DaplinkFlash
+      dev._bridge.clear_config()
+      dev._data = {}
+      dev.set_boot_count(99)
+      dev.save()
+      sleep_ms(200)
+
+      flash = DaplinkFlash(dev._bridge)
+      flash.clear_flash()
+      sleep_ms(500)
+
+      dev2 = SteamiConfig(dev._bridge)
+      dev2.load()
+      result = dev2.get_boot_count() == 99
+    expect_true: true
+    mode: [hardware]
+
+  - name: "Boot counter coexists with temperature calibration on hardware"
+    action: script
+    script: |
+      from time import sleep_ms
+      dev._bridge.clear_config()
+      dev._data = {}
+      dev.set_boot_count(12)
+      dev.set_temperature_calibration("hts221", gain=1.05, offset=-0.3)
+      dev.save()
+      sleep_ms(200)
+
+      dev2 = SteamiConfig(dev._bridge)
+      dev2.load()
+      tc = dev2.get_temperature_calibration("hts221")
+      result = (
+          dev2.get_boot_count() == 12
+          and tc["gain"] == 1.05
+          and tc["offset"] == -0.3
       )
     expect_true: true
     mode: [hardware]
