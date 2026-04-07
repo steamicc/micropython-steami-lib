@@ -145,12 +145,35 @@ config.apply_accelerometer_calibration(imu)
 
 ---
 
+## Boot counter 
+Store and restore amount of boot of the card.
+
+### Set boot counter 
+```python
+config.set_boot_count(0)
+```
+
+### Get boot counter 
+```python
+config.get_boot_count()
+print("Boot count:", count)
+# -> Boot count: 0
+```
+
+### Increment boot counter
+```python
+config.increment_boot_count()
+# -> boot_count = boot_count + 1
+```
+
+--- 
+
 # JSON Format
 
 Data is stored as compact JSON to fit within 1 KB:
 
 ```json
-{"rev":3,"name":"STeaMi-01","tc":{"hts":{"g":1.0,"o":-0.5}},"cm":{"hx":12.3,"hy":-5.1,"hz":0.8,"sx":1.01,"sy":0.98,"sz":1.0},"ca":{"ox":0.01,"oy":-0.02,"oz":0.03}}
+{"rev":3,"name":"STeaMi-01","tc":{"hts":{"g":1.0,"o":-0.5}},"cm":{"hx":12.3,"hy":-5.1,"hz":0.8,"sx":1.01,"sy":0.98,"sz":1.0},"ca":{"ox":0.01,"oy":-0.02,"oz":0.03},"boot_count":0}
 ```
 
 | Key | Content |
@@ -165,6 +188,7 @@ Data is stored as compact JSON to fit within 1 KB:
 | `cm.sx/sy/sz` | Soft-iron scale factors (X, Y, Z) |
 | `ca` | Accelerometer calibration dict |
 | `ca.ox/oy/oz` | Bias offsets in g (X, Y, Z) |
+| `boot_count` | Count of the amount of boot |
 
 Sensor short keys: `hts` (HTS221), `mag` (LIS2MDL), `ism` (ISM330DL),
 `hid` (WSEN-HIDS), `pad` (WSEN-PADS).
@@ -179,6 +203,7 @@ Sensor short keys: `hts` (HTS221), `mag` (LIS2MDL), `ism` (ISM330DL),
 | `calibrate_temperature.py` | Calibrate all sensors against WSEN-HIDS reference |
 | `calibrate_magnetometer.py` | Calibrate LIS2MDL with OLED display and persistent storage |
 | `calibrate_accelerometer.py` | Calibrate ISM330DL accelerometer bias and persist it |
+| `boot_counter.py` | Display the amount of boot and increment it |
 
 Run with mpremote:
 

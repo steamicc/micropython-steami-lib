@@ -1,3 +1,10 @@
+"""
+Boot counter example.
+Each time the board boots,
+it increments the boot count
+and saves it to non-volatile storage.
+"""
+
 from daplink_bridge import DaplinkBridge
 from machine import I2C
 from steami_config import SteamiConfig
