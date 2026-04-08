@@ -42,9 +42,6 @@ FACES = {
 
 # --- Cardinal position names ---
 
-_CARDINALS = ("N", "NE", "E", "SE", "S", "SW", "W", "NW", "CENTER")
-
-
 class Screen:
     """High-level wrapper around a raw display backend."""
 
@@ -333,7 +330,6 @@ class Screen:
 
     def menu(self, items, selected=0, color=WHITE):
         """Draw a scrollable list menu."""
-        _cx, _cy = self.center
         item_h = self.CHAR_H + 6
         visible = min(len(items), (self.height - 40) // item_h)
 
