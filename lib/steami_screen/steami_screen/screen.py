@@ -48,10 +48,10 @@ class Screen:
     CHAR_W = 8   # framebuf built-in font width
     CHAR_H = 8   # framebuf built-in font height
 
-    def __init__(self, display, width=128, height=128):
+    def __init__(self, display, width=None, height=None):
         self._d = display
-        self.width = width
-        self.height = height
+        self.width = width or getattr(display, 'width', 128)
+        self.height = height or getattr(display, 'height', 128)
 
     # --- Adaptive properties ---
 
