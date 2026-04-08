@@ -47,7 +47,7 @@ The driver works with any display exposing a FrameBuffer-like API:
 
 Tested with:
 
-- SSD1327 (OLED 128x128) :contentReference[oaicite:0]{index=0}  
+- SSD1327 (OLED 128x128)
 - GC9A01 (round TFT)
 
 ---
@@ -55,13 +55,17 @@ Tested with:
 ## Basic Usage
 
 ```python
-from machine import I2C
-from ssd1327 import WS_OLED_128X128_I2C
-from steami_screen import Screen
+import ssd1327
+from machine import I2C, SPI, Pin
+from steami_screen import Screen, SSD1327Display
 
-i2c = I2C(1)
-display = WS_OLED_128X128_I2C(i2c)
+spi = SPI(1)
+dc = Pin("DATA_COMMAND_DISPLAY")
+res = Pin("RST_DISPLAY")
+cs = Pin("CS_DISPLAY")
 
+raw_display = ssd1327.WS_OLED_128X128_SPI(spi, dc, res, cs)
+display = SSD1327Display(raw_display)
 screen = Screen(display)
 
 screen.clear()
@@ -147,7 +151,7 @@ screen.circle(x, y, r, color, fill=True)
 ### Basic text
 
 ```python
-screen.text("Hello", x, y)
+screen.text("Hello", at=(x, y))
 ```
 
 ---
@@ -155,16 +159,16 @@ screen.text("Hello", x, y)
 ### Positioned text
 
 ```python
-screen.text("Centered", position="CENTER")
+screen.text("Centered", at="CENTER")
 ```
 
 Supported positions:
 
 * `"CENTER"`
-* `"NORTH"`
-* `"SOUTH"`
-* `"EAST"`
-* `"WEST"`
+* `"N"`
+* `"S"`
+* `"E"`
+* `"W"`
 
 Invalid values fallback to center.
 
@@ -173,8 +177,10 @@ Invalid values fallback to center.
 ### Scaled text
 
 ```python
-screen.text("Big", x, y, scale=2)
+screen.text("Big", at=(x, y), scale=2)
 ```
+
+The fallback implementation does not perform true pixel scaling. Instead, it draws the same text multiple times with a 1px offset, creating a "bold" effect rather than a real ×2 scale.
 
 ---
 
@@ -193,7 +199,7 @@ Draws text near the top (NORTH).
 ### Subtitle
 
 ```python
-screen.subtitle(["Line 1", "Line 2"])
+screen.subtitle("Line 1", "Line 2")
 ```
 
 Supports multiple lines.
