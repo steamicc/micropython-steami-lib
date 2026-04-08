@@ -209,7 +209,7 @@ class Screen:
         r = self.radius - arc_w // 2 - 1
         start_angle = 135
         sweep = 270
-        ratio = (val - min_val) / (max_val - min_val)
+        ratio = (val - min_val) / (max_val - min_val) if max_val != min_val else 0  # Avoid division by zero; show empty gauge if min=max
         ratio = max(0.0, min(1.0, ratio))
 
         # Background arc
