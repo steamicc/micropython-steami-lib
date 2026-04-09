@@ -52,9 +52,11 @@ def populate_all_config(config):
     # Save everything
     config.save()
 
+
 def print_section(title):
     print(title)
     print("-" * len(title))
+
 
 def print_kv(label, value):
     print("{:<16} {}".format(label + ":", value))
