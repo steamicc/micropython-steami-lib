@@ -149,7 +149,7 @@ config.apply_accelerometer_calibration(imu)
 
 Track how many times the board has booted.
 
-### Set boot counter 
+### Set boot counter
 ```python
 config.set_boot_count(0)
 ```
@@ -167,7 +167,7 @@ config.increment_boot_count()
 # -> boot_count = boot_count + 1
 ```
 
---- 
+---
 
 # JSON Format
 
