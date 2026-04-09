@@ -204,7 +204,8 @@ Sensor short keys: `hts` (HTS221), `mag` (LIS2MDL), `ism` (ISM330DL),
 | `calibrate_temperature.py` | Calibrate all sensors against WSEN-HIDS reference |
 | `calibrate_magnetometer.py` | Calibrate LIS2MDL with OLED display and persistent storage |
 | `calibrate_accelerometer.py` | Calibrate ISM330DL accelerometer bias and persist it |
-| `boot_counter.py` | Display the amount of boot and increment it |
+| `boot_counter.py` | Increment and display the boot counter |
+| `populate_demo_config.py` | **WARNING:** Overwrites all config with demo values (testing only) |
 
 Run with mpremote:
 
