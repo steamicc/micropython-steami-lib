@@ -116,6 +116,7 @@ max-statements = 65
 "lib/mcp23009e/examples/i2c_scan.py" = ["PERF203"]
 "tests/**/*.py" = ["T20", "PLR0911", "PLR0912", "PLR0915"]
 "lib/lis2mdl/**/*.py" = ["RUF001", "RUF002", "RUF003"]  # µ (microtesla) is intentional
+"scripts/**/*.py" = ["T20", "PERF203"]
 
 [tool.ruff.format]
 quote-style = "double"
