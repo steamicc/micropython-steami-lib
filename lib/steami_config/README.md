@@ -145,8 +145,9 @@ config.apply_accelerometer_calibration(imu)
 
 ---
 
-## Boot counter 
-Store and restore amount of boot of the card.
+## Boot Counter
+
+Track how many times the board has booted.
 
 ### Set boot counter 
 ```python
