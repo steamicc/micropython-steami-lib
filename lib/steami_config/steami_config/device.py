@@ -254,3 +254,22 @@ class SteamiConfig(object):
             cal["oy"],
             cal["oz"],
         )
+
+    # --------------------------------------------------
+    # Boot counter
+    # --------------------------------------------------
+
+    def set_boot_count(self, count):
+        """Store the number of times the board has booted."""
+        self._data["bc"] = int(count)
+
+    def get_boot_count(self):
+        """Return the stored boot count, or None."""
+        return self._data.get("bc")
+
+    def increment_boot_count(self):
+        """Increment the stored boot count by 1."""
+        count = self.get_boot_count()
+        if count is None:
+            count = 0
+        self.set_boot_count(count + 1)
