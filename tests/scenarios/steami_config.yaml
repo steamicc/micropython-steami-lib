@@ -608,7 +608,7 @@ tests:
     expect_true: true
     mode: [hardware]
 
-    # -- Hardware Boot Counter --
+  # -- Hardware Boot Counter --
   - name: "Save and load boot counter on hardware"
     action: script
     script: |
