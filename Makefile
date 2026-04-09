@@ -98,6 +98,11 @@ $(MPY_DIR):
 
 .PHONY: firmware
 firmware: $(MPY_DIR) ## Build MicroPython firmware with current drivers
+	@set -e
+	@if [ ! -f "$(MPY_DIR)/lib/micropython-lib/README.md" ]; then \
+		echo "Initializing submodules for $(BOARD)..."; \
+		cd $(CURDIR)/$(MPY_DIR)/ports/stm32 && $(MAKE) BOARD=$(BOARD) submodules; \
+	fi
 	@echo "Linking local drivers..."
 	rm -rf $(CURDIR)/$(MPY_DIR)/lib/micropython-steami-lib
 	ln -s $(CURDIR) $(CURDIR)/$(MPY_DIR)/lib/micropython-steami-lib
@@ -107,6 +112,7 @@ firmware: $(MPY_DIR) ## Build MicroPython firmware with current drivers
 
 .PHONY: firmware-update
 firmware-update: $(MPY_DIR) ## Update the MicroPython clone and board-specific submodules
+	@set -e
 	@echo "Updating micropython-steami..."
 	rm -rf $(CURDIR)/$(MPY_DIR)/lib/micropython-steami-lib
 	cd $(CURDIR)/$(MPY_DIR) && git fetch origin && git checkout $(MICROPYTHON_BRANCH) && git checkout -- lib/micropython-steami-lib && git pull --ff-only
