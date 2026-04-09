@@ -115,8 +115,8 @@ print("  {}".format(boot_count if boot_count is not None else "(not set)"))
 print()
 
 # --------------------------------------------------
-# Raw JSON
+# Raw data
 # --------------------------------------------------
 
-print_section("Raw JSON")
+print_section("Raw data")
 print(config._data)
