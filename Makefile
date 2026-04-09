@@ -155,31 +155,10 @@ mount: ## Mount lib/ on the board for live testing
 
 .PHONY: list-frozen
 list-frozen: ## List frozen modules on the connected board
-	@$(PYTHON) -m mpremote connect $(PORT) exec "\
-import sys;\
-frozen = [];\
-mods = help('modules');\
-" 2>/dev/null
+	@$(PYTHON) -m mpremote connect $(PORT) exec "help('modules')"
 	@echo ""
 	@echo "--- Frozen driver modules ---"
-	@$(PYTHON) -m mpremote connect $(PORT) exec "\
-import sys;\
-drivers = ['apds9960','bme280','bq27441','daplink_bridge','daplink_flash',\
-'gc9a01','hts221','im34dt05','ism330dl','lis2mdl','mcp23009e',\
-'ssd1327','steami_config','vl53l1x','wsen_hids','wsen_pads'];\
-for d in drivers:\
-    try:\
-        mod = __import__(d);\
-        f = getattr(mod, '__file__', None);\
-        if f and '.frozen' in f:\
-            print('  ' + d + '  -> frozen');\
-        elif f:\
-            print('  ' + d + '  -> filesystem: ' + f);\
-        else:\
-            print('  ' + d + '  -> built-in');\
-    except ImportError:\
-        print('  ' + d + '  -> NOT AVAILABLE');\
-"
+	@$(PYTHON) -m mpremote connect $(PORT) run scripts/list_frozen_drivers.py
 
 # --- Release ---
 
