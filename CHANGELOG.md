@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [0.13.1](https://github.com/steamicc/micropython-steami-lib/compare/v0.13.0...v0.13.1) (2026-04-09)
+
+
+### Bug Fixes
+
+* Add daplink_bridge and bme280 to firmware and fix list-frozen. ([#359](https://github.com/steamicc/micropython-steami-lib/issues/359)) ([cd73454](https://github.com/steamicc/micropython-steami-lib/commit/cd734545884db9ad924bfda8e5185db31bb2b616))
+
 # [0.13.0](https://github.com/steamicc/micropython-steami-lib/compare/v0.12.1...v0.13.0) (2026-04-09)
 
 
