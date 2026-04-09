@@ -98,6 +98,10 @@ $(MPY_DIR):
 
 .PHONY: firmware
 firmware: $(MPY_DIR) ## Build MicroPython firmware with current drivers
+	@if [ ! -f "$(MPY_DIR)/lib/micropython-lib/README.md" ]; then \
+		echo "Initializing submodules for $(BOARD)..."; \
+		cd $(CURDIR)/$(MPY_DIR)/ports/stm32 && $(MAKE) BOARD=$(BOARD) submodules; \
+	fi
 	@echo "Linking local drivers..."
 	rm -rf $(CURDIR)/$(MPY_DIR)/lib/micropython-steami-lib
 	ln -s $(CURDIR) $(CURDIR)/$(MPY_DIR)/lib/micropython-steami-lib
