@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [0.13.0](https://github.com/steamicc/micropython-steami-lib/compare/v0.12.1...v0.13.0) (2026-04-09)
+
+
+### Features
+
+* **steami_config:** Update show_config example with all config features. ([#353](https://github.com/steamicc/micropython-steami-lib/issues/353)) ([304f6a2](https://github.com/steamicc/micropython-steami-lib/commit/304f6a28d10520db8e9824353e58a948d4982b56))
+
 ## [0.12.1](https://github.com/steamicc/micropython-steami-lib/compare/v0.12.0...v0.12.1) (2026-04-09)
 
 # [0.12.0](https://github.com/steamicc/micropython-steami-lib/compare/v0.11.1...v0.12.0) (2026-04-01)
