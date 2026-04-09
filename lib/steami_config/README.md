@@ -153,9 +153,9 @@ Store and restore amount of boot of the card.
 config.set_boot_count(0)
 ```
 
-### Get boot counter 
+### Get boot counter
 ```python
-config.get_boot_count()
+count = config.get_boot_count()
 print("Boot count:", count)
 # -> Boot count: 0
 ```
