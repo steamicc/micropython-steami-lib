@@ -261,11 +261,11 @@ class SteamiConfig(object):
 
     def set_boot_count(self, count):
         """Store the number of times the board has booted."""
-        self._data["boot_count"] = int(count)
+        self._data["bc"] = int(count)
 
     def get_boot_count(self):
         """Return the stored boot count, or None."""
-        return self._data.get("boot_count")
+        return self._data.get("bc")
 
     def increment_boot_count(self):
         """Increment the stored boot count by 1."""
