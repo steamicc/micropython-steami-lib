@@ -94,21 +94,21 @@ $(MPY_DIR):
 	@echo "Cloning micropython-steami into $(CURDIR)/$(MPY_DIR)..."
 	@mkdir -p $(dir $(CURDIR)/$(MPY_DIR))
 	git clone --branch $(MICROPYTHON_BRANCH) $(MICROPYTHON_REPO) $(CURDIR)/$(MPY_DIR)
-	cd $(CURDIR)/$(MPY_DIR)/ports/stm32 && $(MAKE) BOARD=$(BOARD) submodules
+	$(MAKE) -C $(STM32_DIR) BOARD=$(BOARD) submodules
 
 .PHONY: firmware
 firmware: $(MPY_DIR) ## Build MicroPython firmware with current drivers
 	@set -e
 	@if [ ! -f "$(MPY_DIR)/lib/micropython-lib/README.md" ]; then \
 		echo "Initializing submodules for $(BOARD)..."; \
-		cd $(CURDIR)/$(MPY_DIR)/ports/stm32 && $(MAKE) BOARD=$(BOARD) submodules; \
+		$(MAKE) -C $(STM32_DIR) BOARD=$(BOARD) submodules; \
 	fi
 	@echo "Linking local drivers..."
 	rm -rf $(CURDIR)/$(MPY_DIR)/lib/micropython-steami-lib
 	ln -s $(CURDIR) $(CURDIR)/$(MPY_DIR)/lib/micropython-steami-lib
 	@echo "Building firmware for $(BOARD)..."
-	cd $(CURDIR)/$(MPY_DIR)/ports/stm32 && $(MAKE) BOARD=$(BOARD)
-	@echo "Firmware ready: $(CURDIR)/$(MPY_DIR)/ports/stm32/build-$(BOARD)/firmware.hex"
+	$(MAKE) -C $(STM32_DIR) BOARD=$(BOARD)
+	@echo "Firmware ready: $(STM32_DIR)/build-$(BOARD)/firmware.hex"
 
 .PHONY: firmware-update
 firmware-update: $(MPY_DIR) ## Update the MicroPython clone and board-specific submodules
@@ -117,11 +117,11 @@ firmware-update: $(MPY_DIR) ## Update the MicroPython clone and board-specific s
 	rm -rf $(CURDIR)/$(MPY_DIR)/lib/micropython-steami-lib
 	cd $(CURDIR)/$(MPY_DIR) && git fetch origin && git checkout $(MICROPYTHON_BRANCH) && git checkout -- lib/micropython-steami-lib && git pull --ff-only
 	@echo "Updating required submodules for $(BOARD)..."
-	cd $(CURDIR)/$(MPY_DIR)/ports/stm32 && $(MAKE) BOARD=$(BOARD) submodules
+	$(MAKE) -C $(STM32_DIR) BOARD=$(BOARD) submodules
 
 .PHONY: deploy
 deploy: $(MPY_DIR) ## Flash firmware to the board via OpenOCD
-	cd $(CURDIR)/$(MPY_DIR)/ports/stm32 && $(MAKE) BOARD=$(BOARD) deploy-openocd
+	$(MAKE) -C $(STM32_DIR) BOARD=$(BOARD) deploy-openocd
 
 .PHONY: run
 run: ## Run a script on the board with live output (SCRIPT=path/to/file.py)
@@ -145,8 +145,8 @@ run-main: ## Re-execute main.py on the board and capture output
 
 .PHONY: firmware-clean
 firmware-clean: ## Clean firmware build artifacts
-	@if [ -d "$(MPY_DIR)/ports/stm32" ]; then \
-		cd $(MPY_DIR)/ports/stm32 && $(MAKE) BOARD=$(BOARD) clean; \
+	@if [ -d "$(STM32_DIR)" ]; then \
+		$(MAKE) -C $(STM32_DIR) BOARD=$(BOARD) clean; \
 	fi
 
 # --- Hardware ---
