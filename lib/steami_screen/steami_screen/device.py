@@ -52,6 +52,14 @@ class Screen:
         self._d = display
         self.width = width or getattr(display, 'width', 128)
         self.height = height or getattr(display, 'height', 128)
+        # Detect if the backend needs greyscale ints (SSD1327) or accepts RGB tuples
+        self._needs_gray = not hasattr(display, 'fill_rect') or hasattr(display, 'framebuf')
+
+    def _c(self, color):
+        """Convert color for the backend. Returns gray4 int for SSD1327, pass-through otherwise."""
+        if self._needs_gray:
+            return rgb_to_gray4(color)
+        return color
 
     # --- Adaptive properties ---
 
@@ -113,7 +121,7 @@ class Screen:
     def title(self, text, color=GRAY):
         """Draw title text at the top (N)."""
         x, y = self._resolve("N", len(text))
-        self._d.text(text, x, y, color)
+        self._text(text, x, y, color)
 
     def value(self, val, unit=None, at="CENTER", label=None,
              color=WHITE, scale=2, y_offset=0):
@@ -148,7 +156,7 @@ class Screen:
         # Optional label above
         if label:
             lx = x + tw // 2 - len(label) * self.CHAR_W // 2
-            self._d.text(label, lx, y - self.CHAR_H - 4, GRAY)
+            self._text(label, lx, y - self.CHAR_H - 4, GRAY)
 
         # Value (large)
         self._draw_scaled_text(text, x, y, color, scale)
@@ -160,7 +168,7 @@ class Screen:
             if hasattr(self._d, 'draw_medium_text'):
                 self._d.draw_medium_text(unit, ux, unit_y, LIGHT)
             else:
-                self._d.text(unit, ux, unit_y, LIGHT)
+                self._text(unit, ux, unit_y, LIGHT)
 
     def subtitle(self, *lines, color=DARK):
         """Draw subtitle text at the bottom (S). Accepts multiple lines."""
@@ -177,7 +185,7 @@ class Screen:
             block_h = (n - 1) * line_h
             start_y = base_y - block_h // 2
 
-        draw = getattr(self._d, 'draw_small_text', self._d.text)
+        draw = getattr(self._d, 'draw_small_text', self._text)
         for i, line in enumerate(lines):
             x, _ = self._resolve("S", len(line))
             y = start_y + i * line_h
@@ -190,7 +198,7 @@ class Screen:
         bar_h = 8
         bx = cx - bar_w // 2
         by = cy + 20 + y_offset
-        fill_w = int(bar_w * min(val, max_val) / max_val)
+        fill_w = int(bar_w * min(val, max_val) / max_val) if max_val else 0
 
         # Background
         self._fill_rect(bx, by, bar_w, bar_h, DARK)
@@ -238,7 +246,7 @@ class Screen:
             if hasattr(self._d, 'draw_medium_text'):
                 self._d.draw_medium_text(unit, ux, uy, LIGHT)
             else:
-                self._d.text(unit, ux, uy, LIGHT)
+                self._text(unit, ux, uy, LIGHT)
 
         # Min/max labels at arc endpoints (slightly inward to stay visible)
         min_t = str(int(min_val))
@@ -251,7 +259,7 @@ class Screen:
         ly = int(cy + r_label * math.sin(angle_s))
         rx = int(cx + r_label * math.cos(angle_e)) - len(max_t) * self.CHAR_W // 2
         ry = int(cy + r_label * math.sin(angle_e))
-        draw_sm = getattr(self._d, 'draw_small_text', self._d.text)
+        draw_sm = getattr(self._d, 'draw_small_text', self._text)
         draw_sm(min_t, lx, ly, GRAY)
         draw_sm(max_t, rx, ry, GRAY)
 
@@ -272,7 +280,7 @@ class Screen:
         if data:
             text = str(int(data[-1]))
             draw_fn = getattr(self._d, 'draw_medium_text',
-                              self._d.text)
+                              self._text)
             tw = len(text) * self.CHAR_W
             vx = cx - tw // 2
             vy = 31
@@ -284,7 +292,7 @@ class Screen:
                 return str(int(v // 1000)) + "k"
             return str(int(v))
 
-        draw_sm = getattr(self._d, 'draw_small_text', self._d.text)
+        draw_sm = getattr(self._d, 'draw_small_text', self._text)
         mid_val = (min_val + max_val) / 2
         for val, yp in [(max_val, gy),
                         (mid_val, gy + gh // 2),
@@ -301,7 +309,7 @@ class Screen:
         x = gx + 1
         while x < gx + gw:
             x2 = min(x + dash - 1, gx + gw - 1)
-            self._d.line(x, mid_y, x2, mid_y, (51, 51, 51))
+            self._line(x, mid_y, x2, mid_y, (51, 51, 51))
             x += dash + gap
 
         # Y axis (extend +1 to meet X axis corner)
@@ -341,9 +349,9 @@ class Screen:
             iy = y + (i - start) * item_h
             if i == selected:
                 self._fill_rect(15, iy - 2, self.width - 30, item_h, DARK)
-                self._d.text("> " + items[i], 18, iy, color)
+                self._text("> " + items[i], 18, iy, color)
             else:
-                self._d.text("  " + items[i], 18, iy, GRAY)
+                self._text("  " + items[i], 18, iy, GRAY)
 
     def compass(self, heading, color=LIGHT):
         """Draw a compass with a rotating needle."""
@@ -359,7 +367,7 @@ class Screen:
             lx = cx + int((r + 5) * math.sin(math.radians(angle)))
             ly = cy - int((r + 5) * math.cos(math.radians(angle)))
             c = WHITE if label == "N" else GRAY
-            self._d.text(label, lx - self.CHAR_W // 2, ly - self.CHAR_H // 2, c)
+            self._text(label, lx - self.CHAR_W // 2, ly - self.CHAR_H // 2, c)
 
         # Tick marks (8 directions)
         for angle in range(0, 360, 45):
@@ -427,7 +435,7 @@ class Screen:
             lx = cx + int((r - 15) * math.sin(rad))
             ly = cy - int((r - 15) * math.cos(rad))
             tw = len(text) * self.CHAR_W
-            self._d.text(text, lx - tw // 2, ly - self.CHAR_H // 2, WHITE)
+            self._text(text, lx - tw // 2, ly - self.CHAR_H // 2, WHITE)
 
         # Hour hand (short, thick)
         h_angle = (hours % 12 + minutes / 60) * 30
@@ -506,7 +514,7 @@ class Screen:
         if scale > 1:
             self._draw_scaled_text(text, x, y, color, scale)
         else:
-            self._d.text(text, x, y, color)
+            self._text(text, x, y, color)
 
     def line(self, x1, y1, x2, y2, color=WHITE):
         self._line(x1, y1, x2, y2, color)
@@ -524,41 +532,49 @@ class Screen:
             self._rect(x, y, w, h, color)
 
     def pixel(self, x, y, color=WHITE):
-        self._d.pixel(x, y, color)
+        self._pixel(x, y, self._c(color))
 
     # --- Control ---
 
     def clear(self, color=BLACK):
-        self._d.fill(color)
+        self._d.fill(self._c(color))
 
     def show(self):
         self._d.show()
 
     # --- Internal drawing helpers ---
 
+    def _text(self, text, x, y, c):
+        self._d.text(text, x, y, self._c(c))
+
+    def _pixel(self, x, y, c):
+        self._d.pixel(x, y, self._c(c))
+
     def _line(self, x1, y1, x2, y2, c):
-        self._d.line(x1, y1, x2, y2, c)
+        self._d.line(x1, y1, x2, y2, self._c(c))
 
     def _hline(self, x, y, w, c):
-        self._d.line(x, y, x + w - 1, y, c)
+        self._d.line(x, y, x + w - 1, y, self._c(c))
 
     def _vline(self, x, y, h, c):
-        self._d.line(x, y, x, y + h - 1, c)
+        self._d.line(x, y, x, y + h - 1, self._c(c))
 
     def _fill_rect(self, x, y, w, h, c):
+        cc = self._c(c)
         if hasattr(self._d, 'fill_rect'):
-            self._d.fill_rect(x, y, w, h, c)
+            self._d.fill_rect(x, y, w, h, cc)
         elif hasattr(self._d, 'framebuf'):
-            self._d.framebuf.fill_rect(x, y, w, h, rgb_to_gray4(c))
+            self._d.framebuf.fill_rect(x, y, w, h, cc)
         else:
             for row in range(h):
-                self._d.line(x, y + row, x + w - 1, y + row, c)
+                self._d.line(x, y + row, x + w - 1, y + row, cc)
 
     def _rect(self, x, y, w, h, c):
+        cc = self._c(c)
         if hasattr(self._d, 'rect'):
-            self._d.rect(x, y, w, h, c)
+            self._d.rect(x, y, w, h, cc)
         elif hasattr(self._d, 'framebuf'):
-            self._d.framebuf.rect(x, y, w, h, rgb_to_gray4(c))
+            self._d.framebuf.rect(x, y, w, h, cc)
         else:
             self._hline(x, y, w, c)
             self._hline(x, y + h - 1, w, c)
@@ -578,7 +594,7 @@ class Screen:
         # On real hardware without scaled text support, draw at scale=1
         # centered at the same position (best effort)
         if not hasattr(self._d, 'pixel'):
-            self._d.text(text, x, y, color)
+            self._text(text, x, y, color)
             return
         # Render at 1x to a temporary buffer, then scale up
         # For MicroPython: draw each character using the display's text method
@@ -586,13 +602,13 @@ class Screen:
         if scale == 2:
             for dx in range(2):
                 for dy in range(2):
-                    self._d.text(text, x + dx, y + dy, color)
+                    self._text(text, x + dx, y + dy, color)
         elif scale == 3:
             for dx in range(3):
                 for dy in range(3):
-                    self._d.text(text, x + dx, y + dy, color)
+                    self._text(text, x + dx, y + dy, color)
         else:
-            self._d.text(text, x, y, color)
+            self._text(text, x, y, color)
 
     def _draw_arc(self, cx, cy, r, start_deg, sweep_deg, color, width=3):
         """Draw a thick arc using individual pixels."""
@@ -607,7 +623,7 @@ class Screen:
                 x = int(cx + (r + dr) * math.cos(angle))
                 y = int(cy + (r + dr) * math.sin(angle))
                 if 0 <= x < self.width and 0 <= y < self.height:
-                    self._d.pixel(x, y, color)
+                    self._pixel(x, y, color)
 
     def _draw_circle(self, cx, cy, r, color):
         """Bresenham circle."""
@@ -617,7 +633,7 @@ class Screen:
                            (x, -y), (y, -x), (-x, -y), (-y, -x)):
                 px, py = cx + sx, cy + sy
                 if 0 <= px < self.width and 0 <= py < self.height:
-                    self._d.pixel(px, py, color)
+                    self._pixel(px, py, color)
             y += 1
             if d < 0:
                 d += 2 * y + 1
@@ -633,7 +649,7 @@ class Screen:
             if 0 <= y < self.height:
                 x1 = max(0, cx - dx)
                 x2 = min(self.width - 1, cx + dx)
-                self._d.line(x1, y, x2, y, color)
+                self._line(x1, y, x2, y, color)
 
     def _fill_triangle(self, x0, y0, x1, y1, x2, y2, color):
         """Filled triangle using scanline."""
@@ -659,4 +675,4 @@ class Screen:
                 x_start = max(0, xl)
                 x_end = min(self.width - 1, xr)
                 if x_start <= x_end:
-                    self._d.line(x_start, y, x_end, y, color)
+                    self._line(x_start, y, x_end, y, color)
