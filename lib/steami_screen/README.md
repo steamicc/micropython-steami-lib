@@ -112,7 +112,7 @@ Displays a large centered value with optional label above and unit below.
 #### Progress Bar
 
 ```python
-screen.bar(value=75, max_value=100)
+screen.bar(75, max_val=100)
 ```
 
 ---
@@ -120,7 +120,7 @@ screen.bar(value=75, max_value=100)
 #### Gauge
 
 ```python
-screen.gauge(value=60, min_value=0, max_value=100, unit="C")
+screen.gauge(60, min_val=0, max_val=100, unit="C")
 ```
 
 Draws a 270-degree arc gauge near the screen border.
