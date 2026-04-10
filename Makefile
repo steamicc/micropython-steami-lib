@@ -115,7 +115,10 @@ firmware-update: $(MPY_DIR) ## Update the MicroPython clone and board-specific s
 	@set -e
 	@echo "Updating micropython-steami..."
 	rm -rf $(CURDIR)/$(MPY_DIR)/lib/micropython-steami-lib
-	cd $(CURDIR)/$(MPY_DIR) && git fetch origin && git checkout $(MICROPYTHON_BRANCH) && git checkout -- lib/micropython-steami-lib && git pull --ff-only
+	git -C $(CURDIR)/$(MPY_DIR) fetch origin
+	git -C $(CURDIR)/$(MPY_DIR) checkout $(MICROPYTHON_BRANCH)
+	git -C $(CURDIR)/$(MPY_DIR) checkout -- lib/micropython-steami-lib
+	git -C $(CURDIR)/$(MPY_DIR) pull --ff-only
 	@echo "Updating required submodules for $(BOARD)..."
 	$(MAKE) -C $(STM32_DIR) BOARD=$(BOARD) submodules
 

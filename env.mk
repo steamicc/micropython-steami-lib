@@ -7,4 +7,4 @@ MICROPYTHON_BRANCH ?= stm32-steami-rev1d-final
 BOARD ?= STEAM32_WB55RG
 BUILD_DIR ?= .build
 MPY_DIR ?= $(BUILD_DIR)/micropython-steami
-STM32_DIR = $(MPY_DIR)/ports/stm32
+STM32_DIR ?= $(MPY_DIR)/ports/stm32
