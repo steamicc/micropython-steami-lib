@@ -566,9 +566,12 @@ class Screen:
             self._vline(x + w - 1, y, h, c)
 
     def _draw_scaled_text(self, text, x, y, color, scale):
-        """Draw text at scale > 1 by scaling each pixel of the 8x8 font."""
-        # Use framebuf built-in if available (MicroPython does not support scale)
-        # Fallback: draw each char pixel-by-pixel at scale
+        """Draw text at scale > 1.
+
+        If the backend provides ``draw_scaled_text()``, it is used directly.
+        Otherwise, the text is drawn multiple times with a 1px offset to
+        produce a bold effect (not a true pixel-scale zoom).
+        """
         if hasattr(self._d, 'draw_scaled_text'):
             self._d.draw_scaled_text(text, x, y, color, scale)
             return
