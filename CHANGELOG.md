@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [0.16.0](https://github.com/steamicc/micropython-steami-lib/compare/v0.15.0...v0.16.0) (2026-04-10)
+
+
+### Features
+
+* **steami_screen:** Add examples and fix value/gauge/arc rendering. ([#350](https://github.com/steamicc/micropython-steami-lib/issues/350)) ([b333c4f](https://github.com/steamicc/micropython-steami-lib/commit/b333c4feed9da1346b5a027aa8acbaa3495bc6e6))
+
 # [0.15.0](https://github.com/steamicc/micropython-steami-lib/compare/v0.14.0...v0.15.0) (2026-04-10)
 
 
