@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [0.15.0](https://github.com/steamicc/micropython-steami-lib/compare/v0.14.0...v0.15.0) (2026-04-10)
+
+
+### Features
+
+* **steami_screen:** Add SSD1327 display wrapper. ([#355](https://github.com/steamicc/micropython-steami-lib/issues/355)) ([0d1494b](https://github.com/steamicc/micropython-steami-lib/commit/0d1494b6230d155e275bcdc564263ba60f0ac2f4))
+
 # [0.14.0](https://github.com/steamicc/micropython-steami-lib/compare/v0.13.3...v0.14.0) (2026-04-10)
 
 
