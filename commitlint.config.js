@@ -34,6 +34,7 @@ module.exports = {
         'style',
         'tests',
         'tooling',
+        'steami_screen'
       ],
     ],
     'type-enum': [
