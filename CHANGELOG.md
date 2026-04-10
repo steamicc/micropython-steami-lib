@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [0.14.0](https://github.com/steamicc/micropython-steami-lib/compare/v0.13.3...v0.14.0) (2026-04-10)
+
+
+### Features
+
+* **steami_screen:** Add steami_screen widget library. ([#354](https://github.com/steamicc/micropython-steami-lib/issues/354)) ([737f8de](https://github.com/steamicc/micropython-steami-lib/commit/737f8dee6e74bc38403354eeb97f10cfecc28898))
+
 ## [0.13.3](https://github.com/steamicc/micropython-steami-lib/compare/v0.13.2...v0.13.3) (2026-04-10)
 
 ## [0.13.2](https://github.com/steamicc/micropython-steami-lib/compare/v0.13.1...v0.13.2) (2026-04-09)
