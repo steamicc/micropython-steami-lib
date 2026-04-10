@@ -153,6 +153,7 @@ if sensor.is_gesture_available():
 | `ambient_light.py` | Read ambient light and RGB values |
 | `proximity.py`     | Detect nearby objects             |
 | `gesture.py`       | Detect directional gestures       |
+| `color_lamp.py`         | Reactive color lamp with auto-calibration and OLED display |
 
 ```bash
 mpremote mount lib/apds9960 run lib/apds9960/examples/ambient_light.py
