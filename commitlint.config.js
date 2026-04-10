@@ -7,7 +7,7 @@ module.exports = {
   },
   rules: {
     'subject-case': [0],
-    'subject-full-stop': [0],
+    'subject-full-stop': [2, 'always', '.'],
     'header-max-length': [2, 'always', 78],
     'scope-enum': [
       2,

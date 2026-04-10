@@ -33,3 +33,8 @@ jobs:
 
       - name: "📜 Validate commit messages"
         run: npx --no-install commitlint --from ${{ github.event.pull_request.base.sha }} --to ${{ github.event.pull_request.head.sha }} --verbose
+
+      - name: "📜 Validate PR title (used as squash commit message)"
+        env:
+          PR_TITLE: ${{ github.event.pull_request.title }}
+        run: printf '%s\n' "$PR_TITLE" | npx --no-install commitlint --verbose
