@@ -159,6 +159,9 @@ class SSD1327(object):
     def text(self, string, x, y, col=15):
         self.framebuf.text(string, x, y, col)
 
+    def fill_rect(self, x, y, w, h, col):
+        self.framebuf.fill_rect(x, y, w, h, col)
+
     def write_cmd(self):
         raise NotImplementedError
 
