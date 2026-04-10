@@ -120,7 +120,7 @@ class Screen:
         cx, cy = self.center
         char_w = self.CHAR_W * scale
         char_h = self.CHAR_H * scale
-        tw = len(text) * char_w
+        tw = len(text) * char_w // 2
 
         # Compute vertical position: center the value+unit block
         if unit:
@@ -136,10 +136,10 @@ class Screen:
             y = vy + y_offset
         elif at == "W":
             x = self.width // 4 - tw // 2
-            y = vy
+            y = vy + y_offset
         elif at == "E":
             x = 3 * self.width // 4 - tw // 2
-            y = vy
+            y = vy + y_offset
         else:
             x, y = self._resolve(at, len(text), scale)
 
@@ -153,7 +153,7 @@ class Screen:
 
         # Optional unit below (medium font if backend supports it)
         if unit:
-            unit_y = y + char_h + char_h // 3
+            unit_y = y + char_h
             ux = x + tw // 2 - len(unit) * self.CHAR_W // 2
             if hasattr(self._d, 'draw_medium_text'):
                 self._d.draw_medium_text(unit, ux, unit_y, LIGHT)
@@ -196,7 +196,8 @@ class Screen:
         if fill_w > 0:
             self._fill_rect(bx, by, fill_w, bar_h, color)
 
-    def gauge(self, val, min_val=0, max_val=100, unit=None, color=LIGHT):
+
+    def gauge(self, val, min_val=0, max_val=100, color=LIGHT):
         """Draw a circular arc gauge (270 deg, gap at bottom).
 
         The arc is drawn close to the screen border.  Call gauge() before
@@ -215,28 +216,7 @@ class Screen:
         # Filled arc
         if ratio > 0:
             self._draw_arc(cx, cy, r, start_angle, int(sweep * ratio),
-                           color, arc_w)
-
-        # Value + unit centered as a block
-        text = str(val)
-        char_h = self.CHAR_H * 2  # scale=2
-        tw = len(text) * self.CHAR_W * 2
-        if unit:
-            gap = char_h // 3
-            unit_h = self.CHAR_H
-            block_h = char_h + gap + unit_h
-            vy = cy - block_h // 2
-        else:
-            vy = cy - char_h // 2
-        vx = cx - tw // 2
-        self._draw_scaled_text(text, vx, vy, WHITE, 2)
-        if unit:
-            ux = cx - len(unit) * self.CHAR_W // 2
-            uy = vy + char_h + gap
-            if hasattr(self._d, 'draw_medium_text'):
-                self._d.draw_medium_text(unit, ux, uy, LIGHT)
-            else:
-                self._d.text(unit, ux, uy, LIGHT)
+                           color, arc_w + 2)  # +1 to fill gaps between segments
 
         # Min/max labels at arc endpoints (slightly inward to stay visible)
         min_t = str(int(min_val))
@@ -589,19 +569,36 @@ class Screen:
             self._d.text(text, x, y, color)
 
     def _draw_arc(self, cx, cy, r, start_deg, sweep_deg, color, width=3):
-        """Draw a thick arc using individual pixels."""
+        """Draw a thick arc."""
         if hasattr(self._d, 'draw_arc'):
             self._d.draw_arc(cx, cy, r, start_deg, sweep_deg, color, width)
             return
-        steps = max(sweep_deg, 60)
+
+        # Number of steps based on arc length, with oversampling to avoid gaps
+        arc_len = abs(math.radians(sweep_deg) * r)
+        steps = max(int(arc_len * 2), 1)  # Oversample to avoid gaps
         half_w = width // 2
+
+        prev_points = None
+
         for i in range(steps + 1):
             angle = math.radians(start_deg + i * sweep_deg / steps)
+
+            curr_points = []
             for dr in range(-half_w, half_w + 1):
-                x = int(cx + (r + dr) * math.cos(angle))
-                y = int(cy + (r + dr) * math.sin(angle))
-                if 0 <= x < self.width and 0 <= y < self.height:
+                rr = r + dr
+                x = round(cx + rr * math.cos(angle))
+                y = round(cy + rr * math.sin(angle))
+                curr_points.append((x, y))
+
+                if prev_points is None and 0 <= x < self.width and 0 <= y < self.height:
                     self._d.pixel(x, y, color)
+
+            if prev_points is not None:
+                for (x0, y0), (x1, y1) in zip(prev_points, curr_points):
+                    self._line(x0, y0, x1, y1, color)
+
+            prev_points = curr_points
 
     def _draw_circle(self, cx, cy, r, color):
         """Bresenham circle."""

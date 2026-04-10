@@ -21,14 +21,15 @@ Provides a device-agnostic abstraction layer on top of display drivers (SSD1327,
 ```python
 import ssd1327
 from machine import SPI, Pin
-from steami_screen import Screen
+from steami_screen import Screen, SSD1327Display
 
 spi = SPI(1)
 dc = Pin("DATA_COMMAND_DISPLAY")
 res = Pin("RST_DISPLAY")
 cs = Pin("CS_DISPLAY")
 
-display = ssd1327.WS_OLED_128X128_SPI(spi, dc, res, cs)
+raw = ssd1327.WS_OLED_128X128_SPI(spi, dc, res, cs)
+display = SSD1327Display(raw)
 screen = Screen(display)
 
 screen.clear()
@@ -120,7 +121,7 @@ screen.bar(75, max_val=100)
 #### Gauge
 
 ```python
-screen.gauge(60, min_val=0, max_val=100, unit="C")
+screen.gauge(60, min_val=0, max_val=100)
 ```
 
 Draws a 270-degree arc gauge near the screen border.
