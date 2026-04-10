@@ -1,0 +1,329 @@
+driver: steami_screen
+driver_class: Screen
+
+mock_init: |
+  class FakeDisplay:
+      def __init__(self):
+          self.calls = []
+          self.width = 128
+          self.height = 128
+
+      def fill(self, color):
+          self.calls.append(("fill", color))
+
+      def pixel(self, x, y, color):
+          self.calls.append(("pixel", x, y, color))
+
+      def text(self, text, x, y, color):
+          self.calls.append(("text", text, x, y, color))
+
+      def line(self, x1, y1, x2, y2, color):
+          self.calls.append(("line", x1, y1, x2, y2, color))
+
+      def fill_rect(self, x, y, w, h, color):
+          self.calls.append(("fill_rect", x, y, w, h, color))
+
+      def rect(self, x, y, w, h, color):
+          self.calls.append(("rect", x, y, w, h, color))
+
+      def show(self):
+          self.calls.append(("show",))
+
+      def clear_calls(self):
+          self.calls = []
+
+  dev = Screen(FakeDisplay())
+
+tests:
+  # ----- Properties -----
+
+  - name: "Center is computed correctly"
+    action: script
+    script: |
+      result = dev.center == (64, 64)
+    expect_true: true
+    mode: [mock]
+
+  - name: "Radius is computed correctly"
+    action: script
+    script: |
+      result = dev.radius == 64
+    expect_true: true
+    mode: [mock]
+
+  - name: "Max chars matches screen width"
+    action: script
+    script: |
+      result = dev.max_chars == 16
+    expect_true: true
+    mode: [mock]
+
+  # ----- Core methods -----
+
+  - name: "clear calls backend fill"
+    action: script
+    script: |
+      d = dev._d
+      d.clear_calls()
+      dev.clear()
+      result = len(d.calls) == 1 and d.calls[0][0] == "fill"
+    expect_true: true
+    mode: [mock]
+
+  - name: "show calls backend show"
+    action: script
+    script: |
+      d = dev._d
+      d.clear_calls()
+      dev.show()
+      result = len(d.calls) == 1 and d.calls[0][0] == "show"
+    expect_true: true
+    mode: [mock]
+
+  # ----- Drawing primitives -----
+
+  - name: "pixel calls backend pixel"
+    action: script
+    script: |
+      d = dev._d
+      d.clear_calls()
+      dev.pixel(10, 20)
+      result = d.calls == [("pixel", 10, 20, (255, 255, 255))]
+    expect_true: true
+    mode: [mock]
+
+  - name: "line calls backend line"
+    action: script
+    script: |
+      d = dev._d
+      d.clear_calls()
+      dev.line(1, 2, 30, 40)
+      result = d.calls == [("line", 1, 2, 30, 40, (255, 255, 255))]
+    expect_true: true
+    mode: [mock]
+
+  - name: "rect outline uses backend rect"
+    action: script
+    script: |
+      d = dev._d
+      d.clear_calls()
+      dev.rect(5, 6, 20, 10)
+      result = d.calls == [("rect", 5, 6, 20, 10, (255, 255, 255))]
+    expect_true: true
+    mode: [mock]
+
+  - name: "rect fill uses backend fill_rect"
+    action: script
+    script: |
+      d = dev._d
+      d.clear_calls()
+      dev.rect(5, 6, 20, 10, fill=True)
+      result = d.calls == [("fill_rect", 5, 6, 20, 10, (255, 255, 255))]
+    expect_true: true
+    mode: [mock]
+
+  # ----- Text -----
+
+  - name: "text at CENTER draws backend text"
+    action: script
+    script: |
+      d = dev._d
+      d.clear_calls()
+      dev.text("Hi")
+      result = len(d.calls) >= 1 and d.calls[0][0] == "text"
+    expect_true: true
+    mode: [mock]
+
+  - name: "text at explicit coordinates uses given position"
+    action: script
+    script: |
+      d = dev._d
+      d.clear_calls()
+      dev.text("Hi", at=(12, 34))
+      result = d.calls == [("text", "Hi", 12, 34, (255, 255, 255))]
+    expect_true: true
+    mode: [mock]
+
+  - name: "text scale 2 still renders text"
+    action: script
+    script: |
+      d = dev._d
+      d.clear_calls()
+      dev.text("Hi", scale=2)
+      text_calls = [c for c in d.calls if c[0] == "text"]
+      result = len(text_calls) > 0
+    expect_true: true
+    mode: [mock]
+
+  # ----- Layout widgets -----
+
+  - name: "title draws text near north"
+    action: script
+    script: |
+      d = dev._d
+      d.clear_calls()
+      dev.title("Hello")
+      text_calls = [c for c in d.calls if c[0] == "text"]
+      result = len(text_calls) == 1 and text_calls[0][1] == "Hello"
+    expect_true: true
+    mode: [mock]
+
+  - name: "subtitle draws text near south"
+    action: script
+    script: |
+      d = dev._d
+      d.clear_calls()
+      dev.subtitle("Line1", "Line2")
+      text_calls = [c for c in d.calls if c[0] == "text"]
+      result = len(text_calls) == 2
+    expect_true: true
+    mode: [mock]
+
+  - name: "empty subtitle is no-op"
+    action: script
+    script: |
+      d = dev._d
+      d.clear_calls()
+      dev.subtitle()
+      result = len(d.calls) == 0
+    expect_true: true
+    mode: [mock]
+
+  - name: "value draws large text"
+    action: script
+    script: |
+      d = dev._d
+      d.clear_calls()
+      dev.value(42)
+      text_calls = [c for c in d.calls if c[0] == "text"]
+      result = len(text_calls) > 0
+    expect_true: true
+    mode: [mock]
+
+  # ----- Widgets -----
+
+  - name: "bar draws rectangles"
+    action: script
+    script: |
+      d = dev._d
+      d.clear_calls()
+      dev.bar(50)
+      fill_calls = [c for c in d.calls if c[0] == "fill_rect"]
+      result = len(fill_calls) == 2
+    expect_true: true
+    mode: [mock]
+
+  - name: "menu draws items"
+    action: script
+    script: |
+      d = dev._d
+      d.clear_calls()
+      dev.menu(["A", "B", "C"], selected=1)
+      text_calls = [c for c in d.calls if c[0] == "text"]
+      result = len(text_calls) == 3
+    expect_true: true
+    mode: [mock]
+
+  - name: "face happy draws pixels"
+    action: script
+    script: |
+      d = dev._d
+      d.clear_calls()
+      dev.face("happy")
+      fill_calls = [c for c in d.calls if c[0] == "fill_rect"]
+      result = len(fill_calls) > 0
+    expect_true: true
+    mode: [mock]
+
+  - name: "face unknown is no-op"
+    action: script
+    script: |
+      d = dev._d
+      d.clear_calls()
+      dev.face("nonexistent")
+      result = len(d.calls) == 0
+    expect_true: true
+    mode: [mock]
+
+  - name: "gauge renders without error"
+    action: script
+    script: |
+      d = dev._d
+      d.clear_calls()
+      dev.gauge(50)
+      result = len(d.calls) > 0
+    expect_true: true
+    mode: [mock]
+
+  - name: "gauge handles min equals max"
+    action: script
+    script: |
+      d = dev._d
+      d.clear_calls()
+      dev.gauge(50, min_val=50, max_val=50)
+      result = len(d.calls) > 0
+    expect_true: true
+    mode: [mock]
+
+  - name: "compass renders without error"
+    action: script
+    script: |
+      d = dev._d
+      d.clear_calls()
+      dev.compass(90)
+      result = len(d.calls) > 0
+    expect_true: true
+    mode: [mock]
+
+  - name: "watch renders without error"
+    action: script
+    script: |
+      d = dev._d
+      d.clear_calls()
+      dev.watch(10, 30, 15)
+      result = len(d.calls) > 0
+    expect_true: true
+    mode: [mock]
+
+  - name: "graph renders without error"
+    action: script
+    script: |
+      d = dev._d
+      d.clear_calls()
+      dev.graph([10, 20, 30, 40])
+      result = len(d.calls) > 0
+    expect_true: true
+    mode: [mock]
+
+  - name: "circle outline renders"
+    action: script
+    script: |
+      d = dev._d
+      d.clear_calls()
+      dev.circle(64, 64, 20)
+      pixel_calls = [c for c in d.calls if c[0] == "pixel"]
+      result = len(pixel_calls) > 0
+    expect_true: true
+    mode: [mock]
+
+  - name: "circle fill renders"
+    action: script
+    script: |
+      d = dev._d
+      d.clear_calls()
+      dev.circle(64, 64, 10, fill=True)
+      line_calls = [c for c in d.calls if c[0] == "line"]
+      result = len(line_calls) > 0
+    expect_true: true
+    mode: [mock]
+
+  - name: "invalid position falls back to center"
+    action: script
+    script: |
+      d = dev._d
+      d.clear_calls()
+      dev.text("Test", at="INVALID")
+      text_calls = [c for c in d.calls if c[0] == "text"]
+      result = len(text_calls) == 1
+    expect_true: true
+    mode: [mock]
