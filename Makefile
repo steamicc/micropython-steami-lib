@@ -29,7 +29,7 @@ $(VENV_DIR)/bin/activate:
 
 .PHONY: install
 install: $(VENV_DIR)/bin/activate node_modules/.package-lock.json ## Install dev tools (pip + npm)
-	$(VENV_DIR)/bin/pip install -e ".[dev,test]"
+	$(VENV_DIR)/bin/pip install -e ".[dev,test,flash]"
 
 # --- Linting ---
 
@@ -128,7 +128,7 @@ deploy: deploy-pyocd ## Flash firmware (default: pyocd)
 
 .PHONY: deploy-pyocd
 deploy-pyocd: $(MPY_DIR) ## Flash firmware via pyOCD (CMSIS-DAP)
-	pyocd flash $(STM32_DIR)/build-$(BOARD)/firmware.elf --format elf
+	$(PYTHON) -m pyocd flash $(STM32_DIR)/build-$(BOARD)/firmware.elf --format elf
 
 .PHONY: deploy-openocd
 deploy-openocd: $(MPY_DIR) ## Flash firmware via OpenOCD
