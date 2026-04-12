@@ -107,6 +107,7 @@ firmware: $(MPY_DIR) ## Build MicroPython firmware with current drivers
 	rm -rf $(CURDIR)/$(MPY_DIR)/lib/micropython-steami-lib
 	ln -s $(CURDIR) $(CURDIR)/$(MPY_DIR)/lib/micropython-steami-lib
 	@echo "Building firmware for $(BOARD)..."
+	rm -f $(STM32_DIR)/build-$(BOARD)/frozen_content.c
 	$(MAKE) -C $(STM32_DIR) BOARD=$(BOARD)
 	@echo "Firmware ready: $(STM32_DIR)/build-$(BOARD)/firmware.hex"
 
@@ -123,7 +124,14 @@ firmware-update: $(MPY_DIR) ## Update the MicroPython clone and board-specific s
 	$(MAKE) -C $(STM32_DIR) BOARD=$(BOARD) submodules
 
 .PHONY: deploy
-deploy: $(MPY_DIR) ## Flash firmware to the board via OpenOCD
+deploy: deploy-pyocd ## Flash firmware (default: pyocd)
+
+.PHONY: deploy-pyocd
+deploy-pyocd: $(MPY_DIR) ## Flash firmware via pyOCD (CMSIS-DAP)
+	pyocd flash $(STM32_DIR)/build-$(BOARD)/firmware.elf --format elf
+
+.PHONY: deploy-openocd
+deploy-openocd: $(MPY_DIR) ## Flash firmware via OpenOCD
 	$(MAKE) -C $(STM32_DIR) BOARD=$(BOARD) deploy-openocd
 
 .PHONY: run
