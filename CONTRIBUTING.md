@@ -129,7 +129,7 @@ Then run `make setup` to install all dependencies and git hooks. This creates a 
 
 ## Dev Container
 
-A dev container is available for VS Code (local Docker only, not GitHub Codespaces). It includes all prerequisites out of the box: Python 3.10, Node.js 22, ruff, pytest, mpremote, arm-none-eabi-gcc, OpenOCD, and the GitHub CLI.
+A dev container is available for VS Code (local Docker only, not GitHub Codespaces). It includes all prerequisites out of the box: Python 3.10, Node.js 22, ruff, pytest, mpremote, pyOCD, arm-none-eabi-gcc, OpenOCD, and the GitHub CLI.
 
 1. Open the repository in VS Code
 2. When prompted, click **Reopen in Container** (or use the command palette: *Dev Containers: Reopen in Container*)
@@ -140,7 +140,7 @@ The container also provides:
 * **zsh + oh-my-zsh** as default shell with persistent shell history
 * **Pylance** configured with MicroPython STM32 stubs (no false `import machine` errors)
 * **Serial Monitor** extension for board communication
-* **USB passthrough** for mpremote, OpenOCD, and firmware flashing (the container runs in privileged mode with `/dev/bus/usb` mounted)
+* **USB passthrough** for mpremote, pyOCD, OpenOCD, and firmware flashing (the container runs in privileged mode with `/dev/bus/usb` mounted)
 * **udev rules** for the DAPLink interface (auto-started on container creation)
 
 Note: GitHub Codespaces is not supported because the container requires privileged mode and USB device access for board communication.
