@@ -139,7 +139,7 @@ def main():
     firmware = sys.argv[1]
     if not os.path.isfile(firmware):
         print("Error: firmware binary not found: " + firmware, file=sys.stderr)
-        print("Run 'make firmware' first.", file=sys.stderr)
+        print("Run 'make micropython-firmware' first.", file=sys.stderr)
         sys.exit(1)
 
     mount = find_steami()

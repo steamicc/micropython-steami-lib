@@ -5,8 +5,8 @@ each other sensor.  Calibration offsets are stored in the persistent
 config zone and survive power cycles.
 
 Note: this example assumes the drivers are frozen into the firmware.
-Use ``make firmware && make deploy`` to build a firmware with the
-latest drivers before running this script.
+Use ``make micropython-firmware && make micropython-deploy`` to build a
+firmware with the latest drivers before running this script.
 """
 
 from time import sleep_ms
