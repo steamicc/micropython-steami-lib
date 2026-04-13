@@ -5,6 +5,7 @@ from the HTS221 sensor. Includes a startup calibration phase to compensate
 sensor offsets. Displays live temperature, humidity and pressure readings
 with horizontal progress bars and a comfort index on a round 128x128 OLED.
 """
+
 from time import sleep_ms
 
 import ssd1327
