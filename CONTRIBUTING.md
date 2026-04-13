@@ -195,6 +195,7 @@ make firmware       # Clone micropython-steami (if needed), link local drivers, 
 make firmware-update # Refresh the MicroPython clone and board-specific submodules
 make deploy         # Flash firmware via pyOCD (default)
 make deploy-openocd # Flash firmware via OpenOCD (alternative)
+make deploy-usb     # Flash firmware via DAPLink USB mass-storage (alternative)
 make run SCRIPT=lib/steami_config/examples/show_config.py      # Run with live output
 make deploy-script SCRIPT=lib/.../calibrate_magnetometer.py    # Deploy as main.py for autonomous use
 make run-main       # Re-execute the deployed main.py

@@ -134,6 +134,10 @@ deploy-pyocd: $(MPY_DIR) ## Flash firmware via pyOCD (CMSIS-DAP)
 deploy-openocd: $(MPY_DIR) ## Flash firmware via OpenOCD
 	$(MAKE) -C $(STM32_DIR) BOARD=$(BOARD) deploy-openocd
 
+.PHONY: deploy-usb
+deploy-usb: $(MPY_DIR) ## Flash firmware via DAPLink USB mass-storage
+	@$(PYTHON) scripts/deploy_usb.py $(STM32_DIR)/build-$(BOARD)/firmware.bin
+
 .PHONY: run
 run: ## Run a script on the board with live output (SCRIPT=path/to/file.py)
 	@if [ -z "$(SCRIPT)" ]; then \
