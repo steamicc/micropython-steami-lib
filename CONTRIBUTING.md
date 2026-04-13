@@ -140,7 +140,7 @@ The container also provides:
 * **zsh + oh-my-zsh** as default shell with persistent shell history
 * **Pylance** configured with MicroPython STM32 stubs (no false `import machine` errors)
 * **Serial Monitor** extension for board communication
-* **USB passthrough** for mpremote, pyOCD, OpenOCD, and firmware flashing (the container runs in privileged mode with `/dev/bus/usb` mounted)
+* **USB passthrough** for mpremote, pyOCD, OpenOCD, and MicroPython firmware flashing (the container runs in privileged mode with `/dev/bus/usb` mounted)
 * **udev rules** for the DAPLink interface (auto-started on container creation)
 
 Note: GitHub Codespaces is not supported because the container requires privileged mode and USB device access for board communication.
@@ -186,16 +186,21 @@ make bump PART=minor   # minor: v1.0.1 → v1.1.0
 make bump PART=major   # major: v1.1.0 → v2.0.0
 ```
 
-## Firmware build and deploy
+## MicroPython firmware build and deploy
 
-The drivers are "frozen" into the MicroPython firmware for the STeaMi board. The Makefile automates cloning, building, and flashing:
+The STeaMi board has two distinct firmwares:
+
+- **MicroPython firmware** — runs on the STM32WB55 main MCU and exposes the drivers from this repository
+- **DAPLink firmware** — runs on the STM32F103 interface chip and provides the I2C bridge, mass-storage, and CMSIS-DAP debug interface (build targets planned in #377)
+
+This section covers the **MicroPython firmware** only. The drivers in this repository are "frozen" into it. The Makefile automates cloning, building, and flashing:
 
 ```bash
 make micropython-firmware         # Clone micropython-steami (if needed), link local drivers, build
 make micropython-update           # Refresh the MicroPython clone and board-specific submodules
-make micropython-deploy           # Flash firmware via pyOCD (default)
-make micropython-deploy-openocd   # Flash firmware via OpenOCD (alternative)
-make micropython-deploy-usb       # Flash firmware via DAPLink USB mass-storage (alternative)
+make micropython-deploy           # Flash MicroPython firmware via pyOCD (default)
+make micropython-deploy-openocd   # Flash MicroPython firmware via OpenOCD (alternative)
+make micropython-deploy-usb       # Flash MicroPython firmware via DAPLink USB mass-storage (alternative)
 make micropython-clean            # Clean MicroPython firmware build artifacts
 make run SCRIPT=lib/steami_config/examples/show_config.py      # Run with live output
 make deploy-script SCRIPT=lib/.../calibrate_magnetometer.py    # Deploy as main.py for autonomous use
@@ -204,7 +209,7 @@ make run-main                     # Re-execute main.py on the board
 
 The legacy short names (`make firmware`, `make deploy`, etc.) are deprecated and now print an error message asking which firmware (MicroPython or DAPLink) you intended to target.
 
-The firmware source is cloned into `.build/micropython-steami/` (gitignored). A symbolic link replaces the submodule `lib/micropython-steami-lib` with your local working directory, so the firmware always includes your latest changes — even uncommitted ones.
+The MicroPython firmware source is cloned into `.build/micropython-steami/` (gitignored). A symbolic link replaces the submodule `lib/micropython-steami-lib` with your local working directory, so the firmware always includes your latest changes — even uncommitted ones.
 
 Use `make micropython-firmware` for normal rebuilds from the existing local clone. Use `make micropython-update` only when you want to refresh the `micropython-steami` checkout itself or resync the board-specific submodules before rebuilding.
 

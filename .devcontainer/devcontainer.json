@@ -5,7 +5,7 @@
     },
 
     // USB access for STeaMi board (DAPLink / mpremote / pyOCD / OpenOCD).
-    // Privileged mode is required for firmware flashing and board communication.
+    // Privileged mode is required for MicroPython firmware flashing and board communication.
     // This is incompatible with GitHub Codespaces but essential for local use.
     "privileged": true,
     "mounts": ["type=bind,source=/dev/bus/usb,target=/dev/bus/usb"],
