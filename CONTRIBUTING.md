@@ -120,7 +120,8 @@ For local development (without dev container):
 * Python 3.10+
 * Node.js 22+ (for husky, commitlint, lint-staged, semantic-release)
 * `arm-none-eabi-gcc` toolchain (for `make firmware`)
-* OpenOCD (for `make deploy`)
+* `pyocd` (for `make deploy`, installed via `pip install -e ".[flash]"`)
+* OpenOCD (optional, for `make deploy-openocd`)
 * `mpremote` (installed via `pip install -e ".[test]"`)
 * GitHub CLI (`gh`)
 
@@ -128,7 +129,7 @@ Then run `make setup` to install all dependencies and git hooks. This creates a 
 
 ## Dev Container
 
-A dev container is available for VS Code (local Docker only, not GitHub Codespaces). It includes all prerequisites out of the box: Python 3.10, Node.js 22, ruff, pytest, mpremote, arm-none-eabi-gcc, OpenOCD, and the GitHub CLI.
+A dev container is available for VS Code (local Docker only, not GitHub Codespaces). It includes all prerequisites out of the box: Python 3.10, Node.js 22, ruff, pytest, mpremote, pyOCD, arm-none-eabi-gcc, OpenOCD, and the GitHub CLI.
 
 1. Open the repository in VS Code
 2. When prompted, click **Reopen in Container** (or use the command palette: *Dev Containers: Reopen in Container*)
@@ -139,7 +140,7 @@ The container also provides:
 * **zsh + oh-my-zsh** as default shell with persistent shell history
 * **Pylance** configured with MicroPython STM32 stubs (no false `import machine` errors)
 * **Serial Monitor** extension for board communication
-* **USB passthrough** for mpremote, OpenOCD, and firmware flashing (the container runs in privileged mode with `/dev/bus/usb` mounted)
+* **USB passthrough** for mpremote, pyOCD, OpenOCD, and firmware flashing (the container runs in privileged mode with `/dev/bus/usb` mounted)
 * **udev rules** for the DAPLink interface (auto-started on container creation)
 
 Note: GitHub Codespaces is not supported because the container requires privileged mode and USB device access for board communication.
@@ -192,7 +193,8 @@ The drivers are "frozen" into the MicroPython firmware for the STeaMi board. The
 ```bash
 make firmware       # Clone micropython-steami (if needed), link local drivers, build
 make firmware-update # Refresh the MicroPython clone and board-specific submodules
-make deploy         # Flash firmware via OpenOCD
+make deploy         # Flash firmware via pyOCD (default)
+make deploy-openocd # Flash firmware via OpenOCD (alternative)
 make run SCRIPT=lib/steami_config/examples/show_config.py      # Run with live output
 make deploy-script SCRIPT=lib/.../calibrate_magnetometer.py    # Deploy as main.py for autonomous use
 make run-main       # Re-execute the deployed main.py

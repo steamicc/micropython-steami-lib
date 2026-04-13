@@ -12,6 +12,7 @@ requires-python = ">=3.7"
 [project.optional-dependencies]
 dev = ["ruff==0.11.6", "micropython-stm32-stubs>=1.24"]
 test = ["pytest==7.4.0", "pyyaml==6.0.2", "mpremote>=1.0"]
+flash = ["pyocd>=0.44"]
 
 [tool.setuptools]
 # No Python packages to install — this project contains MicroPython drivers
