@@ -229,8 +229,10 @@ $(DAPLINK_GCC_DIR)/bin/arm-none-eabi-gcc:
 	rm -f $(BUILD_DIR)/gcc-arm-none-eabi.tar.bz2
 
 # Sentinel: re-runs pip install whenever DAPLink's requirements.txt changes
-# (e.g. after `make daplink-update`).
-$(DAPLINK_DIR)/venv/.installed: $(DAPLINK_DIR)/requirements.txt
+# (e.g. after `make daplink-update`). The order-only prerequisite on
+# $(DAPLINK_DIR) guarantees the clone happens first on a fresh checkout, so
+# requirements.txt exists by the time make checks it.
+$(DAPLINK_DIR)/venv/.installed: $(DAPLINK_DIR)/requirements.txt | $(DAPLINK_DIR)
 	@echo "Setting up DAPLink Python virtualenv..."
 	@if [ ! -x "$(DAPLINK_DIR)/venv/bin/python" ]; then \
 		$(PYTHON) -m venv $(DAPLINK_DIR)/venv; \
