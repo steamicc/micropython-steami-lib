@@ -120,7 +120,8 @@ For local development (without dev container):
 * Python 3.10+
 * Node.js 22+ (for husky, commitlint, lint-staged, semantic-release)
 * `arm-none-eabi-gcc` toolchain (for `make firmware`)
-* OpenOCD (for `make deploy`)
+* `pyocd` (for `make deploy`, installed via `pip install -e ".[flash]"`)
+* OpenOCD (optional, for `make deploy-openocd`)
 * `mpremote` (installed via `pip install -e ".[test]"`)
 * GitHub CLI (`gh`)
 
@@ -192,7 +193,8 @@ The drivers are "frozen" into the MicroPython firmware for the STeaMi board. The
 ```bash
 make firmware       # Clone micropython-steami (if needed), link local drivers, build
 make firmware-update # Refresh the MicroPython clone and board-specific submodules
-make deploy         # Flash firmware via OpenOCD
+make deploy         # Flash firmware via pyOCD (default)
+make deploy-openocd # Flash firmware via OpenOCD (alternative)
 make run SCRIPT=lib/steami_config/examples/show_config.py      # Run with live output
 make deploy-script SCRIPT=lib/.../calibrate_magnetometer.py    # Deploy as main.py for autonomous use
 make run-main       # Re-execute the deployed main.py
