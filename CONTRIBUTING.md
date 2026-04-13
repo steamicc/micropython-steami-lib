@@ -119,8 +119,9 @@ For local development (without dev container):
 
 * Python 3.10+
 * Node.js 22+ (for husky, commitlint, lint-staged, semantic-release)
-* `arm-none-eabi-gcc` toolchain (for `make micropython-firmware` and `make daplink-firmware`)
+* `arm-none-eabi-gcc` toolchain (for `make micropython-firmware`; `make daplink-firmware` ignores the system toolchain and downloads its own pinned 10.3-2021.10 build)
 * `ccache` and `ninja-build` (for `make daplink-firmware`)
+* For `make daplink-firmware`: Linux x86_64, Linux aarch64, or Intel macOS only (the pinned toolchain is not published for Apple Silicon or Windows — use the dev container on those platforms)
 * `pyocd` (for `make micropython-deploy`, installed via `pip install -e ".[flash]"`)
 * OpenOCD (optional, for `make micropython-deploy-openocd`)
 * `mpremote` (installed via `pip install -e ".[test]"`)

@@ -147,7 +147,15 @@ micropython-deploy-usb: $(MPY_DIR) ## Flash MicroPython firmware via DAPLink USB
 define DEPRECATED_FIRMWARE
 @echo "Error: 'make $(1)' is ambiguous. Use one of:"; \
 echo "  make micropython-$(2)   (MicroPython firmware)"; \
-echo "  make daplink-$(2)       (DAPLink firmware, see #377)"; \
+echo "  make daplink-$(2)       (DAPLink firmware)"; \
+exit 1
+endef
+
+# Variant for short names whose DAPLink counterpart does not exist yet
+# (daplink-deploy-pyocd / daplink-deploy-openocd are tracked in #388).
+define DEPRECATED_MICROPYTHON_ONLY
+@echo "Error: 'make $(1)' has been renamed. Use:"; \
+echo "  make micropython-$(2)   (MicroPython firmware)"; \
 exit 1
 endef
 
@@ -161,9 +169,9 @@ firmware-clean:
 deploy:
 	$(call DEPRECATED_FIRMWARE,deploy,deploy)
 deploy-pyocd:
-	$(call DEPRECATED_FIRMWARE,deploy-pyocd,deploy-pyocd)
+	$(call DEPRECATED_MICROPYTHON_ONLY,deploy-pyocd,deploy-pyocd)
 deploy-openocd:
-	$(call DEPRECATED_FIRMWARE,deploy-openocd,deploy-openocd)
+	$(call DEPRECATED_MICROPYTHON_ONLY,deploy-openocd,deploy-openocd)
 deploy-usb:
 	$(call DEPRECATED_FIRMWARE,deploy-usb,deploy-usb)
 
@@ -206,20 +214,32 @@ $(DAPLINK_DIR):
 	git clone --branch $(DAPLINK_BRANCH) $(DAPLINK_REPO) $(CURDIR)/$(DAPLINK_DIR)
 
 $(DAPLINK_GCC_DIR)/bin/arm-none-eabi-gcc:
-	@echo "Downloading gcc-arm-none-eabi $(DAPLINK_GCC_VERSION) for DAPLink..."
+	@set -e
+	@if [ -z "$(DAPLINK_GCC_ARCHIVE)" ]; then \
+		echo "Error: no prebuilt gcc-arm-none-eabi $(DAPLINK_GCC_VERSION) for $(DAPLINK_GCC_HOST_OS)/$(DAPLINK_GCC_HOST_ARCH)."; \
+		echo "Supported by this target: Linux x86_64, Linux aarch64, macOS Intel."; \
+		echo "Other platforms: install the toolchain manually and override DAPLINK_GCC_DIR,"; \
+		echo "or build inside the dev container."; \
+		exit 1; \
+	fi
+	@echo "Downloading gcc-arm-none-eabi $(DAPLINK_GCC_VERSION) for $(DAPLINK_GCC_HOST_OS)/$(DAPLINK_GCC_HOST_ARCH)..."
 	@mkdir -p $(BUILD_DIR)
 	curl -fL -o $(BUILD_DIR)/gcc-arm-none-eabi.tar.bz2 "$(DAPLINK_GCC_URL)"
 	tar -xjf $(BUILD_DIR)/gcc-arm-none-eabi.tar.bz2 -C $(BUILD_DIR)
 	rm -f $(BUILD_DIR)/gcc-arm-none-eabi.tar.bz2
 
-.PHONY: daplink-firmware
-daplink-firmware: $(DAPLINK_DIR) $(DAPLINK_GCC_DIR)/bin/arm-none-eabi-gcc ## Build DAPLink interface firmware for the STeaMi STM32F103
-	@set -e
-	@if [ ! -d "$(DAPLINK_DIR)/venv" ]; then \
-		echo "Setting up DAPLink Python virtualenv..."; \
+# Sentinel: re-runs pip install whenever DAPLink's requirements.txt changes
+# (e.g. after `make daplink-update`).
+$(DAPLINK_DIR)/venv/.installed: $(DAPLINK_DIR)/requirements.txt
+	@echo "Setting up DAPLink Python virtualenv..."
+	@if [ ! -x "$(DAPLINK_DIR)/venv/bin/python" ]; then \
 		$(PYTHON) -m venv $(DAPLINK_DIR)/venv; \
-		$(DAPLINK_DIR)/venv/bin/pip install -r $(DAPLINK_DIR)/requirements.txt; \
 	fi
+	$(DAPLINK_DIR)/venv/bin/pip install -r $(DAPLINK_DIR)/requirements.txt
+	@touch $@
+
+.PHONY: daplink-firmware
+daplink-firmware: $(DAPLINK_DIR) $(DAPLINK_GCC_DIR)/bin/arm-none-eabi-gcc $(DAPLINK_DIR)/venv/.installed ## Build DAPLink interface firmware for the STeaMi STM32F103
 	@echo "Building DAPLink target $(DAPLINK_TARGET) with gcc-arm-none-eabi $(DAPLINK_GCC_VERSION)..."
 	cd $(CURDIR)/$(DAPLINK_DIR) && \
 		PATH="$(CURDIR)/$(DAPLINK_GCC_DIR)/bin:$(CURDIR)/$(DAPLINK_DIR)/venv/bin:$$PATH" \
