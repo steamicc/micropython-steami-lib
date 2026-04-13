@@ -46,8 +46,8 @@ jobs:
           HUSKY: "0"
         run: npx semantic-release
 
-  firmware:
-    name: Build and attach firmware
+  micropython-firmware:
+    name: Build and attach MicroPython firmware
     needs: release
     if: needs.release.outputs.new-release-published == 'true'
     runs-on: ubuntu-latest
@@ -70,10 +70,10 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y --no-install-recommends gcc-arm-none-eabi libnewlib-arm-none-eabi
 
-      - name: Build firmware
+      - name: Build MicroPython firmware
         run: make micropython-firmware
 
-      - name: Attach firmware to release
+      - name: Attach MicroPython firmware to release
         env:
           GH_TOKEN: ${{ steps.generate_token.outputs.token }}
         run: |
