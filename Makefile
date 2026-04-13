@@ -205,16 +205,24 @@ $(DAPLINK_DIR):
 	@mkdir -p $(dir $(CURDIR)/$(DAPLINK_DIR))
 	git clone --branch $(DAPLINK_BRANCH) $(DAPLINK_REPO) $(CURDIR)/$(DAPLINK_DIR)
 
+$(DAPLINK_GCC_DIR)/bin/arm-none-eabi-gcc:
+	@echo "Downloading gcc-arm-none-eabi $(DAPLINK_GCC_VERSION) for DAPLink..."
+	@mkdir -p $(BUILD_DIR)
+	curl -fL -o $(BUILD_DIR)/gcc-arm-none-eabi.tar.bz2 "$(DAPLINK_GCC_URL)"
+	tar -xjf $(BUILD_DIR)/gcc-arm-none-eabi.tar.bz2 -C $(BUILD_DIR)
+	rm -f $(BUILD_DIR)/gcc-arm-none-eabi.tar.bz2
+
 .PHONY: daplink-firmware
-daplink-firmware: $(DAPLINK_DIR) ## Build DAPLink interface firmware for the STeaMi STM32F103
+daplink-firmware: $(DAPLINK_DIR) $(DAPLINK_GCC_DIR)/bin/arm-none-eabi-gcc ## Build DAPLink interface firmware for the STeaMi STM32F103
 	@set -e
 	@if [ ! -d "$(DAPLINK_DIR)/venv" ]; then \
 		echo "Setting up DAPLink Python virtualenv..."; \
 		$(PYTHON) -m venv $(DAPLINK_DIR)/venv; \
 		$(DAPLINK_DIR)/venv/bin/pip install -r $(DAPLINK_DIR)/requirements.txt; \
 	fi
-	@echo "Building DAPLink target $(DAPLINK_TARGET)..."
+	@echo "Building DAPLink target $(DAPLINK_TARGET) with gcc-arm-none-eabi $(DAPLINK_GCC_VERSION)..."
 	cd $(CURDIR)/$(DAPLINK_DIR) && \
+		PATH="$(CURDIR)/$(DAPLINK_GCC_DIR)/bin:$(CURDIR)/$(DAPLINK_DIR)/venv/bin:$$PATH" \
 		./venv/bin/python tools/progen_compile.py -t make_gcc_arm $(DAPLINK_TARGET)
 	@echo "DAPLink firmware ready: $(DAPLINK_BUILD_DIR)/$(DAPLINK_TARGET)_crc.bin"
 
