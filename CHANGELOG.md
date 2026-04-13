@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [0.16.5](https://github.com/steamicc/micropython-steami-lib/compare/v0.16.4...v0.16.5) (2026-04-13)
+
+
+### Bug Fixes
+
+* Bump lodash and lodash-es to 4.18 to address dependabot alerts. ([#385](https://github.com/steamicc/micropython-steami-lib/issues/385)) ([f867a08](https://github.com/steamicc/micropython-steami-lib/commit/f867a08705b7b6c6d79926790b7772544a3a90a8))
+
 ## [0.16.4](https://github.com/steamicc/micropython-steami-lib/compare/v0.16.3...v0.16.4) (2026-04-13)
 
 ## [0.16.3](https://github.com/steamicc/micropython-steami-lib/compare/v0.16.2...v0.16.3) (2026-04-13)
