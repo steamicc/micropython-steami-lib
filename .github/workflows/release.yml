@@ -110,6 +110,21 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y --no-install-recommends ccache ninja-build python3-venv
 
+      - name: Clone DAPLink (needed for venv cache key)
+        run: make .build/DAPLink
+
+      - name: Cache gcc-arm-none-eabi 10.3-2021.10
+        uses: actions/cache@v4
+        with:
+          path: .build/gcc-arm-none-eabi-10.3-2021.10
+          key: gcc-arm-none-eabi-10.3-2021.10-linux-x86_64
+
+      - name: Cache DAPLink Python venv
+        uses: actions/cache@v4
+        with:
+          path: .build/DAPLink/venv
+          key: daplink-venv-${{ runner.os }}-${{ hashFiles('.build/DAPLink/requirements.txt') }}
+
       - name: Build DAPLink firmware
         run: make daplink-firmware
 
