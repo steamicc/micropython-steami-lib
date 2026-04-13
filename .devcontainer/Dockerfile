@@ -1,11 +1,13 @@
 FROM mcr.microsoft.com/devcontainers/python:3.10
 
-# System packages for MicroPython firmware build and board communication
+# System packages for MicroPython and DAPLink firmware builds, board communication
 RUN apt-get update && apt-get install -y --no-install-recommends \
     gcc-arm-none-eabi \
     libnewlib-arm-none-eabi \
     openocd \
     udev \
+    ccache \
+    ninja-build \
     && rm -rf /var/lib/apt/lists/*
 
 # udev rules for STeaMi board (DAPLink / STM32)

@@ -136,7 +136,9 @@ micropython-deploy-openocd: $(MPY_DIR) ## Flash MicroPython firmware via OpenOCD
 
 .PHONY: micropython-deploy-usb
 micropython-deploy-usb: $(MPY_DIR) ## Flash MicroPython firmware via DAPLink USB mass-storage
-	@$(PYTHON) scripts/deploy_usb.py $(STM32_DIR)/build-$(BOARD)/firmware.bin
+	@$(PYTHON) scripts/deploy_usb.py \
+		--build-target micropython-firmware \
+		$(STM32_DIR)/build-$(BOARD)/firmware.bin
 
 # --- Deprecated targets (ambiguous since DAPLink build is also planned) ---
 # Replaced by explicit micropython-* / daplink-* targets to avoid confusion
@@ -189,6 +191,57 @@ run-main: ## Re-execute main.py on the board and capture output
 micropython-clean: ## Clean MicroPython firmware build artifacts
 	@if [ -d "$(STM32_DIR)" ]; then \
 		$(MAKE) -C $(STM32_DIR) BOARD=$(BOARD) clean; \
+	fi
+
+# --- DAPLink firmware ---
+# These targets manage the DAPLink **interface firmware** only (the second
+# stage of DAPLink, flashed at 0x08002000). The bootloader (first stage,
+# flashed at 0x08000000) is installed once at the factory and is not
+# managed here. A future `daplink-deploy-bootloader` target could be added
+# if needed, but it requires an external SWD probe and is rarely necessary.
+
+$(DAPLINK_DIR):
+	@echo "Cloning DAPLink into $(CURDIR)/$(DAPLINK_DIR)..."
+	@mkdir -p $(dir $(CURDIR)/$(DAPLINK_DIR))
+	git clone --branch $(DAPLINK_BRANCH) $(DAPLINK_REPO) $(CURDIR)/$(DAPLINK_DIR)
+
+.PHONY: daplink-firmware
+daplink-firmware: $(DAPLINK_DIR) ## Build DAPLink interface firmware for the STeaMi STM32F103
+	@set -e
+	@if [ ! -d "$(DAPLINK_DIR)/venv" ]; then \
+		echo "Setting up DAPLink Python virtualenv..."; \
+		$(PYTHON) -m venv $(DAPLINK_DIR)/venv; \
+		$(DAPLINK_DIR)/venv/bin/pip install -r $(DAPLINK_DIR)/requirements.txt; \
+	fi
+	@echo "Building DAPLink target $(DAPLINK_TARGET)..."
+	cd $(CURDIR)/$(DAPLINK_DIR) && \
+		./venv/bin/python tools/progen_compile.py -t make_gcc_arm $(DAPLINK_TARGET)
+	@echo "DAPLink firmware ready: $(DAPLINK_BUILD_DIR)/$(DAPLINK_TARGET)_crc.bin"
+
+.PHONY: daplink-update
+daplink-update: $(DAPLINK_DIR) ## Update the DAPLink clone
+	@set -e
+	@echo "Updating DAPLink..."
+	git -C $(CURDIR)/$(DAPLINK_DIR) fetch origin
+	git -C $(CURDIR)/$(DAPLINK_DIR) checkout $(DAPLINK_BRANCH)
+	git -C $(CURDIR)/$(DAPLINK_DIR) pull --ff-only
+
+.PHONY: daplink-deploy
+daplink-deploy: daplink-deploy-usb ## Flash DAPLink interface firmware (default: usb mass-storage)
+
+.PHONY: daplink-deploy-usb
+daplink-deploy-usb: $(DAPLINK_DIR) ## Flash DAPLink interface firmware via MAINTENANCE USB mass-storage
+	@echo "Note: the board must be in MAINTENANCE mode."
+	@echo "Power on the board with the RESET button held until the MAINTENANCE volume appears."
+	@echo ""
+	@$(PYTHON) scripts/deploy_usb.py --label MAINTENANCE \
+		--build-target daplink-firmware \
+		$(DAPLINK_BUILD_DIR)/$(DAPLINK_TARGET)_crc.bin
+
+.PHONY: daplink-clean
+daplink-clean: ## Clean DAPLink firmware build artifacts
+	@if [ -d "$(DAPLINK_DIR)" ]; then \
+		rm -rf $(DAPLINK_DIR)/projectfiles; \
 	fi
 
 # --- Hardware ---
