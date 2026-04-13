@@ -43,7 +43,8 @@
   },
   "overrides": {
     "picomatch": "^4.0.4",
-    "lodash": "^4.17.22",
+    "lodash": "^4.18.0",
+    "lodash-es": "^4.18.0",
     "tmp": "^0.2.4",
     "brace-expansion": "^2.0.3"
   }
