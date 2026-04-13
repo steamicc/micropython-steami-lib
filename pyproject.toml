@@ -68,6 +68,7 @@ select = [
   "PYI",    # flake8-pyi
   "RSE",    # flake8-raise
   "RUF",    # Ruff-specific rules
+  "S110",   # flake8-bandit: try-except-pass (no silent exception suppression)
   "SIM",    # flake8-simplify
   "T10",    # flake8-debugger
   "PERF",   # Perflint

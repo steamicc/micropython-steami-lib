@@ -54,10 +54,7 @@ class LIS2MDL(object):
 
         # Perform a soft reset to ensure the sensor starts in a known state.
         self._write_reg(LIS2MDL_CFG_REG_A, 0x20)  # SOFT_RST=1 (not 0x10)
-        try:
-            sleep_ms(10)  # Small delay for reset to complete
-        except Exception:
-            pass
+        sleep_ms(10)  # Small delay for reset to complete
 
         # Configure the sensor's operating mode, output data rate, and other settings.
         odr_bits = {10: 0b00, 20: 0b01, 50: 0b10, 100: 0b11}.get(odr_hz, 0b00)

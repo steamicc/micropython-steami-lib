@@ -40,7 +40,8 @@ def _get_board_info(port):
                     "platform": lines[4],
                 }
     except Exception:
-        pass
+        # Best-effort: report metadata is optional, never fail the test session.
+        return {}
     return {}
 
 
