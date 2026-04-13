@@ -136,7 +136,9 @@ micropython-deploy-openocd: $(MPY_DIR) ## Flash MicroPython firmware via OpenOCD
 
 .PHONY: micropython-deploy-usb
 micropython-deploy-usb: $(MPY_DIR) ## Flash MicroPython firmware via DAPLink USB mass-storage
-	@$(PYTHON) scripts/deploy_usb.py $(STM32_DIR)/build-$(BOARD)/firmware.bin
+	@$(PYTHON) scripts/deploy_usb.py \
+		--build-target micropython-firmware \
+		$(STM32_DIR)/build-$(BOARD)/firmware.bin
 
 # --- Deprecated targets (ambiguous since DAPLink build is also planned) ---
 # Replaced by explicit micropython-* / daplink-* targets to avoid confusion
@@ -145,7 +147,15 @@ micropython-deploy-usb: $(MPY_DIR) ## Flash MicroPython firmware via DAPLink USB
 define DEPRECATED_FIRMWARE
 @echo "Error: 'make $(1)' is ambiguous. Use one of:"; \
 echo "  make micropython-$(2)   (MicroPython firmware)"; \
-echo "  make daplink-$(2)       (DAPLink firmware, see #377)"; \
+echo "  make daplink-$(2)       (DAPLink firmware)"; \
+exit 1
+endef
+
+# Variant for short names whose DAPLink counterpart does not exist yet
+# (daplink-deploy-pyocd / daplink-deploy-openocd are tracked in #388).
+define DEPRECATED_MICROPYTHON_ONLY
+@echo "Error: 'make $(1)' has been renamed. Use:"; \
+echo "  make micropython-$(2)   (MicroPython firmware)"; \
 exit 1
 endef
 
@@ -159,9 +169,9 @@ firmware-clean:
 deploy:
 	$(call DEPRECATED_FIRMWARE,deploy,deploy)
 deploy-pyocd:
-	$(call DEPRECATED_FIRMWARE,deploy-pyocd,deploy-pyocd)
+	$(call DEPRECATED_MICROPYTHON_ONLY,deploy-pyocd,deploy-pyocd)
 deploy-openocd:
-	$(call DEPRECATED_FIRMWARE,deploy-openocd,deploy-openocd)
+	$(call DEPRECATED_MICROPYTHON_ONLY,deploy-openocd,deploy-openocd)
 deploy-usb:
 	$(call DEPRECATED_FIRMWARE,deploy-usb,deploy-usb)
 
@@ -189,6 +199,79 @@ run-main: ## Re-execute main.py on the board and capture output
 micropython-clean: ## Clean MicroPython firmware build artifacts
 	@if [ -d "$(STM32_DIR)" ]; then \
 		$(MAKE) -C $(STM32_DIR) BOARD=$(BOARD) clean; \
+	fi
+
+# --- DAPLink firmware ---
+# These targets manage the DAPLink **interface firmware** only (the second
+# stage of DAPLink, flashed at 0x08002000). The bootloader (first stage,
+# flashed at 0x08000000) is installed once at the factory and is not
+# managed here. A future `daplink-deploy-bootloader` target could be added
+# if needed, but it requires an external SWD probe and is rarely necessary.
+
+$(DAPLINK_DIR):
+	@echo "Cloning DAPLink into $(CURDIR)/$(DAPLINK_DIR)..."
+	@mkdir -p $(dir $(CURDIR)/$(DAPLINK_DIR))
+	git clone --branch $(DAPLINK_BRANCH) $(DAPLINK_REPO) $(CURDIR)/$(DAPLINK_DIR)
+
+$(DAPLINK_GCC_DIR)/bin/arm-none-eabi-gcc:
+	@set -e
+	@if [ -z "$(DAPLINK_GCC_ARCHIVE)" ]; then \
+		echo "Error: no prebuilt gcc-arm-none-eabi $(DAPLINK_GCC_VERSION) for $(DAPLINK_GCC_HOST_OS)/$(DAPLINK_GCC_HOST_ARCH)."; \
+		echo "Supported by this target: Linux x86_64, Linux aarch64, macOS Intel."; \
+		echo "Other platforms: install the toolchain manually and override DAPLINK_GCC_DIR,"; \
+		echo "or build inside the dev container."; \
+		exit 1; \
+	fi
+	@echo "Downloading gcc-arm-none-eabi $(DAPLINK_GCC_VERSION) for $(DAPLINK_GCC_HOST_OS)/$(DAPLINK_GCC_HOST_ARCH)..."
+	@mkdir -p $(BUILD_DIR)
+	curl -fL -o $(BUILD_DIR)/gcc-arm-none-eabi.tar.bz2 "$(DAPLINK_GCC_URL)"
+	tar -xjf $(BUILD_DIR)/gcc-arm-none-eabi.tar.bz2 -C $(BUILD_DIR)
+	rm -f $(BUILD_DIR)/gcc-arm-none-eabi.tar.bz2
+
+# Sentinel: re-runs pip install whenever DAPLink's requirements.txt changes
+# (e.g. after `make daplink-update`). The order-only prerequisite on
+# $(DAPLINK_DIR) guarantees the clone happens first on a fresh checkout, so
+# requirements.txt exists by the time make checks it.
+$(DAPLINK_DIR)/venv/.installed: $(DAPLINK_DIR)/requirements.txt | $(DAPLINK_DIR)
+	@echo "Setting up DAPLink Python virtualenv..."
+	@if [ ! -x "$(DAPLINK_DIR)/venv/bin/python" ]; then \
+		$(PYTHON) -m venv $(DAPLINK_DIR)/venv; \
+	fi
+	$(DAPLINK_DIR)/venv/bin/pip install -r $(DAPLINK_DIR)/requirements.txt
+	@touch $@
+
+.PHONY: daplink-firmware
+daplink-firmware: $(DAPLINK_DIR) $(DAPLINK_GCC_DIR)/bin/arm-none-eabi-gcc $(DAPLINK_DIR)/venv/.installed ## Build DAPLink interface firmware for the STeaMi STM32F103
+	@echo "Building DAPLink target $(DAPLINK_TARGET) with gcc-arm-none-eabi $(DAPLINK_GCC_VERSION)..."
+	cd $(CURDIR)/$(DAPLINK_DIR) && \
+		PATH="$(CURDIR)/$(DAPLINK_GCC_DIR)/bin:$(CURDIR)/$(DAPLINK_DIR)/venv/bin:$$PATH" \
+		./venv/bin/python tools/progen_compile.py -t make_gcc_arm $(DAPLINK_TARGET)
+	@echo "DAPLink firmware ready: $(DAPLINK_BUILD_DIR)/$(DAPLINK_TARGET)_crc.bin"
+
+.PHONY: daplink-update
+daplink-update: $(DAPLINK_DIR) ## Update the DAPLink clone
+	@set -e
+	@echo "Updating DAPLink..."
+	git -C $(CURDIR)/$(DAPLINK_DIR) fetch origin
+	git -C $(CURDIR)/$(DAPLINK_DIR) checkout $(DAPLINK_BRANCH)
+	git -C $(CURDIR)/$(DAPLINK_DIR) pull --ff-only
+
+.PHONY: daplink-deploy
+daplink-deploy: daplink-deploy-usb ## Flash DAPLink interface firmware (default: usb mass-storage)
+
+.PHONY: daplink-deploy-usb
+daplink-deploy-usb: $(DAPLINK_DIR) ## Flash DAPLink interface firmware via MAINTENANCE USB mass-storage
+	@echo "Note: the board must be in MAINTENANCE mode."
+	@echo "Power on the board with the RESET button held until the MAINTENANCE volume appears."
+	@echo ""
+	@$(PYTHON) scripts/deploy_usb.py --label MAINTENANCE \
+		--build-target daplink-firmware \
+		$(DAPLINK_BUILD_DIR)/$(DAPLINK_TARGET)_crc.bin
+
+.PHONY: daplink-clean
+daplink-clean: ## Clean DAPLink firmware build artifacts
+	@if [ -d "$(DAPLINK_DIR)" ]; then \
+		rm -rf $(DAPLINK_DIR)/projectfiles; \
 	fi
 
 # --- Hardware ---

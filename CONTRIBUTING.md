@@ -119,7 +119,9 @@ For local development (without dev container):
 
 * Python 3.10+
 * Node.js 22+ (for husky, commitlint, lint-staged, semantic-release)
-* `arm-none-eabi-gcc` toolchain (for `make micropython-firmware`)
+* `arm-none-eabi-gcc` toolchain (for `make micropython-firmware`; `make daplink-firmware` ignores the system toolchain and downloads its own pinned 10.3-2021.10 build)
+* `ccache` and `ninja-build` (for `make daplink-firmware`)
+* For `make daplink-firmware`: Linux x86_64, Linux aarch64, or Intel macOS only (the pinned toolchain is not published for Apple Silicon or Windows — use the dev container on those platforms)
 * `pyocd` (for `make micropython-deploy`, installed via `pip install -e ".[flash]"`)
 * OpenOCD (optional, for `make micropython-deploy-openocd`)
 * `mpremote` (installed via `pip install -e ".[test]"`)
@@ -129,7 +131,7 @@ Then run `make setup` to install all dependencies and git hooks. This creates a 
 
 ## Dev Container
 
-A dev container is available for VS Code (local Docker only, not GitHub Codespaces). It includes all prerequisites out of the box: Python 3.10, Node.js 22, ruff, pytest, mpremote, pyOCD, arm-none-eabi-gcc, OpenOCD, and the GitHub CLI.
+A dev container is available for VS Code (local Docker only, not GitHub Codespaces). It includes all prerequisites out of the box: Python 3.10, Node.js 22, ruff, pytest, mpremote, pyOCD, arm-none-eabi-gcc, OpenOCD, ccache, ninja-build, and the GitHub CLI.
 
 1. Open the repository in VS Code
 2. When prompted, click **Reopen in Container** (or use the command palette: *Dev Containers: Reopen in Container*)
@@ -191,9 +193,11 @@ make bump PART=major   # major: v1.1.0 → v2.0.0
 The STeaMi board has two distinct firmwares:
 
 - **MicroPython firmware** — runs on the STM32WB55 main MCU and exposes the drivers from this repository
-- **DAPLink firmware** — runs on the STM32F103 interface chip and provides the I2C bridge, mass-storage, and CMSIS-DAP debug interface (build targets planned in #377)
+- **DAPLink firmware** — runs on the STM32F103 interface chip and provides the I2C bridge, mass-storage, and CMSIS-DAP debug interface
 
-This section covers the **MicroPython firmware** only. The drivers in this repository are "frozen" into it. The Makefile automates cloning, building, and flashing:
+The drivers in this repository are "frozen" into the **MicroPython firmware**. The Makefile automates cloning, building, and flashing both firmwares.
+
+### MicroPython firmware
 
 ```bash
 make micropython-firmware         # Clone micropython-steami (if needed), link local drivers, build
@@ -214,6 +218,27 @@ The MicroPython firmware source is cloned into `.build/micropython-steami/` (git
 Use `make micropython-firmware` for normal rebuilds from the existing local clone. Use `make micropython-update` only when you want to refresh the `micropython-steami` checkout itself or resync the board-specific submodules before rebuilding.
 
 All these tools are included in the dev container. For local development, see the [Prerequisites](#prerequisites) section.
+
+### DAPLink firmware
+
+DAPLink is the firmware running on the STM32F103 interface chip. It provides the USB mass-storage, CMSIS-DAP debug interface, and the I2C bridge used by `daplink_bridge` / `daplink_flash` / `steami_config`.
+
+DAPLink consists of **two parts**:
+
+- **Bootloader** (first stage, flashed at `0x08000000`) — installed once at the factory, rarely updated. It provides the MAINTENANCE mode used to update the interface firmware. Updating the bootloader requires an external SWD probe and is not covered by these targets.
+- **Interface firmware** (second stage, flashed at `0x08002000`) — the part that contains the I2C bridge, mass-storage, debug interface, and is updated routinely. This is what the `daplink-*` Makefile targets manage.
+
+```bash
+make daplink-firmware             # Clone steamicc/DAPLink and build stm32f103xb_steami32_if
+make daplink-update               # Refresh the DAPLink clone
+make daplink-deploy               # Flash DAPLink interface firmware (default: usb mass-storage)
+make daplink-deploy-usb           # Flash DAPLink interface firmware via MAINTENANCE volume
+make daplink-clean                # Clean DAPLink build artifacts
+```
+
+The DAPLink source is cloned from [steamicc/DAPLink](https://github.com/steamicc/DAPLink) into `.build/DAPLink/` (gitignored). A Python virtualenv is created automatically inside the clone for the progen build tool.
+
+**Maintenance mode:** to flash the DAPLink interface firmware, the board must be in maintenance mode. Power on the board with the RESET button held until a `MAINTENANCE` USB volume appears (instead of the usual `STeaMi` volume). The `make daplink-deploy-usb` target then copies the firmware to that volume and the board reboots automatically with the new interface firmware.
 
 ## Notes
 

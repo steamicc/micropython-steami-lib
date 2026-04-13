@@ -85,3 +85,58 @@ jobs:
             "steami-micropython-firmware-${VERSION}.hex" \
             "steami-micropython-firmware-${VERSION}.bin" \
             --clobber
+
+  daplink-firmware:
+    name: Build and attach DAPLink firmware
+    needs: release
+    if: needs.release.outputs.new-release-published == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Generate token
+        id: generate_token
+        uses: tibdex/github-app-token@v2
+        with:
+          app_id: ${{ secrets.RELEASE_APP_ID }}
+          private_key: ${{ secrets.RELEASE_APP_SECRET }}
+
+      - uses: actions/checkout@v4
+        with:
+          ref: v${{ needs.release.outputs.new-release-version }}
+
+      - name: Install build tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends ccache ninja-build python3-venv
+
+      - name: Clone DAPLink (needed for venv cache key)
+        run: make .build/DAPLink
+
+      - name: Cache gcc-arm-none-eabi 10.3-2021.10
+        uses: actions/cache@v4
+        with:
+          path: .build/gcc-arm-none-eabi-10.3-2021.10
+          key: gcc-arm-none-eabi-10.3-2021.10-linux-x86_64
+
+      - name: Cache DAPLink Python venv
+        uses: actions/cache@v4
+        with:
+          path: .build/DAPLink/venv
+          key: daplink-venv-${{ runner.os }}-${{ hashFiles('.build/DAPLink/requirements.txt') }}
+
+      - name: Build DAPLink firmware
+        run: make daplink-firmware
+
+      - name: Attach DAPLink firmware to release
+        env:
+          GH_TOKEN: ${{ steps.generate_token.outputs.token }}
+        run: |
+          VERSION="v${{ needs.release.outputs.new-release-version }}"
+          BUILD_DIR=".build/DAPLink/projectfiles/make_gcc_arm/stm32f103xb_steami32_if/build"
+          cp "${BUILD_DIR}/stm32f103xb_steami32_if_crc.bin" "steami-daplink-firmware-${VERSION}.bin"
+          cp "${BUILD_DIR}/stm32f103xb_steami32_if_crc.hex" "steami-daplink-firmware-${VERSION}.hex"
+          gh release upload "$VERSION" \
+            "steami-daplink-firmware-${VERSION}.bin" \
+            "steami-daplink-firmware-${VERSION}.hex" \
+            --clobber
