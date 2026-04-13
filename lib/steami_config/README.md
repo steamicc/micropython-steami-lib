@@ -3,8 +3,8 @@
 Persistent configuration module for the STeaMi board.
 
 Configuration data (board info, sensor calibration) is stored as compact JSON
-in the STM32F103 internal flash config zone (1 KB) and survives firmware
-updates and `clear_flash` operations.
+in the STM32F103 internal flash config zone (1 KB) and survives MicroPython
+firmware updates and `clear_flash` operations.
 
 ---
 

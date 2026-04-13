@@ -88,7 +88,7 @@ ci: lint test test-examples ## Run all CI checks (lint + tests + examples)
 .PHONY: build
 build: lint test ## Build (lint + test)
 
-# --- Firmware ---
+# --- MicroPython firmware ---
 
 $(MPY_DIR):
 	@echo "Cloning micropython-steami into $(CURDIR)/$(MPY_DIR)..."
@@ -96,8 +96,8 @@ $(MPY_DIR):
 	git clone --branch $(MICROPYTHON_BRANCH) $(MICROPYTHON_REPO) $(CURDIR)/$(MPY_DIR)
 	$(MAKE) -C $(STM32_DIR) BOARD=$(BOARD) submodules
 
-.PHONY: firmware
-firmware: $(MPY_DIR) ## Build MicroPython firmware with current drivers
+.PHONY: micropython-firmware
+micropython-firmware: $(MPY_DIR) ## Build MicroPython firmware with current drivers
 	@set -e
 	@if [ ! -f "$(MPY_DIR)/lib/micropython-lib/README.md" ]; then \
 		echo "Initializing submodules for $(BOARD)..."; \
@@ -111,8 +111,8 @@ firmware: $(MPY_DIR) ## Build MicroPython firmware with current drivers
 	$(MAKE) -C $(STM32_DIR) BOARD=$(BOARD)
 	@echo "Firmware ready: $(STM32_DIR)/build-$(BOARD)/firmware.hex"
 
-.PHONY: firmware-update
-firmware-update: $(MPY_DIR) ## Update the MicroPython clone and board-specific submodules
+.PHONY: micropython-update
+micropython-update: $(MPY_DIR) ## Update the MicroPython clone and board-specific submodules
 	@set -e
 	@echo "Updating micropython-steami..."
 	rm -rf $(CURDIR)/$(MPY_DIR)/lib/micropython-steami-lib
@@ -123,20 +123,47 @@ firmware-update: $(MPY_DIR) ## Update the MicroPython clone and board-specific s
 	@echo "Updating required submodules for $(BOARD)..."
 	$(MAKE) -C $(STM32_DIR) BOARD=$(BOARD) submodules
 
-.PHONY: deploy
-deploy: deploy-pyocd ## Flash firmware (default: pyocd)
+.PHONY: micropython-deploy
+micropython-deploy: micropython-deploy-pyocd ## Flash MicroPython firmware (default: pyocd)
 
-.PHONY: deploy-pyocd
-deploy-pyocd: $(MPY_DIR) ## Flash firmware via pyOCD (CMSIS-DAP)
+.PHONY: micropython-deploy-pyocd
+micropython-deploy-pyocd: $(MPY_DIR) ## Flash MicroPython firmware via pyOCD (CMSIS-DAP)
 	$(PYTHON) -m pyocd flash $(STM32_DIR)/build-$(BOARD)/firmware.elf --format elf
 
-.PHONY: deploy-openocd
-deploy-openocd: $(MPY_DIR) ## Flash firmware via OpenOCD
+.PHONY: micropython-deploy-openocd
+micropython-deploy-openocd: $(MPY_DIR) ## Flash MicroPython firmware via OpenOCD
 	$(MAKE) -C $(STM32_DIR) BOARD=$(BOARD) deploy-openocd
 
-.PHONY: deploy-usb
-deploy-usb: $(MPY_DIR) ## Flash firmware via DAPLink USB mass-storage
+.PHONY: micropython-deploy-usb
+micropython-deploy-usb: $(MPY_DIR) ## Flash MicroPython firmware via DAPLink USB mass-storage
 	@$(PYTHON) scripts/deploy_usb.py $(STM32_DIR)/build-$(BOARD)/firmware.bin
+
+# --- Deprecated targets (ambiguous since DAPLink build is also planned) ---
+# Replaced by explicit micropython-* / daplink-* targets to avoid confusion
+# about which firmware is being built or flashed.
+
+define DEPRECATED_FIRMWARE
+@echo "Error: 'make $(1)' is ambiguous. Use one of:"; \
+echo "  make micropython-$(2)   (MicroPython firmware)"; \
+echo "  make daplink-$(2)       (DAPLink firmware, see #377)"; \
+exit 1
+endef
+
+.PHONY: firmware firmware-update firmware-clean deploy deploy-pyocd deploy-openocd deploy-usb
+firmware:
+	$(call DEPRECATED_FIRMWARE,firmware,firmware)
+firmware-update:
+	$(call DEPRECATED_FIRMWARE,firmware-update,update)
+firmware-clean:
+	$(call DEPRECATED_FIRMWARE,firmware-clean,clean)
+deploy:
+	$(call DEPRECATED_FIRMWARE,deploy,deploy)
+deploy-pyocd:
+	$(call DEPRECATED_FIRMWARE,deploy-pyocd,deploy-pyocd)
+deploy-openocd:
+	$(call DEPRECATED_FIRMWARE,deploy-openocd,deploy-openocd)
+deploy-usb:
+	$(call DEPRECATED_FIRMWARE,deploy-usb,deploy-usb)
 
 .PHONY: run
 run: ## Run a script on the board with live output (SCRIPT=path/to/file.py)
@@ -158,8 +185,8 @@ deploy-script: ## Deploy a script as main.py for autonomous execution (SCRIPT=pa
 run-main: ## Re-execute main.py on the board and capture output
 	$(PYTHON) -m mpremote connect $(PORT) exec "exec(open('/flash/main.py').read())"
 
-.PHONY: firmware-clean
-firmware-clean: ## Clean firmware build artifacts
+.PHONY: micropython-clean
+micropython-clean: ## Clean MicroPython firmware build artifacts
 	@if [ -d "$(STM32_DIR)" ]; then \
 		$(MAKE) -C $(STM32_DIR) BOARD=$(BOARD) clean; \
 	fi

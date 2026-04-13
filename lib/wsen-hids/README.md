@@ -308,4 +308,4 @@ The `examples/` directory provides practical scripts demonstrating how to use th
 | `data_logger.py` | Log data every 5 seconds in CSV format (`timestamp, humidity, temperature`) for serial capture |
 | `dew_point.py` | Compute and display dew point using temperature and humidity (Magnus formula) |
 | `heater_demo.py` | Demonstrate the built-in heater: compare readings before and after enabling it |
-| `low_power_sampling.py` | Low-power sampling: one-shot every 10 s with `power_off()` between reads. Requires firmware >= v0.1.0 (#238) |
+| `low_power_sampling.py` | Low-power sampling: one-shot every 10 s with `power_off()` between reads. Requires MicroPython firmware >= v0.1.0 (#238) |

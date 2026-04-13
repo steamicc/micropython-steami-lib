@@ -1,6 +1,6 @@
 FROM mcr.microsoft.com/devcontainers/python:3.10
 
-# System packages for firmware build and board communication
+# System packages for MicroPython firmware build and board communication
 RUN apt-get update && apt-get install -y --no-install-recommends \
     gcc-arm-none-eabi \
     libnewlib-arm-none-eabi \
