@@ -4,10 +4,10 @@ Catches silent regressions where a driver is accidentally removed from, or
 forgotten in, the STEAM32_WB55RG board manifest in `steamicc/micropython-steami`.
 """
 
+import ast
 import os
-import re
 from pathlib import Path
-from urllib.error import URLError
+from urllib.error import HTTPError, URLError
 from urllib.request import urlopen
 
 import pytest
@@ -21,9 +21,31 @@ MANIFEST_URL = os.environ.get(
     "stm32-steami-rev1d-final/ports/stm32/boards/STEAM32_WB55RG/manifest.py",
 )
 
-REQUIRE_RE = re.compile(
-    r'require\(\s*"([^"]+)"\s*,\s*library\s*=\s*"micropython-steami-lib"\s*\)'
-)
+STEAMI_LIBRARY = "micropython-steami-lib"
+
+
+def _extract_required_drivers(source):
+    """Parse a board manifest and return the set of driver names required
+    from `micropython-steami-lib`. Uses the AST so the check is resilient to
+    quoting, spacing, and extra keyword arguments."""
+    tree = ast.parse(source)
+    required = set()
+    for node in ast.walk(tree):
+        if not (isinstance(node, ast.Call) and isinstance(node.func, ast.Name)):
+            continue
+        if node.func.id != "require":
+            continue
+        library = None
+        for kw in node.keywords:
+            if kw.arg == "library" and isinstance(kw.value, ast.Constant):
+                library = kw.value.value
+        if library != STEAMI_LIBRARY:
+            continue
+        if node.args and isinstance(node.args[0], ast.Constant):
+            name = node.args[0].value
+            if isinstance(name, str):
+                required.add(name)
+    return required
 
 
 @pytest.fixture(scope="session")
@@ -33,9 +55,15 @@ def frozen_drivers():
     try:
         with urlopen(MANIFEST_URL, timeout=10) as resp:
             content = resp.read().decode("utf-8")
+    except HTTPError as exc:
+        pytest.fail(
+            f"unexpected HTTP {exc.code} while fetching {MANIFEST_URL}: "
+            f"{exc.reason}. The branch or path may have moved — update "
+            f"MANIFEST_URL in tests/test_frozen_manifest.py."
+        )
     except (URLError, TimeoutError, OSError) as exc:
         pytest.skip(f"cannot fetch upstream manifest: {exc}")
-    return set(REQUIRE_RE.findall(content))
+    return _extract_required_drivers(content)
 
 
 def _discover_driver_dirs():
