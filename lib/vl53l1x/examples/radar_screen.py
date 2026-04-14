@@ -5,10 +5,9 @@ the longer and brighter the bar, similar to a car parking sensor.
 Adapted for a round display bezel using steami_screen widgets.
 """
 
-import micropython
-
 from time import sleep_ms
 
+import micropython
 import ssd1327
 from machine import I2C, SPI, Pin
 from steami_screen import DARK, GRAY, LIGHT, RED, Screen, SSD1327Display
