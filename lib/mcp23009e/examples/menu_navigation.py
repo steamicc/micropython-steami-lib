@@ -4,12 +4,11 @@ Minimal menu navigation example using the MCP23009E D-PAD and SSD1327 OLED displ
 UP/DOWN -> move in the menu
 RIGHT   -> select
 LEFT    -> go back
-
-The UI stays in the center of the round display to avoid cropped corners.
 """
 
 from time import sleep_ms
 
+import micropython
 import ssd1327
 from machine import I2C, SPI, Pin
 from mcp23009e import MCP23009E
@@ -23,6 +22,7 @@ from mcp23009e.const import (
     MCP23009_LOGIC_LOW,
     MCP23009_PULLUP,
 )
+from steami_screen import Screen, SSD1327Display
 
 # Setup MCP23009E on I2C bus
 i2c = I2C(1)
@@ -34,7 +34,8 @@ spi = SPI(1)
 dc = Pin("DATA_COMMAND_DISPLAY")
 res = Pin("RST_DISPLAY")
 cs = Pin("CS_DISPLAY")
-display = ssd1327.WS_OLED_128X128_SPI(spi, dc, res, cs)
+display = SSD1327Display(ssd1327.WS_OLED_128X128_SPI(spi, dc, res, cs))
+screen = Screen(display)
 
 # D-PAD button mapping
 BUTTONS = {
@@ -44,42 +45,32 @@ BUTTONS = {
     MCP23009_BTN_RIGHT: "RIGHT",
 }
 
-# Keep short labels for a compact centered UI
 MENU_ITEMS = [
-    ("Battery", "4.01 V"),
-    ("Press", "1013 hPa"),
-    ("Hum", "48.6 %"),
+    ("Battery", 4.01, "V"),
+    ("Press", 1013, "hPa"),
+    ("Hum", 48.6, "%"),
 ]
-
-# Central safe area for the round display
-X0 = 28
-TITLE_Y = 28
-ITEM_Y = 46
-ITEM_SPACING = 14
-FOOTER_Y = 92
 
 
 def setup_buttons():
-    """Configure all D-PAD buttons as inputs with pull-ups."""
     for pin_number in BUTTONS:
         mcp.setup(pin_number, MCP23009_DIR_INPUT, pullup=MCP23009_PULLUP)
 
 
+@micropython.native
+def is_any_pressed():
+    for pin_number in BUTTONS:  # noqa: SIM110
+        if mcp.get_level(pin_number) == MCP23009_LOGIC_LOW:
+            return True
+    return False
+
+
 def wait_all_released():
-    """Wait until all buttons are released."""
-    while True:
-        all_released = True
-        for pin_number in BUTTONS:
-            if mcp.get_level(pin_number) == MCP23009_LOGIC_LOW:
-                all_released = False
-                break
-        if all_released:
-            return
+    while is_any_pressed():
         sleep_ms(20)
 
 
 def wait_for_button():
-    """Wait for a button press and return its name."""
     wait_all_released()
 
     while True:
@@ -92,35 +83,24 @@ def wait_for_button():
 
 
 def draw_menu(selected_index):
-    """Draw the centered menu."""
-    display.fill(0)
-
-    display.text("MENU", 48, TITLE_Y, 15)
-
-    for index, (label, _) in enumerate(MENU_ITEMS):
-        y = ITEM_Y + index * ITEM_SPACING
-        prefix = ">" if index == selected_index else " "
-        display.text(prefix + label, X0, y, 15)
-
-    display.text("R:OK  L:BACK", 24, FOOTER_Y, 8)
-    display.show()
+    labels = [label for label, _, _ in MENU_ITEMS]
+    screen.clear()
+    screen.title("MENU")
+    screen.menu(labels, selected=selected_index)
+    screen.subtitle("R:OK", "L:Back")
+    screen.show()
 
 
 def draw_detail(selected_index):
-    """Draw the centered detail screen."""
-    name, value = MENU_ITEMS[selected_index]
-
-    display.fill(0)
-
-    display.text(name, 44, 34, 15)
-    display.text(value, 34, 56, 15)
-    display.text("LEFT BACK", 34, 88, 8)
-
-    display.show()
+    name, val, unit = MENU_ITEMS[selected_index]
+    screen.clear()
+    screen.title(name)
+    screen.value(val, unit=unit)
+    screen.subtitle("L:Back")
+    screen.show()
 
 
 def main():
-    """Main UI loop."""
     setup_buttons()
 
     selected_index = 0
