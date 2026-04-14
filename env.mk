@@ -16,6 +16,18 @@ DAPLINK_BRANCH ?= release_letssteam
 DAPLINK_DIR ?= $(BUILD_DIR)/DAPLink
 DAPLINK_TARGET ?= stm32f103xb_steami32_if
 DAPLINK_BUILD_DIR ?= $(DAPLINK_DIR)/projectfiles/make_gcc_arm/$(DAPLINK_TARGET)/build
+DAPLINK_BL_TARGET ?= stm32f103xb_bl
+DAPLINK_BL_BUILD_DIR ?= $(DAPLINK_DIR)/projectfiles/make_gcc_arm/$(DAPLINK_BL_TARGET)/build
+
+# SWD flash configuration (external probe). Used by the `daplink-deploy-*`
+# SWD targets. The STM32F103CB on the DAPLink chip is flash-compatible with
+# pyOCD's built-in stm32f103rc target for the lower 128 KB.
+DAPLINK_FLASH_ADDR ?= 0x08002000
+DAPLINK_BL_FLASH_ADDR ?= 0x08000000
+DAPLINK_PYOCD_TARGET ?= stm32f103rc
+DAPLINK_OPENOCD_INTERFACE ?= interface/stlink.cfg
+DAPLINK_OPENOCD_TARGET ?= target/stm32f1x.cfg
+DAPLINK_OPENOCD_TRANSPORT ?= hla_swd
 
 # DAPLink requires gcc-arm-none-eabi 10.3-2021.10. System toolchains >= 11.3
 # produce code that overflows m_text (see DAPLink docs/DEVELOPERS-GUIDE.md and

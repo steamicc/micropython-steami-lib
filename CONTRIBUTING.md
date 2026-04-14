@@ -226,20 +226,34 @@ DAPLink is the firmware running on the STM32F103 interface chip. It provides the
 
 DAPLink consists of **two parts**:
 
-- **Bootloader** (first stage, flashed at `0x08000000`) — installed once at the factory, rarely updated. It provides the MAINTENANCE mode used to update the interface firmware. Updating the bootloader requires an external SWD probe and is not covered by these targets.
-- **Interface firmware** (second stage, flashed at `0x08002000`) — the part that contains the I2C bridge, mass-storage, debug interface, and is updated routinely. This is what the `daplink-*` Makefile targets manage.
+- **Bootloader** (first stage, flashed at `0x08000000`) — installed once at the factory, rarely updated. It provides the MAINTENANCE mode used to update the interface firmware. Updating it requires an external SWD probe.
+- **Interface firmware** (second stage, flashed at `0x08002000`) — contains the I2C bridge, mass-storage, debug interface. Updated routinely, either via the MAINTENANCE USB volume or via an external SWD probe for recovery.
 
 ```bash
-make daplink-firmware             # Clone steamicc/DAPLink and build stm32f103xb_steami32_if
-make daplink-update               # Refresh the DAPLink clone
-make daplink-deploy               # Flash DAPLink interface firmware (default: usb mass-storage)
-make daplink-deploy-usb           # Flash DAPLink interface firmware via MAINTENANCE volume
-make daplink-clean                # Clean DAPLink build artifacts
+make daplink-firmware                    # Build the interface firmware (stm32f103xb_steami32_if)
+make daplink-bootloader                  # Build the bootloader (stm32f103xb_bl)
+make daplink-update                      # Refresh the DAPLink clone
+make daplink-clean                       # Clean DAPLink build artifacts
+
+# Routine interface update (no external probe)
+make daplink-deploy                      # Alias for daplink-deploy-usb
+make daplink-deploy-usb                  # Flash interface firmware via MAINTENANCE volume
+
+# External SWD probe required (recovery, CI, bricked boards)
+make daplink-deploy-pyocd                # Flash interface firmware via SWD (pyocd)
+make daplink-deploy-openocd              # Flash interface firmware via SWD (openocd)
+make daplink-deploy-bootloader           # Flash bootloader via SWD (default: pyocd)
+make daplink-deploy-bootloader-pyocd     # Flash bootloader via SWD (pyocd)
+make daplink-deploy-bootloader-openocd   # Flash bootloader via SWD (openocd)
 ```
 
 The DAPLink source is cloned from [steamicc/DAPLink](https://github.com/steamicc/DAPLink) into `.build/DAPLink/` (gitignored). A Python virtualenv is created automatically inside the clone for the progen build tool.
 
-**Maintenance mode:** to flash the DAPLink interface firmware, the board must be in maintenance mode. Power on the board with the RESET button held until a `MAINTENANCE` USB volume appears (instead of the usual `STeaMi` volume). The `make daplink-deploy-usb` target then copies the firmware to that volume and the board reboots automatically with the new interface firmware.
+**MAINTENANCE mode (USB path):** power on the board with the RESET button held until a `MAINTENANCE` USB volume appears (instead of the usual `STeaMi` volume). `make daplink-deploy-usb` copies the interface firmware to that volume and the board reboots automatically.
+
+**External SWD probe (bootstrap warning):** the `daplink-deploy-*-pyocd` / `-openocd` and all `daplink-deploy-bootloader*` targets flash the DAPLink chip directly via SWD. They require an **external** probe (ST-Link, J-Link, or another CMSIS-DAP board) connected to the target board's SWD header. **A board cannot reflash its own on-board DAPLink via its own SWD pins** — use another board or a standalone probe. These paths are useful for recovering a bricked interface firmware, installing the bootloader at the factory, or automating CI flashing without manual button presses.
+
+The SWD commands assume an ST-Link probe by default. To use a different probe (another DAPLink board, J-Link, …), override the OpenOCD or pyOCD configuration via `DAPLINK_OPENOCD_INTERFACE`, `DAPLINK_OPENOCD_TRANSPORT`, or `DAPLINK_PYOCD_TARGET` (see `env.mk`).
 
 ## Notes
 
