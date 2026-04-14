@@ -151,14 +151,6 @@ echo "  make daplink-$(2)       (DAPLink firmware)"; \
 exit 1
 endef
 
-# Variant for short names whose DAPLink counterpart does not exist yet
-# (daplink-deploy-pyocd / daplink-deploy-openocd are tracked in #388).
-define DEPRECATED_MICROPYTHON_ONLY
-@echo "Error: 'make $(1)' has been renamed. Use:"; \
-echo "  make micropython-$(2)   (MicroPython firmware)"; \
-exit 1
-endef
-
 .PHONY: firmware firmware-update firmware-clean deploy deploy-pyocd deploy-openocd deploy-usb
 firmware:
 	$(call DEPRECATED_FIRMWARE,firmware,firmware)
@@ -169,9 +161,9 @@ firmware-clean:
 deploy:
 	$(call DEPRECATED_FIRMWARE,deploy,deploy)
 deploy-pyocd:
-	$(call DEPRECATED_MICROPYTHON_ONLY,deploy-pyocd,deploy-pyocd)
+	$(call DEPRECATED_FIRMWARE,deploy-pyocd,deploy-pyocd)
 deploy-openocd:
-	$(call DEPRECATED_MICROPYTHON_ONLY,deploy-openocd,deploy-openocd)
+	$(call DEPRECATED_FIRMWARE,deploy-openocd,deploy-openocd)
 deploy-usb:
 	$(call DEPRECATED_FIRMWARE,deploy-usb,deploy-usb)
 
@@ -202,11 +194,41 @@ micropython-clean: ## Clean MicroPython firmware build artifacts
 	fi
 
 # --- DAPLink firmware ---
-# These targets manage the DAPLink **interface firmware** only (the second
-# stage of DAPLink, flashed at 0x08002000). The bootloader (first stage,
-# flashed at 0x08000000) is installed once at the factory and is not
-# managed here. A future `daplink-deploy-bootloader` target could be added
-# if needed, but it requires an external SWD probe and is rarely necessary.
+# These targets build and flash the DAPLink firmware that runs on the
+# STM32F103 interface chip. DAPLink has two parts:
+#
+#   * Bootloader (first stage, `stm32f103xb_bl`) at 0x08000000
+#       → rarely updated, requires an external SWD probe.
+#   * Interface firmware (second stage, `stm32f103xb_steami32_if`) at 0x08002000
+#       → updated routinely, typically via the MAINTENANCE USB volume,
+#         or via an external SWD probe for recovery / bricked boards.
+#
+# SWD targets (`daplink-deploy-pyocd`, `daplink-deploy-openocd`,
+# `daplink-deploy-bootloader*`) need an EXTERNAL probe (ST-Link, J-Link, or
+# another CMSIS-DAP board) connected to the SWD header of the target board.
+# A board cannot reflash its own DAPLink chip via its own SWD pins.
+
+define DAPLINK_SWD_WARNING
+@echo "================================================================"
+@echo "Warning: this target flashes the DAPLink chip via SWD."
+@echo "Requires an EXTERNAL probe (ST-Link / J-Link / CMSIS-DAP)"
+@echo "connected to the target board's SWD header. A board cannot"
+@echo "reflash its own on-board DAPLink via its own SWD pins."
+@echo "================================================================"
+endef
+
+define DAPLINK_OPENOCD_FLASH
+openocd -f $(DAPLINK_OPENOCD_INTERFACE) \
+	-f $(DAPLINK_OPENOCD_TARGET) \
+	-c "transport select $(DAPLINK_OPENOCD_TRANSPORT)" \
+	-c "reset_config none separate" \
+	-c "init" \
+	-c "reset halt" \
+	-c "stm32f1x unlock 0" \
+	-c "reset halt" \
+	-c "program $(1) verify $(2)" \
+	-c "reset; exit"
+endef
 
 $(DAPLINK_DIR):
 	@echo "Cloning DAPLink into $(CURDIR)/$(DAPLINK_DIR)..."
@@ -248,6 +270,14 @@ daplink-firmware: $(DAPLINK_DIR) $(DAPLINK_GCC_DIR)/bin/arm-none-eabi-gcc $(DAPL
 		./venv/bin/python tools/progen_compile.py -t make_gcc_arm $(DAPLINK_TARGET)
 	@echo "DAPLink firmware ready: $(DAPLINK_BUILD_DIR)/$(DAPLINK_TARGET)_crc.bin"
 
+.PHONY: daplink-bootloader
+daplink-bootloader: $(DAPLINK_DIR) $(DAPLINK_GCC_DIR)/bin/arm-none-eabi-gcc $(DAPLINK_DIR)/venv/.installed ## Build DAPLink bootloader for the STeaMi STM32F103
+	@echo "Building DAPLink target $(DAPLINK_BL_TARGET) with gcc-arm-none-eabi $(DAPLINK_GCC_VERSION)..."
+	cd $(CURDIR)/$(DAPLINK_DIR) && \
+		PATH="$(CURDIR)/$(DAPLINK_GCC_DIR)/bin:$(CURDIR)/$(DAPLINK_DIR)/venv/bin:$$PATH" \
+		./venv/bin/python tools/progen_compile.py -t make_gcc_arm $(DAPLINK_BL_TARGET)
+	@echo "DAPLink bootloader ready: $(DAPLINK_BL_BUILD_DIR)/$(DAPLINK_BL_TARGET)_crc.bin"
+
 .PHONY: daplink-update
 daplink-update: $(DAPLINK_DIR) ## Update the DAPLink clone
 	@set -e
@@ -267,6 +297,33 @@ daplink-deploy-usb: $(DAPLINK_DIR) ## Flash DAPLink interface firmware via MAINT
 	@$(PYTHON) scripts/deploy_usb.py --label MAINTENANCE \
 		--build-target daplink-firmware \
 		$(DAPLINK_BUILD_DIR)/$(DAPLINK_TARGET)_crc.bin
+
+.PHONY: daplink-deploy-pyocd
+daplink-deploy-pyocd: daplink-firmware ## Flash DAPLink interface firmware via external SWD probe (pyocd)
+	$(DAPLINK_SWD_WARNING)
+	$(PYTHON) -m pyocd flash -t $(DAPLINK_PYOCD_TARGET) \
+		--base-address $(DAPLINK_FLASH_ADDR) \
+		$(DAPLINK_BUILD_DIR)/$(DAPLINK_TARGET)_crc.bin
+
+.PHONY: daplink-deploy-openocd
+daplink-deploy-openocd: daplink-firmware ## Flash DAPLink interface firmware via external SWD probe (openocd)
+	$(DAPLINK_SWD_WARNING)
+	$(call DAPLINK_OPENOCD_FLASH,$(DAPLINK_BUILD_DIR)/$(DAPLINK_TARGET)_crc.bin,$(DAPLINK_FLASH_ADDR))
+
+.PHONY: daplink-deploy-bootloader
+daplink-deploy-bootloader: daplink-deploy-bootloader-pyocd ## Flash DAPLink bootloader via external SWD probe (default: pyocd)
+
+.PHONY: daplink-deploy-bootloader-pyocd
+daplink-deploy-bootloader-pyocd: daplink-bootloader ## Flash DAPLink bootloader via external SWD probe (pyocd)
+	$(DAPLINK_SWD_WARNING)
+	$(PYTHON) -m pyocd flash -t $(DAPLINK_PYOCD_TARGET) \
+		--base-address $(DAPLINK_BL_FLASH_ADDR) \
+		$(DAPLINK_BL_BUILD_DIR)/$(DAPLINK_BL_TARGET)_crc.bin
+
+.PHONY: daplink-deploy-bootloader-openocd
+daplink-deploy-bootloader-openocd: daplink-bootloader ## Flash DAPLink bootloader via external SWD probe (openocd)
+	$(DAPLINK_SWD_WARNING)
+	$(call DAPLINK_OPENOCD_FLASH,$(DAPLINK_BL_BUILD_DIR)/$(DAPLINK_BL_TARGET)_crc.bin,$(DAPLINK_BL_FLASH_ADDR))
 
 .PHONY: daplink-clean
 daplink-clean: ## Clean DAPLink firmware build artifacts
