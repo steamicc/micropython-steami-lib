@@ -24,6 +24,7 @@ lib/<component>/
 * The directory name must match the driver name (e.g. `mcp23009e`, `wsen-hids`)
 * The main class must be exposed in `__init__.py`
 * Drivers must be self-contained (no cross-driver dependencies)
+* Every driver is automatically checked against the upstream firmware manifest by `tests/test_frozen_manifest.py`. If a driver is intentionally **not** frozen (experimental, not yet integrated, etc.), add an empty `lib/<driver>/.not-frozen` file containing a one-line reason — the test will skip it with that reason displayed.
 
 ## Coding conventions
 
