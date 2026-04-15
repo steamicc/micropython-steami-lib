@@ -2,6 +2,7 @@ from time import sleep_ms, ticks_ms, ticks_diff
 
 import ssd1327
 import random
+from bq27441 import BQ27441
 from machine import I2C, SPI, Pin
 from mcp23009e import MCP23009E
 from mcp23009e.const import (
@@ -27,6 +28,9 @@ i2c = I2C(1)
 reset_expander = Pin("RST_EXPANDER", Pin.OUT)
 mcp = MCP23009E(i2c, address=MCP23009_I2C_ADDR, reset_pin=reset_expander)
 
+#setup battery
+fg = BQ27441(i2c)
+
 # D-PAD button mapping 
 BUTTONS = {
     MCP23009_BTN_UP: "UP",
@@ -42,6 +46,9 @@ NEED = ["I'm bored", "i'm hungry"]
 X0 = 35
 ITEM_Y = 100
 ITEM_SPACING = 14
+
+
+#sprite
 
 SPRITE_BASE = [
     [ 0, 0,15,15, 0, 0, 0, 0, 0,15,15, 0, 0],
@@ -151,6 +158,8 @@ SPRITE_DEAD = [
     [ 0, 0, 0, 0, 0, 0, 0,15,15,15,15, 0, 0, 0, 0, 0, 0],
 ]
 
+#------------------------------------SCREEN----------------------------------------------
+
 def setup_buttons():
     """Configure all D-PAD buttons as inputs with pull-ups."""
     for pin_number in BUTTONS:
@@ -177,12 +186,26 @@ def draw_character(cx, cy, scale, sprite):
     
     
     
-def creat_screen(selected_index, need, sprite):
+def creat_screen(selected_index, need, sprite, charge):
     """displays the screen"""
     display.fill(0)
-    display.text(need, 15, 20)
+    display.text(need, 25, 20)
+    display.text(str(charge), 50, 10)
 
-    draw_character(40, 40, 3, sprite)
+    if charge > 70 : 
+        scale = 1
+        x = 55
+        y = 60
+    elif charge < 70 and charge > 40 :
+        scale = 2
+        x = 45
+        y = 50
+    else :
+        scale = 3
+        x = 40
+        y = 40
+
+    draw_character(x, y, scale, sprite)
 
     for index, label in enumerate(ACTION):
         y = ITEM_Y + index * ITEM_SPACING
@@ -191,6 +214,12 @@ def creat_screen(selected_index, need, sprite):
 
     display.show()
 
+def creat_game_over_screen():
+    display.fill(0)     
+    display.text("Game-Over",25, 20)
+    draw_character(35, 45, 3, SPRITE_DEAD)
+    display.show()
+#------------------------------------gameplay----------------------------------------------
 
 def action_check(selected_index, need,win):
     name = ACTION[selected_index]
@@ -204,22 +233,20 @@ def action_check(selected_index, need,win):
         win = False
         return win
 
-def creat_game_over_screen():
-    display.fill(0)     
-    display.text("Game-Over",25, 20)
-    draw_character(35, 45, 3, SPRITE_DEAD)
-    display.show()
+
+#------------------------------------main----------------------------------------------
 
 def main():
     setup_buttons()
 
     selected_index = 0
-    life = 30
     is_alive = True
     
     while is_alive:
+        charge = fg.state_of_charge()
+
         need = " "
-        creat_screen(selected_index, need, SPRITE_BASE)
+        creat_screen(selected_index, need, SPRITE_BASE, charge)
         sleep_ms(1000)
 
         need = random.choice(NEED)
@@ -228,7 +255,7 @@ def main():
         else :
             sprite = SPRITE_HUNGRY
 
-        creat_screen(selected_index, need, sprite)
+        creat_screen(selected_index, need, sprite, charge)
 
         start = ticks_ms()
         win = False
@@ -239,13 +266,14 @@ def main():
             if timer >= 5000:
                 break   
 
+
             button = wait_for_button()
             if button == "UP": 
                 selected_index = (selected_index - 1)% len(ACTION)
-                creat_screen(selected_index, need, sprite)
+                creat_screen(selected_index, need, sprite, charge)
             elif button == "DOWN": 
                 selected_index = (selected_index + 1) % len(ACTION)
-                creat_screen(selected_index, need, sprite)
+                creat_screen(selected_index, need, sprite, charge)
             elif button == "LEFT": 
                 win = action_check(selected_index, need, win)
                 make_action = True
@@ -254,14 +282,13 @@ def main():
 
         if win: 
             sleep_ms(1000)
-            creat_screen(selected_index, need, SPRITE_HAPPY)
+            creat_screen(selected_index, need, SPRITE_HAPPY, charge)
             sleep_ms(1000)
         else:
-            life = max(-10, life - 10)
-            creat_screen(selected_index, need, SPRITE_HANGRY)
+            creat_screen(selected_index, need, SPRITE_HANGRY, charge)
             sleep_ms(1000)
 
-        if life == 0:
+        if charge < 10:
             is_alive = False
             creat_game_over_screen()
 
