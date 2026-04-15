@@ -36,12 +36,120 @@ BUTTONS = {
 }
 
 ACTION = ["food", "play"]
-NEED = ["play whith me", "i'm hungry"]
+NEED = ["I'm bored", "i'm hungry"]
 
 #position of button 
 X0 = 35
 ITEM_Y = 100
 ITEM_SPACING = 14
+
+SPRITE_BASE = [
+    [ 0, 0,15,15, 0, 0, 0, 0, 0,15,15, 0, 0],
+    [ 0,15,15,15,15, 0, 0, 0,15,15,15,15, 0],
+    [ 0,15,15,15,15,15,15,15,15,15,15,15, 0],
+    [ 0,15,15, 0, 0, 0, 0, 0, 0, 0,15,15, 0],
+    [ 0,15, 0, 0,15, 0, 0, 0,15, 0, 0,15, 0],
+    [15, 0, 0, 0, 0,15,15,15, 0, 0, 0, 0,15],
+    [15, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,15],
+    [ 0,15, 0, 0, 0, 0, 0, 0, 0, 0, 0,15, 0],
+    [15, 0, 0,15, 0, 0, 0, 0, 0,15, 0,15, 0],
+    [ 0,15,15, 0, 0, 0, 0, 0, 0,15,15,15, 0],
+    [ 0,15, 0, 0, 0, 0, 0, 0, 0, 0, 0,15, 0],
+    [ 0, 0,15, 0, 0, 0, 0, 0, 0, 0,15, 0, 0],
+    [ 0, 0, 0,15, 0,15,15,15, 0,15, 0, 0, 0],
+    [ 0, 0, 0,15, 0,15, 0,15, 0,15, 0, 0, 0],
+    [ 0, 0, 0, 0,15, 0, 0, 0,15, 0, 0, 0, 0],
+]
+
+SPRITE_HUNGRY = [
+    [ 0, 0,15,15, 0, 0, 0, 0, 0,15,15, 0, 0],
+    [ 0,15,15,15,15, 0, 0, 0,15,15,15,15, 0],
+    [ 0,15,15,15,15,15,15,15,15,15,15,15, 0],
+    [ 0,15,15, 0, 0, 0, 0, 0, 0, 0,15,15, 0],
+    [ 0,15, 0, 0,15, 0, 0, 0,15, 0, 0,15, 0],
+    [15, 0, 0, 0, 0,15,15,15, 0, 0, 0, 0,15],
+    [15, 0, 0, 0, 0,15,15,15, 0, 0, 0, 0,15],
+    [ 0,15, 0, 0, 0,15,15,15, 0, 0, 0,15, 0],
+    [15, 0, 0,15, 0, 0, 0, 0, 0,15, 0,15, 0],
+    [ 0,15,15, 0, 0, 0, 0, 0, 0,15,15,15, 0],
+    [ 0,15, 0, 0, 0, 0, 0, 0, 0, 0, 0,15, 0],
+    [ 0, 0,15, 0, 0, 0, 0, 0, 0, 0,15, 0, 0],
+    [ 0, 0, 0,15, 0,15,15,15, 0,15, 0, 0, 0],
+    [ 0, 0, 0,15, 0,15, 0,15, 0,15, 0, 0, 0],
+    [ 0, 0, 0, 0,15, 0, 0, 0,15, 0, 0, 0, 0],
+]
+
+SPRITE_SAD = [
+    [ 0, 0,15,15, 0, 0, 0, 0, 0,15,15, 0, 0],
+    [ 0,15,15,15,15, 0, 0, 0,15,15,15,15, 0],
+    [ 0,15,15,15,15,15,15,15,15,15,15,15, 0],
+    [ 0,15,15, 0, 0, 0, 0, 0, 0, 0,15,15, 0],
+    [ 0,15, 0,15,15, 0, 0, 0,15,15, 0,15, 0],
+    [15, 0, 0, 0, 0, 0,15, 0, 0, 0, 0, 0,15],
+    [15, 0, 0, 0, 0,15, 0,15, 0, 0, 0, 0,15],
+    [ 0,15, 0, 0, 0, 0, 0, 0, 0, 0, 0,15, 0],
+    [15, 0, 0,15, 0, 0, 0, 0, 0,15, 0,15, 0],
+    [ 0,15,15, 0, 0, 0, 0, 0, 0,15,15,15, 0],
+    [ 0,15, 0, 0, 0, 0, 0, 0, 0, 0, 0,15, 0],
+    [ 0, 0,15, 0, 0, 0, 0, 0, 0, 0,15, 0, 0],
+    [ 0, 0, 0,15, 0,15,15,15, 0,15, 0, 0, 0],
+    [ 0, 0, 0,15, 0,15, 0,15, 0,15, 0, 0, 0],
+    [ 0, 0, 0, 0,15, 0, 0, 0,15, 0, 0, 0, 0],
+]
+
+SPRITE_HAPPY = [
+    [ 0, 0,15,15, 0, 0, 0, 0, 0,15,15, 0, 0],
+    [ 0,15,15,15,15, 0, 0, 0,15,15,15,15, 0],
+    [ 0,15,15,15,15,15,15,15,15,15,15,15, 0],
+    [ 0,15,15, 0, 0, 0, 0, 0, 0, 0,15,15, 0],
+    [ 0,15, 0, 0,15, 0, 0, 0,15, 0, 0,15, 0],
+    [15, 0, 0,15, 0,15, 0,15, 0,15, 0, 0,15],
+    [15, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,15],
+    [ 0,15, 0, 0, 0,15, 15,15, 0, 0, 0,15, 0],
+    [15, 0, 0,15, 0, 0, 0, 0, 0,15, 0,15, 0],
+    [ 0,15,15, 0, 0, 0, 0, 0, 0,15,15,15, 0],
+    [ 0,15, 0, 0, 0, 0, 0, 0, 0, 0, 0,15, 0],
+    [ 0, 0,15, 0, 0, 0, 0, 0, 0, 0,15, 0, 0],
+    [ 0, 0, 0,15, 0,15,15,15, 0,15, 0, 0, 0],
+    [ 0, 0, 0,15, 0,15, 0,15, 0,15, 0, 0, 0],
+    [ 0, 0, 0, 0,15, 0, 0, 0,15, 0, 0, 0, 0],
+]
+
+SPRITE_HANGRY = [
+    [ 0, 0,15,15, 0, 0, 0, 0, 0,15,15, 0, 0],
+    [ 0,15,15,15,15, 0, 0, 0,15,15,15,15, 0],
+    [ 0,15,15,15,15,15,15,15,15,15,15,15, 0],
+    [ 0,15,15, 0, 0, 0, 0, 0, 0, 0,15,15, 0],
+    [ 0,15, 0,15, 0, 0, 0, 0, 0,15, 0,15, 0],
+    [15, 0, 0, 0,15, 0, 0, 0,15, 0, 0, 0,15],
+    [15, 0, 0, 0, 0, 0,15, 0, 0, 0, 0, 0,15],
+    [ 0,15, 0, 0, 0,15, 0,15, 0, 0, 0,15, 0],
+    [15, 0, 0,15, 0, 0, 0, 0, 0,15, 0,15, 0],
+    [ 0,15,15, 0, 0, 0, 0, 0, 0,15,15,15, 0],
+    [ 0,15, 0, 0, 0, 0, 0, 0, 0, 0, 0,15, 0],
+    [ 0, 0,15, 0, 0, 0, 0, 0, 0, 0,15, 0, 0],
+    [ 0, 0, 0,15, 0,15,15,15, 0,15, 0, 0, 0],
+    [ 0, 0, 0,15, 0,15, 0,15, 0,15, 0, 0, 0],
+    [ 0, 0, 0, 0,15, 0, 0, 0,15, 0, 0, 0, 0],
+]
+
+SPRITE_DEAD = [
+    [ 0, 0, 0, 0, 0, 0,15,15,15,15,15,15, 0, 0, 0, 0, 0],
+    [ 0, 0, 0, 0,15,15, 0, 0, 0, 0, 0, 0,15,15, 0, 0, 0],
+    [ 0, 0, 0,15, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,15, 0, 0],
+    [ 0, 0,15, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,15, 0],
+    [ 0, 0,15, 0, 0, 0, 0, 0, 0, 0, 0,15, 0,15, 0,15, 0],
+    [ 0,15, 0, 0,15,15, 0, 0, 0, 0, 0,15, 0,15, 0, 0,15],
+    [ 0,15, 0,15, 0, 0,15, 0, 0, 0, 0, 0, 0, 0, 0, 0,15],
+    [ 0,15, 0,15, 0, 0, 0, 0, 0, 0,15, 0,15, 0,15, 0,15],
+    [15, 0, 0, 0,15, 0, 0, 0, 0, 0,15,15,15,15,15, 0,15],
+    [15, 0, 0, 0, 0, 0, 0, 0, 0, 0,15,15,15,15,15, 0,15],
+    [15, 0, 0, 0, 0, 0, 0, 0, 0,15,15,15,15,15, 0,15, 0],
+    [ 0,15, 0, 0, 0, 0, 0, 0, 0,15, 0,15, 0,15, 0,15, 0],
+    [ 0, 0,15,15,15, 0, 0, 0, 0, 0, 0, 0, 0, 0,15, 0, 0],
+    [ 0, 0, 0, 0, 0,15,15, 0, 0, 0, 0,15,15,15, 0, 0, 0],
+    [ 0, 0, 0, 0, 0, 0, 0,15,15,15,15, 0, 0, 0, 0, 0, 0],
+]
 
 def setup_buttons():
     """Configure all D-PAD buttons as inputs with pull-ups."""
@@ -58,12 +166,23 @@ def wait_for_button():
             return name
     return None
 
-
-def creat_screen(selected_index, life, need):
+def draw_character(cx, cy, scale, sprite):
+    """Draw caractere"""
+    fb = display.framebuf
+    for y, row in enumerate(sprite):
+        for x, color in enumerate(row):
+            for dy in range(scale):
+                for dx in range(scale):
+                    fb.pixel(cx + x*scale + dx, cy + y*scale + dy, color)
+    
+    
+    
+def creat_screen(selected_index, need, sprite):
     """displays the screen"""
     display.fill(0)
-    display.text("life {}".format(life),28, 10)
     display.text(need, 15, 20)
+
+    draw_character(40, 40, 3, sprite)
 
     for index, label in enumerate(ACTION):
         y = ITEM_Y + index * ITEM_SPACING
@@ -75,7 +194,7 @@ def creat_screen(selected_index, life, need):
 
 def action_check(selected_index, need,win):
     name = ACTION[selected_index]
-    if need == "play whith me" and name == "play":
+    if need == "I'm bored" and name == "play":
         win = True
         return win
     if need == "i'm hungry" and name == "food": 
@@ -85,17 +204,31 @@ def action_check(selected_index, need,win):
         win = False
         return win
 
+def creat_game_over_screen():
+    display.fill(0)     
+    display.text("Game-Over",25, 20)
+    draw_character(35, 45, 3, SPRITE_DEAD)
+    display.show()
 
-def main(): 
+def main():
     setup_buttons()
 
     selected_index = 0
-    life = 100
+    life = 30
     is_alive = True
-
+    
     while is_alive:
+        need = " "
+        creat_screen(selected_index, need, SPRITE_BASE)
+        sleep_ms(1000)
+
         need = random.choice(NEED)
-        creat_screen(selected_index, life, need)
+        if need == "I'm bored" :
+            sprite = SPRITE_SAD
+        else :
+            sprite = SPRITE_HUNGRY
+
+        creat_screen(selected_index, need, sprite)
 
         start = ticks_ms()
         win = False
@@ -109,10 +242,10 @@ def main():
             button = wait_for_button()
             if button == "UP": 
                 selected_index = (selected_index - 1)% len(ACTION)
-                creat_screen(selected_index, life, need)
+                creat_screen(selected_index, need, sprite)
             elif button == "DOWN": 
                 selected_index = (selected_index + 1) % len(ACTION)
-                creat_screen(selected_index, life, need)
+                creat_screen(selected_index, need, sprite)
             elif button == "LEFT": 
                 win = action_check(selected_index, need, win)
                 make_action = True
@@ -120,16 +253,16 @@ def main():
             sleep_ms(20)
 
         if win: 
-            need = random.choice(NEED)
-            creat_screen(selected_index, life, need)
+            sleep_ms(1000)
+            creat_screen(selected_index, need, SPRITE_HAPPY)
             sleep_ms(1000)
         else:
-            life = max(0, life - 10)
-            need = random.choice(NEED)
-            creat_screen(selected_index, life, need)
+            life = max(-10, life - 10)
+            creat_screen(selected_index, need, SPRITE_HANGRY)
             sleep_ms(1000)
 
         if life == 0:
             is_alive = False
+            creat_game_over_screen()
 
 main()
