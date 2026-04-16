@@ -10,8 +10,6 @@ Usage on the STeaMi board:
     display = SSD1327Display(raw)
 """
 
-import framebuf
-
 from steami_screen.colors import rgb_to_gray4
 
 
@@ -22,6 +20,11 @@ class SSD1327Display:
         self._raw = raw
         self.width = getattr(raw, "width", 128)
         self.height = getattr(raw, "height", 128)
+        # Resolve fill_rect dispatch once at init (avoids repeated hasattr)
+        if hasattr(raw, "fill_rect"):
+            self._fill_rect_raw = raw.fill_rect
+        else:
+            self._fill_rect_raw = raw.framebuf.fill_rect
 
     def fill(self, color):
         self._raw.fill(rgb_to_gray4(color))
@@ -36,11 +39,7 @@ class SSD1327Display:
         self._raw.line(x1, y1, x2, y2, rgb_to_gray4(color))
 
     def fill_rect(self, x, y, w, h, color):
-        gray = rgb_to_gray4(color)
-        if hasattr(self._raw, "fill_rect"):
-            self._raw.fill_rect(x, y, w, h, gray)
-        else:
-            self._raw.framebuf.fill_rect(x, y, w, h, gray)
+        self._fill_rect_raw(x, y, w, h, rgb_to_gray4(color))
 
     def rect(self, x, y, w, h, color):
         gray = rgb_to_gray4(color)
@@ -53,14 +52,17 @@ class SSD1327Display:
         self._raw.show()
 
     def draw_scaled_text(self, text, x, y, color, scale):
-        """Draw text scaled up using pixel-by-pixel framebuf rendering.
+        """Draw text with true pixel-scale zoom.
 
-        Renders each character into a temporary 8x8 MONO_HLSB framebuf,
-        reads each lit pixel, and draws a scale x scale filled rectangle.
-        This produces a true pixel-scale zoom instead of a bold offset effect.
+        Each character is rendered into a temporary 8x8 MONO_HLSB framebuf,
+        then each lit pixel is expanded into a scale x scale filled rectangle
+        on the display. The framebuf import is deferred to avoid breaking
+        imports in CPython environments where framebuf is not available.
         """
+        import framebuf
 
         gray = rgb_to_gray4(color)
+        blit = self._fill_rect_raw
 
         char_buf = bytearray(8)
         fb = framebuf.FrameBuffer(char_buf, 8, 8, framebuf.MONO_HLSB)
@@ -72,20 +74,5 @@ class SSD1327Display:
             for py in range(8):
                 for px in range(8):
                     if fb.pixel(px, py):
-                        if hasattr(self._raw, "fill_rect"):
-                            self._raw.fill_rect(
-                                cx + px * scale,
-                                y + py * scale,
-                                scale,
-                                scale,
-                                gray,
-                            )
-                        else:
-                            self._raw.framebuf.fill_rect(
-                                cx + px * scale,
-                                y + py * scale,
-                                scale,
-                                scale,
-                                gray,
-                            )
+                        blit(cx + px * scale, y + py * scale, scale, scale, gray)
             cx += 8 * scale
