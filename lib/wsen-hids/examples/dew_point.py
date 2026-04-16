@@ -20,6 +20,7 @@ def dew_point_celsius(temperature_c, humidity):
     dp = (b * gamma) / (a - gamma)
     return dp
 
+
 humidity, temperature = sensor.read_one_shot()
 dew_point = dew_point_celsius(temperature, humidity)
 

@@ -28,6 +28,7 @@ def bar_graph(value, vmin, vmax, width=20):
 
     return "[" + "#" * filled + "-" * (width - filled) + "]"
 
+
 while True:
     pressure, temp = sensor.read()
     temp_bar = bar_graph(temp, TEMP_MIN, TEMP_MAX)
