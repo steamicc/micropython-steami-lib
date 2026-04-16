@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [0.23.0](https://github.com/steamicc/micropython-steami-lib/compare/v0.22.0...v0.23.0) (2026-04-16)
+
+
+### Features
+
+* **bq27441:** Add battery pet (tamagotchi) example with OLED. ([#399](https://github.com/steamicc/micropython-steami-lib/issues/399)) ([190354f](https://github.com/steamicc/micropython-steami-lib/commit/190354fbf0c7f862add6bafcd47ef79373097ee7))
+
 # [0.22.0](https://github.com/steamicc/micropython-steami-lib/compare/v0.21.0...v0.22.0) (2026-04-16)
 
 
