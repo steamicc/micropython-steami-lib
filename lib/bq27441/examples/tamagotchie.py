@@ -237,15 +237,15 @@ def create_screen(selected_index, need, sprite, charge):
     display.text(need, 25, 20, 15)
     display.text(str(charge), 50, 10, 15)
 
-    if charge >= 70 :
+    if charge >= 70:
         scale = 1
         x = 55
         y = 60
-    elif 40 <= charge < 70:
+    elif 40 <= charge:
         scale = 2
         x = 45
         y = 50
-    else :
+    else:
         scale = 3
         x = 40
         y = 40
