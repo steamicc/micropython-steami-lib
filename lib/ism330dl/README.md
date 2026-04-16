@@ -285,5 +285,6 @@ The repository provides several example scripts:
 | `basic_read.py`         | Simple sensor readout                             |
 | `static_orientation.py` | Detect device orientation using the accelerometer |
 | `motion_orientation.py` | Detect rotation using the gyroscope               |
+| `spirit_level.py`       | Interactive digital bubble level using SSD1327 OLED|
 
 ---
