@@ -58,7 +58,7 @@ try:
             # Clamp the light reading to the expected range to avoid out-of-bounds errors
             clamped_light = max(MIN_LIGHT, min(light_level, MAX_LIGHT))
 
-            # Avoid diving by zero if MAX_LIGHT is not greater than MIN_LIGHT
+            # Avoid dividing by zero if MAX_LIGHT is not greater than MIN_LIGHT
             range_light = MAX_LIGHT - MIN_LIGHT
             if range_light <= 0:
                 range_light = 1
