@@ -293,7 +293,6 @@ def main():
     setup_buttons()
   #  soud_effect("start")
     is_alive = True
-    nb_tour = 0
 
     while is_alive:
         selected_index = 0
@@ -345,7 +344,4 @@ def main():
         if charge < 10:
             is_alive = False
             creat_game_over_screen()
-
-        print("fin de tour")
-        print(nb_tour)
 main()
