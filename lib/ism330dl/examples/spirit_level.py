@@ -2,6 +2,9 @@
 
 Displays a digital bubble level. The bubble moves according to the board's tilt.
 When the board is perfectly flat, the bubble centers and the background lights up.
+
+On startup, the board must be placed on a flat surface for a brief auto-zero
+calibration (averages a few samples to compensate accelerometer bias).
 """
 
 from time import sleep_ms
@@ -22,6 +25,10 @@ MAX_OFFSET = 50
 # Tilt thresholds (in g) to consider the board "level/flat"
 LEVEL_THRESHOLD = 0.05
 
+# Auto-zero calibration: number of samples averaged at startup
+CAL_SAMPLES = 20
+CAL_DELAY_MS = 50
+
 # Display Colors (0 to 15 greyscale)
 COLOR_BG_TILTED = 0
 COLOR_BG_LEVEL = 4
@@ -38,28 +45,46 @@ def fill_circle(fbuf, x0, y0, r, c):
             if x * x + y * y <= r * r:
                 fbuf.pixel(x0 + x, y0 + y, c)
 
-# Hardware Initialization
-# I2C and ISM330DL
+
+# --- Hardware Initialization ---
+
 i2c = I2C(1)
 imu = ISM330DL(i2c)
 
-# SPI and SSD1327 OLED
 spi = SPI(1)
 dc = Pin("DATA_COMMAND_DISPLAY")
 res = Pin("RST_DISPLAY")
 cs = Pin("CS_DISPLAY")
 display = ssd1327.WS_OLED_128X128_SPI(spi, dc, res, cs)
 
+# --- Auto-zero calibration ---
+# Average N acceleration samples to compensate the board's bias at rest.
+# The board must be on a flat surface during this phase.
+
 print("=======================")
 print("     Spirit Level      ")
 print("=======================")
+print("Calibrating... keep the board flat and still.")
+
+cal_ax, cal_ay = 0.0, 0.0
+for _ in range(CAL_SAMPLES):
+    ax, ay, _az = imu.acceleration_g()
+    cal_ax += ax
+    cal_ay += ay
+    sleep_ms(CAL_DELAY_MS)
+cal_ax /= CAL_SAMPLES
+cal_ay /= CAL_SAMPLES
+print("Offset: ax={:.3f}g, ay={:.3f}g".format(cal_ax, cal_ay))
+
 print("Tilt the board to move the bubble.")
 print("Press Ctrl+C to exit.")
 
 try:
     while True:
-        # Read acceleration in g-forces
-        ax, ay, _az = imu.acceleration_g()
+        # Read acceleration in g-forces, subtract startup bias
+        raw_ax, raw_ay, _az = imu.acceleration_g()
+        ax = raw_ax - cal_ax
+        ay = raw_ay - cal_ay
 
         # Level Detection
         # If both X and Y axes are close to 0g, the board is flat
@@ -108,8 +133,9 @@ try:
 except KeyboardInterrupt:
     print("\nSpirit level stopped.")
 finally:
-    # Clean up and power off display on exit
+    # Clean up: power off display and IMU to avoid battery drain
     display.fill(0)
     display.show()
     sleep_ms(100)
     display.power_off()
+    imu.power_off()
