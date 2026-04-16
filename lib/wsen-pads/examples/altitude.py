@@ -10,6 +10,7 @@ i2c = I2C(1)
 
 sensor = WSEN_PADS(i2c)
 
+
 def pressure_to_altitude(p):
     return 44330 * (1 - (p / SEA_LEVEL_PRESSURE) ** EXPONENT)
 

@@ -66,7 +66,6 @@ try:
             # Map the light range to an index in our note array (0 to 14)
             note_index = (clamped_light - MIN_LIGHT) * (TOTAL_NOTES - 1) // range_light
 
-
             # Fetch the perfect harmonic frequency
             freq = PENTATONIC_NOTES[note_index]
 
@@ -76,7 +75,6 @@ try:
                 buzzer_ch.pulse_width_percent(50)
                 print("Light: {} | Note: {} | Freq: {} Hz".format(light_level, note_index, freq), end="\r")
                 last_freq = freq
-
 
         sleep_ms(20)
 

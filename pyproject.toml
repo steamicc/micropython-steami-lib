@@ -48,10 +48,13 @@ select = [
   "C90",    # McCabe cyclomatic complexity
   "DTZ",    # flake8-datetimez
   "E",      # pycodestyle
+  "E203",   # (preview) whitespace before ':', ';', or ','
   "E225",   # (preview) missing whitespace around operator
   "E261",   # (preview) at least two spaces before inline comment
   "E262",   # (preview) inline comment must start with '# '
   "E265",   # (preview) block comment must start with '# '
+  "E302",   # (preview) expected 2 blank lines before function/class definition
+  "E303",   # (preview) too many blank lines
   "EXE",    # flake8-executable
   "F",      # Pyflakes
   "G",      # flake8-logging-format
@@ -125,3 +128,28 @@ quote-style = "double"
 indent-style = "space"
 skip-magic-trailing-comma = false
 line-ending = "auto"
+
+[tool.pyright]
+typeCheckingMode = "basic"
+stubPath = "typings"
+extraPaths = [
+    "lib/apds9960",
+    "lib/bme280",
+    "lib/bq27441",
+    "lib/daplink_bridge",
+    "lib/daplink_flash",
+    "lib/gc9a01",
+    "lib/hts221",
+    "lib/im34dt05",
+    "lib/ism330dl",
+    "lib/lis2mdl",
+    "lib/mcp23009e",
+    "lib/ssd1327",
+    "lib/steami_config",
+    "lib/steami_screen",
+    "lib/vl53l1x",
+    "lib/wsen-hids",
+    "lib/wsen-pads",
+]
+reportMissingModuleSource = "none"
+reportWildcardImportFromLibrary = "none"

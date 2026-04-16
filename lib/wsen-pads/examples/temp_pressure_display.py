@@ -15,6 +15,7 @@ PRESS_MAX = 1060.0
 i2c = I2C(1)
 sensor = WSEN_PADS(i2c)
 
+
 def bar_graph(value, vmin, vmax, width=20):
     # Clamp value
     if value < vmin:

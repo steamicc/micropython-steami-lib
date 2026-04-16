@@ -40,6 +40,7 @@ FACES = {
 
 # --- Cardinal position names ---
 
+
 class Screen:
     """High-level wrapper around a raw display backend."""
 
@@ -195,7 +196,6 @@ class Screen:
         # Fill
         if fill_w > 0:
             self._fill_rect(bx, by, fill_w, bar_h, color)
-
 
     def gauge(self, val, min_val=0, max_val=100, color=LIGHT):
         """Draw a circular arc gauge (270 deg, gap at bottom).

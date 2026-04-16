@@ -23,7 +23,6 @@ def pytest_addoption(parser):
     )
 
 
-
 def pytest_collection_modifyitems(config, items):
     port = config.getoption("--port")
     driver = config.getoption("--driver")
