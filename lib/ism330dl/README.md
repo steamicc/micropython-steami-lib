@@ -286,5 +286,6 @@ The repository provides several example scripts:
 | `static_orientation.py` | Detect device orientation using the accelerometer |
 | `motion_orientation.py` | Detect rotation using the gyroscope               |
 | `spirit_level.py`       | Interactive digital bubble level using SSD1327 OLED|
+| `maze_game.py`          | Tilt-controlled maze game with score on SSD1327 OLED|
 
 ---
