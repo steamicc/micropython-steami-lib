@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [0.20.0](https://github.com/steamicc/micropython-steami-lib/compare/v0.19.0...v0.20.0) (2026-04-16)
+
+
+### Features
+
+* **ism330dl:** Add OLED spirit level example. ([#376](https://github.com/steamicc/micropython-steami-lib/issues/376)) ([6c25021](https://github.com/steamicc/micropython-steami-lib/commit/6c25021badb5144f713f33b3a9b1fc4d935eb82e))
+
 # [0.19.0](https://github.com/steamicc/micropython-steami-lib/compare/v0.18.0...v0.19.0) (2026-04-16)
 
 
