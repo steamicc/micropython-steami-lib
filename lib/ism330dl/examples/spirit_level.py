@@ -11,8 +11,9 @@ from ism330dl import ISM330DL
 from machine import I2C, SPI, Pin
 
 # Layout & Physics Constants
-SCREEN_CENTER_X = 64
-SCREEN_CENTER_Y = 64
+SCREEN_SIZE = 128
+SCREEN_CENTER_X = SCREEN_SIZE // 2
+SCREEN_CENTER_Y = SCREEN_SIZE // 2
 BUBBLE_RADIUS = 8
 
 # Maximum pixel distance the bubble can travel from the center
@@ -28,6 +29,7 @@ COLOR_FG = 15
 
 # Loop delay
 POLL_RATE_MS = 20
+
 
 def fill_circle(fbuf, x0, y0, r, c):
     """Helper to draw a filled circle since framebuf lacks it natively."""
@@ -80,8 +82,8 @@ try:
         bubble_x = SCREEN_CENTER_X + offset_x
         bubble_y = SCREEN_CENTER_Y + offset_y
 
-        bubble_x = max(BUBBLE_RADIUS, min(127 - BUBBLE_RADIUS, bubble_x))
-        bubble_y = max(BUBBLE_RADIUS, min(127 - BUBBLE_RADIUS, bubble_y))
+        bubble_x = max(BUBBLE_RADIUS, min(SCREEN_SIZE - 1 - BUBBLE_RADIUS, bubble_x))
+        bubble_y = max(BUBBLE_RADIUS, min(SCREEN_SIZE - 1 - BUBBLE_RADIUS, bubble_y))
 
         # Drawing Phase
         display.fill(bg_color)
