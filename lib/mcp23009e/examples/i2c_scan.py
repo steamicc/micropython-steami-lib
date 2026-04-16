@@ -13,7 +13,6 @@ sleep(1)
 reset.value(1)
 
 
-
 print("=" * 60)
 print("Scanner I2C - Recherche des périphériques")
 print("=" * 60)

@@ -48,10 +48,13 @@ select = [
   "C90",    # McCabe cyclomatic complexity
   "DTZ",    # flake8-datetimez
   "E",      # pycodestyle
+  "E203",   # (preview) whitespace before ':', ';', or ','
   "E225",   # (preview) missing whitespace around operator
   "E261",   # (preview) at least two spaces before inline comment
   "E262",   # (preview) inline comment must start with '# '
   "E265",   # (preview) block comment must start with '# '
+  "E302",   # (preview) expected 2 blank lines before function/class definition
+  "E303",   # (preview) too many blank lines
   "EXE",    # flake8-executable
   "F",      # Pyflakes
   "G",      # flake8-logging-format

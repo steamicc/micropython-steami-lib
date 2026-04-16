@@ -15,6 +15,7 @@ pressure_history = []
 MAX_VALUES = 10
 THRESHOLD = 0.5  # sensitivity (hPa)
 
+
 def get_trend(values):
     if len(values) < 2:
         return "N/A"
