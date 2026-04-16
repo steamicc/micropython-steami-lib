@@ -1,11 +1,10 @@
-import ssd1327
 import random
-from pyb import Timer
+from time import sleep_ms, ticks_diff, ticks_ms
+
+import ssd1327
 from bq27441 import BQ27441
-from time import sleep_ms, ticks_ms, ticks_diff
 from machine import I2C, SPI, Pin
 from mcp23009e import MCP23009E
-from apds9960 import uAPDS9960 as APDS9960
 from mcp23009e.const import (
     MCP23009_BTN_DOWN,
     MCP23009_BTN_LEFT,
@@ -16,6 +15,7 @@ from mcp23009e.const import (
     MCP23009_LOGIC_LOW,
     MCP23009_PULLUP,
 )
+from pyb import Timer
 
 # setup screen
 spi = SPI(1)
@@ -24,20 +24,20 @@ res = Pin("RST_DISPLAY")
 cs = Pin("CS_DISPLAY")
 display = ssd1327.WS_OLED_128X128_SPI(spi, dc, res, cs)
 
-#setup mcp23009e
+# setup mcp23009e
 i2c = I2C(1)
 reset_expander = Pin("RST_EXPANDER", Pin.OUT)
 mcp = MCP23009E(i2c, address=MCP23009_I2C_ADDR, reset_pin=reset_expander)
 
-#setup battery
+# setup battery
 fg = BQ27441(i2c)
 
-#sound
+# sound
 buzzer_tim = Timer(1, freq=1000)
 buzzer_ch  = buzzer_tim.channel(4, Timer.PWM, pin=Pin("SPEAKER"))
 buzzer_ch.pulse_width_percent(0)
 
-# D-PAD button mapping 
+# D-PAD button mapping
 BUTTONS = {
     MCP23009_BTN_UP: "UP",
     MCP23009_BTN_DOWN: "DOWN",
@@ -48,12 +48,12 @@ BUTTONS = {
 ACTION = ["food", "play"]
 NEED = ["I'm bored", "i'm hungry"]
 
-#position of button 
+# position of button
 X0 = 35
 ITEM_Y = 100
 ITEM_SPACING = 14
 
-#sprite
+# sprite
 
 SPRITE_BASE = [
     [ 0, 0,15,15, 0, 0, 0, 0, 0,15,15, 0, 0],
@@ -163,7 +163,7 @@ SPRITE_DEAD = [
     [ 0, 0, 0, 0, 0, 0, 0,15,15,15,15, 0, 0, 0, 0, 0, 0],
 ]
 
-#------------------------------------SCREEN----------------------------------------------
+# ------------------------------------SCREEN----------------------------------------------
 
 def setup_buttons():
     """Configure all D-PAD buttons as inputs with pull-ups."""
@@ -188,16 +188,15 @@ def draw_character(cx, cy, scale, sprite):
             for dy in range(scale):
                 for dx in range(scale):
                     fb.pixel(cx + x*scale + dx, cy + y*scale + dy, color)
-    
-    
-    
+
+
 def creat_screen(selected_index, need, sprite, charge):
     """displays the screen"""
     display.fill(0)
     display.text(need, 25, 20)
     display.text(str(charge), 50, 10)
 
-    if charge > 70 : 
+    if charge > 70 :
         scale = 1
         x = 55
         y = 60
@@ -220,18 +219,18 @@ def creat_screen(selected_index, need, sprite, charge):
     display.show()
 
 def creat_game_over_screen():
-    display.fill(0)     
+    display.fill(0)
     display.text("Game-Over",25, 20)
     draw_character(35, 45, 3, SPRITE_DEAD)
     display.show()
-#------------------------------------gameplay----------------------------------------------
+# ------------------------------------gameplay----------------------------------------------
 
 def action_check(selected_index, need,win):
     name = ACTION[selected_index]
     if need == "I'm bored" and name == "play":
         win = True
         return win
-    if need == "i'm hungry" and name == "food": 
+    if need == "i'm hungry" and name == "food":
         win = True
         return win
     else :
@@ -241,9 +240,9 @@ def action_check(selected_index, need,win):
 def soud_effect(name):
     sound = {
         "start": [
-        (523,  120),   
-        (659,  120),   
-        (784,  120),   
+        (523,  120),
+        (659,  120),
+        (784,  120),
         (1047, 400),
         ],
 
@@ -285,17 +284,17 @@ def soud_effect(name):
         buzzer_ch.pulse_width_percent(10)
         sleep_ms(duration_ms)
         buzzer_ch.pulse_width_percent(0)
-        sleep_ms(30)      
+        sleep_ms(30)
 
 
-#------------------------------------main----------------------------------------------
+# ------------------------------------main----------------------------------------------
 
 def main():
-    setup_buttons(
-    soud_effect("start")
+    setup_buttons()
+  #  soud_effect("start")
     is_alive = True
     nb_tour = 0
-    
+
     while is_alive:
         selected_index = 0
         charge = fg.state_of_charge()
@@ -308,45 +307,39 @@ def main():
         if need == "I'm bored" :
             sprite = SPRITE_SAD
             soud_effect("bored")
-            nb_tour = nb_tour + 1
         else :
             sprite = SPRITE_HUNGRY
             soud_effect("hungry")
-            nb_tour = nb_tour + 1
 
         creat_screen(selected_index, need, sprite, charge)
 
         start = ticks_ms()
         win = None
-        make_action = False
 
         while True:
             timer = ticks_diff(ticks_ms(), start)
             if timer >= 5000:
-                break   
+                break
 
 
             button = wait_for_button()
-            if button == "UP": 
+            if button == "UP":
                 selected_index = (selected_index - 1)% len(ACTION)
                 creat_screen(selected_index, need, sprite, charge)
-            elif button == "DOWN": 
+            elif button == "DOWN":
                 selected_index = (selected_index + 1) % len(ACTION)
                 creat_screen(selected_index, need, sprite, charge)
-            elif button == "LEFT": 
+            elif button == "LEFT":
                 win = action_check(selected_index, need, win)
-                make_action = True
-                break 
+                break
             sleep_ms(20)
 
         if win:
             creat_screen(selected_index, need, SPRITE_HAPPY, charge)
             soud_effect("success")
-            nb_tour = nb_tour + 1
         else:
             creat_screen(selected_index, need, SPRITE_HANGRY, charge)
             soud_effect("fail")
-            nb_tour = nb_tour + 1
         sleep_ms(1000)
 
         if charge < 10:
