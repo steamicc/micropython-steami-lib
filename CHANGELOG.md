@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [0.20.2](https://github.com/steamicc/micropython-steami-lib/compare/v0.20.1...v0.20.2) (2026-04-16)
+
+
+### Bug Fixes
+
+* **steami_screen:** Improve text scaling using pixel-by-pixel framebuf. ([#398](https://github.com/steamicc/micropython-steami-lib/issues/398)) ([16386ea](https://github.com/steamicc/micropython-steami-lib/commit/16386eafc6555eb3fcd23449995a5a42f8942322))
+
 ## [0.20.1](https://github.com/steamicc/micropython-steami-lib/compare/v0.20.0...v0.20.1) (2026-04-16)
 
 # [0.20.0](https://github.com/steamicc/micropython-steami-lib/compare/v0.19.0...v0.20.0) (2026-04-16)
