@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [0.18.0](https://github.com/steamicc/micropython-steami-lib/compare/v0.17.0...v0.18.0) (2026-04-16)
+
+
+### Features
+
+* **apds9960:** Add pentatonic light theremin example. ([#367](https://github.com/steamicc/micropython-steami-lib/issues/367)) ([5ab80bf](https://github.com/steamicc/micropython-steami-lib/commit/5ab80bf36a3913c1963b5458e495e834b7c44a31))
+
 # [0.17.0](https://github.com/steamicc/micropython-steami-lib/compare/v0.16.9...v0.17.0) (2026-04-16)
 
 
