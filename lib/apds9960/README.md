@@ -153,6 +153,8 @@ if sensor.is_gesture_available():
 | `ambient_light.py` | Read ambient light and RGB values |
 | `proximity.py`     | Detect nearby objects             |
 | `gesture.py`       | Detect directional gestures       |
+| `light_thermein.py`| Theremin controlled by light using the buzzer |
+
 
 ```bash
 mpremote mount lib/apds9960 run lib/apds9960/examples/ambient_light.py
@@ -163,3 +165,4 @@ mpremote mount lib/apds9960 run lib/apds9960/examples/ambient_light.py
 * Ambient light and proximity reads automatically enable their respective sensors when needed (lazy activation).
 * Gesture detection must be explicitly enabled before polling.
 * Both `APDS9960` and `uAPDS9960` (MicroPython-optimized) classes are exported.
+* The light theremin example requires the buzzer connected on the PWM port, pin "SPEAKER" 
