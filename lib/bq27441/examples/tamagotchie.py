@@ -241,7 +241,7 @@ def create_screen(selected_index, need, sprite, charge):
         scale = 1
         x = 55
         y = 60
-    elif 40 <= charge:
+    elif charge >= 40:
         scale = 2
         x = 45
         y = 50
