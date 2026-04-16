@@ -3,6 +3,24 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [0.18.0](https://github.com/steamicc/micropython-steami-lib/compare/v0.17.0...v0.18.0) (2026-04-16)
+
+
+### Features
+
+* **apds9960:** Add pentatonic light theremin example. ([#367](https://github.com/steamicc/micropython-steami-lib/issues/367)) ([5ab80bf](https://github.com/steamicc/micropython-steami-lib/commit/5ab80bf36a3913c1963b5458e495e834b7c44a31))
+
+# [0.17.0](https://github.com/steamicc/micropython-steami-lib/compare/v0.16.9...v0.17.0) (2026-04-16)
+
+
+### Features
+
+* **lis2mdl:** Add OLED digital compass example. ([#362](https://github.com/steamicc/micropython-steami-lib/issues/362)) ([64ba19a](https://github.com/steamicc/micropython-steami-lib/commit/64ba19a1c35e047aeb5b51d5649d768b181401c7))
+
+## [0.16.9](https://github.com/steamicc/micropython-steami-lib/compare/v0.16.8...v0.16.9) (2026-04-14)
+
+## [0.16.8](https://github.com/steamicc/micropython-steami-lib/compare/v0.16.7...v0.16.8) (2026-04-14)
+
 ## [0.16.7](https://github.com/steamicc/micropython-steami-lib/compare/v0.16.6...v0.16.7) (2026-04-13)
 
 ## [0.16.6](https://github.com/steamicc/micropython-steami-lib/compare/v0.16.5...v0.16.6) (2026-04-13)

@@ -1,0 +1,28 @@
+# Force LF line endings on every text file.
+#
+# This repo is developed on Linux / macOS / WSL. Shell scripts (including
+# husky git hooks) and MicroPython sources must stay LF — a CRLF shebang
+# breaks `#!/usr/bin/env sh` on Unix shells, and CRLF in Python files
+# confuses some MicroPython parsers.
+#
+# `text=auto eol=lf` lets Git detect text vs. binary files automatically
+# and checks text files out as LF, regardless of the contributor's
+# `core.autocrlf` setting (which is `true` by default on Git for Windows).
+
+* text=auto eol=lf
+
+# Explicit declarations for common binary artifacts — no EOL conversion.
+*.bin binary
+*.hex binary
+*.elf binary
+*.dfu binary
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.ico binary
+*.gif binary
+*.pdf binary
+*.zip binary
+*.tar binary
+*.gz binary
+*.bz2 binary
