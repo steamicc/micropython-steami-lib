@@ -50,11 +50,15 @@ select = [
   "E",      # pycodestyle
   "E203",   # (preview) whitespace before ':', ';', or ','
   "E225",   # (preview) missing whitespace around operator
+  "E231",   # (preview) missing whitespace after ','
   "E261",   # (preview) at least two spaces before inline comment
   "E262",   # (preview) inline comment must start with '# '
   "E265",   # (preview) block comment must start with '# '
+  "E275",   # (preview) missing whitespace after keyword
+  "E301",   # (preview) blank line between methods
   "E302",   # (preview) expected 2 blank lines before function/class definition
   "E303",   # (preview) too many blank lines
+  "E305",   # (preview) expected 2 blank lines after function/class definition
   "EXE",    # flake8-executable
   "F",      # Pyflakes
   "G",      # flake8-logging-format
@@ -78,6 +82,7 @@ select = [
   "T20",    # flake8-print: no print() in production code
   "TCH",    # flake8-type-checking
   "W",      # pycodestyle
+  "W391",   # (preview) too many newlines at end of file
   "YTT",    # flake8-2020
 ]
 ignore = [

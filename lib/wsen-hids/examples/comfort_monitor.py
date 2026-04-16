@@ -18,6 +18,7 @@ def comfort_label(humidity):
     else:
         return "Humid"
 
+
 while True:
     humidity, temperature = sensor.read_one_shot()
     comfort = comfort_label(humidity)

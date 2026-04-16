@@ -33,6 +33,7 @@ def get_trend(values):
     else:
         return "falling"
 
+
 while True:
     pressure = sensor.pressure_hpa()
 

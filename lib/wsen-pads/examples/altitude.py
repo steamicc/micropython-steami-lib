@@ -14,6 +14,7 @@ sensor = WSEN_PADS(i2c)
 def pressure_to_altitude(p):
     return 44330 * (1 - (p / SEA_LEVEL_PRESSURE) ** EXPONENT)
 
+
 for _ in range(10):
     pressure, temp = sensor.read()
 
