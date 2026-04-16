@@ -128,3 +128,28 @@ quote-style = "double"
 indent-style = "space"
 skip-magic-trailing-comma = false
 line-ending = "auto"
+
+[tool.pyright]
+typeCheckingMode = "basic"
+stubPath = "typings"
+extraPaths = [
+    "lib/apds9960",
+    "lib/bme280",
+    "lib/bq27441",
+    "lib/daplink_bridge",
+    "lib/daplink_flash",
+    "lib/gc9a01",
+    "lib/hts221",
+    "lib/im34dt05",
+    "lib/ism330dl",
+    "lib/lis2mdl",
+    "lib/mcp23009e",
+    "lib/ssd1327",
+    "lib/steami_config",
+    "lib/steami_screen",
+    "lib/vl53l1x",
+    "lib/wsen-hids",
+    "lib/wsen-pads",
+]
+reportMissingModuleSource = "none"
+reportWildcardImportFromLibrary = "none"
