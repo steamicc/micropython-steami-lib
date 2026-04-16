@@ -16,6 +16,7 @@
         "lib/mcp23009e",
         "lib/ssd1327",
         "lib/steami_config",
+        "lib/steami_screen",
         "lib/vl53l1x",
         "lib/wsen-hids",
         "lib/wsen-pads"
