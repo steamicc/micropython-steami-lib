@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [0.19.0](https://github.com/steamicc/micropython-steami-lib/compare/v0.18.0...v0.19.0) (2026-04-16)
+
+
+### Features
+
+* **apds9960:** Add OLED color lamp example. ([#372](https://github.com/steamicc/micropython-steami-lib/issues/372)) ([0f1546b](https://github.com/steamicc/micropython-steami-lib/commit/0f1546b83d41f24cbd813399db88d19d2279a7d1))
+
 # [0.18.0](https://github.com/steamicc/micropython-steami-lib/compare/v0.17.0...v0.18.0) (2026-04-16)
 
 
