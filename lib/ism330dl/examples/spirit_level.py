@@ -70,7 +70,6 @@ try:
         clamped_ax = max(-1.0, min(1.0, ax))
         clamped_ay = max(-1.0, min(1.0, ay))
 
-
         # Axis Mapping & Inversion:
         # We swap X and Y to match the display's physical orientation.
         # The negative sign on 'ay' inverts the axis so the indicator
