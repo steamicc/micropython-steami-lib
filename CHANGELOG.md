@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [0.22.0](https://github.com/steamicc/micropython-steami-lib/compare/v0.21.0...v0.22.0) (2026-04-16)
+
+
+### Features
+
+* **wsen-pads:** Climate Station example with OLED Display. ([#373](https://github.com/steamicc/micropython-steami-lib/issues/373)) ([e9d5539](https://github.com/steamicc/micropython-steami-lib/commit/e9d5539b1fff0711be97d7a8c0f416a401ff27c3))
+
 # [0.21.0](https://github.com/steamicc/micropython-steami-lib/compare/v0.20.3...v0.21.0) (2026-04-16)
 
 
