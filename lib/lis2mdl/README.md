@@ -230,7 +230,7 @@ print("Register dump:", regs)
 | low_power_one_shot.py       | Energy-efficient sampling example. Uses `power_off()` between readings and `read_one_shot()` every 10 seconds, then prints values and free memory. |
 | magnet_compass.py           | Flat compass example that computes heading and cardinal direction from the LIS2MDL magnetic field. Useful for basic orientation demos. |
 | magnet_fieldForce.py        | Magnetic field magnitude example that shows total field strength in microtesla. Useful for observing magnetic disturbances and relative field changes. |
-| compass_display.py | Graphical compass with OLED display |
+| compass_display.py | Graphical compass with OLED display. **Dependency: `steami_screen` driver/module required (`Screen`, `SSD1327Display`).** |
 
 ---
 
