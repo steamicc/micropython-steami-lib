@@ -250,7 +250,10 @@ def show_win_screen(steps, optimal):
 
 
 def run_game():
-    """Generate a new maze and run one full game."""
+    """Generate a new maze and run one full game round.
+
+    Returns when the player reaches the goal.
+    """
     maze = generate_maze(MAZE_W, MAZE_H)
     optimal = dijkstra(maze, START_ROW, START_COL, GOAL_ROW, GOAL_COL)
 
@@ -273,10 +276,8 @@ def run_game():
                 player_col = nc
                 steps += 1
 
-        # Check win condition
         if player_row == GOAL_ROW and player_col == GOAL_COL:
             show_win_screen(steps, optimal)
-            run_game()
             return
 
         sleep_ms(MOVE_DELAY_MS)
@@ -287,4 +288,13 @@ def run_game():
 # =============================================================================
 
 print("Maze game starting...")
-run_game()
+
+try:
+    while True:
+        run_game()
+except KeyboardInterrupt:
+    print("\nMaze game stopped.")
+finally:
+    screen.clear()
+    screen.show()
+    imu.power_off()
