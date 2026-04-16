@@ -24,9 +24,6 @@
     "python.analysis.stubPath": "typings",
     "python.analysis.diagnosticSeverityOverrides": {
         "reportMissingModuleSource": "none",
-        "reportWildcardImportFromLibrary": "none",
-        "reportGeneralTypeIssues": "warning"
-    },
-    "pylint.enabled": false,
-    "mypy-type-checker.enabled": false
+        "reportWildcardImportFromLibrary": "none"
+    }
 }
