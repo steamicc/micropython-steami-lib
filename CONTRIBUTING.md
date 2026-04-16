@@ -75,9 +75,29 @@ The full configuration is in `pyproject.toml` (`[tool.ruff.lint]` section). The 
 | N802, N803, N806 | PEP 8 naming: functions, arguments, and variables must be `snake_case` |
 | PL | Pylint (complexity thresholds: max-branches=25, max-statements=65, max-args=10) |
 | PERF | Perflint: performance anti-patterns |
+| S110 | Flake8-bandit: no silent `try/except: pass` |
 | SIM | Flake8-simplify: code simplification suggestions |
 | T20 | No `print()` in production code (excluded for examples and tests) |
 | RUF | Ruff-specific rules |
+
+### Explicit preview rules
+
+Some pycodestyle rules are in ruff's preview tier and must be enabled individually (because `explicit-preview-rules = true`). These catch formatting issues that were previously missed in PRs:
+
+| Rule | Description |
+|------|-------------|
+| E203 | Whitespace before `:`, `;`, or `,` (catches `else :`) |
+| E225 | Missing whitespace around operator |
+| E231 | Missing whitespace after `,` |
+| E261 | At least two spaces before inline comment |
+| E262 | Inline comment must start with `# ` |
+| E265 | Block comment must start with `# ` |
+| E275 | Missing whitespace after keyword (catches `if(...)`) |
+| E301 | Blank line between methods |
+| E302 | Expected 2 blank lines before function/class definition |
+| E303 | Too many blank lines |
+| E305 | Expected 2 blank lines after function/class definition |
+| W391 | Too many newlines at end of file |
 
 ### MicroPython-specific exceptions
 
@@ -85,9 +105,11 @@ Some rules are ignored because MicroPython does not support the corresponding Py
 
 | Ignored rule | Reason |
 |--------------|--------|
-| SIM105 | `contextlib.suppress` is not available in MicroPython |
+| B905 | `zip(strict=)` is not available in MicroPython |
+| ISC003 | MicroPython does not support implicit concatenation of f-strings |
 | PIE810 | MicroPython does not support passing tuples to `.startswith()` / `.endswith()` |
 | SIM101 | `isinstance()` with merged tuple arguments is unreliable in MicroPython |
+| SIM105 | `contextlib.suppress` is not available in MicroPython |
 
 ## Commit messages
 
@@ -141,7 +163,7 @@ A dev container is available for VS Code (local Docker only, not GitHub Codespac
 The container also provides:
 
 * **zsh + oh-my-zsh** as default shell with persistent shell history
-* **Pylance** configured with MicroPython STM32 stubs (no false `import machine` errors)
+* **Pylance** configured with MicroPython STM32 stubs via `[tool.pyright]` in `pyproject.toml` (no false `import machine` errors)
 * **Serial Monitor** extension for board communication
 * **USB passthrough** for mpremote, pyOCD, OpenOCD, and MicroPython firmware flashing (the container runs in privileged mode with `/dev/bus/usb` mounted)
 * **udev rules** for the DAPLink interface (auto-started on container creation)
@@ -159,6 +181,10 @@ Note: GitHub Codespaces is not supported because the container requires privileg
 
 If git hooks fail because `node_modules/` is missing (for example on a fresh clone or after `make deepclean`), run `make setup` or `npm install` before committing.
 
+### Line endings
+
+The repository enforces **LF line endings** on all text files via `.gitattributes`. This prevents CRLF shebangs from breaking husky hooks on Windows + WSL. If you have an existing clone on Windows, run `git add --renormalize .` after pulling the `.gitattributes` change to re-normalize your working tree.
+
 ## Continuous Integration
 
 All pull requests must pass these checks:
@@ -169,6 +195,7 @@ All pull requests must pass these checks:
 | Linting | `python-linter.yml` | Runs `ruff check` |
 | Mock tests | `tests.yml` | Runs mock driver tests |
 | Example validation | `tests.yml` | Validates example files syntax and imports |
+| Frozen manifest | `tests.yml` | Verifies every `lib/*/` driver is declared in the upstream firmware manifest |
 
 ## Releasing
 
@@ -179,7 +206,10 @@ Releases are handled automatically by [semantic-release](https://semantic-releas
 - `BREAKING CHANGE:` in commit body → major bump (v1.0.0 → v2.0.0)
 - `docs:`, `style:`, `test:`, `ci:`, `chore:` → no release
 
-semantic-release automatically updates `pyproject.toml`, generates `CHANGELOG.md`, creates a git tag, and publishes a GitHub release with the MicroPython firmware (`.hex` and `.bin`) attached.
+semantic-release automatically updates `pyproject.toml`, generates `CHANGELOG.md`, creates a git tag, and publishes a GitHub release with both firmwares attached:
+
+- **MicroPython firmware**: `steami-micropython-firmware-vX.Y.Z.hex` / `.bin`
+- **DAPLink interface firmware**: `steami-daplink-firmware-vX.Y.Z.hex` / `.bin`
 
 To force a specific version manually (override):
 
