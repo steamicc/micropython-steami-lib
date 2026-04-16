@@ -74,7 +74,7 @@ screen.text("Big", at="CENTER", scale=2)
 
 Cardinal positions: `"N"`, `"NE"`, `"E"`, `"SE"`, `"S"`, `"SW"`, `"W"`, `"NW"`, `"CENTER"`.
 
-Note: `scale=2` produces a bold effect (text drawn with 1px offset), not a true pixel-scale zoom. Backends can provide `draw_scaled_text()` for true scaling.
+Note: `scale` > 1 produces a true pixel-scale zoom on SSD1327 displays via pixel-by-pixel framebuf rendering. Other backends can implement `draw_scaled_text()` for native scaling support. Backends without it fall back to a bold offset effect.
 
 ---
 
