@@ -34,7 +34,7 @@ fg = BQ27441(i2c)
 
 # sound
 buzzer_tim = Timer(1, freq=1000)
-buzzer_ch  = buzzer_tim.channel(4, Timer.PWM, pin=Pin("SPEAKER"))
+buzzer_ch = buzzer_tim.channel(4, Timer.PWM, pin=Pin("SPEAKER"))
 buzzer_ch.pulse_width_percent(0)
 
 # D-PAD button mapping
@@ -59,9 +59,9 @@ SPRITE_BASE = [
     [0, 0, 15, 15, 0, 0, 0, 0, 0, 15, 15, 0, 0],
     [0, 15, 15, 15, 15, 0, 0, 0, 15, 15, 15, 15, 0],
     [0, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 0],
-    [0, 15, 15, 0, 0, 0, 0, 0, 0, 0,15,15, 0],
+    [0, 15, 15, 0, 0, 0, 0, 0, 0, 0, 15, 15, 0],
     [0, 15, 0, 0, 15, 0, 0, 0, 15, 0, 0, 15, 0],
-    [ 15, 0, 0, 0, 0, 15, 15, 15, 0, 0, 0, 0, 15],
+    [15, 0, 0, 0, 0, 15, 15, 15, 0, 0, 0, 0, 15],
     [15, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 15],
     [0, 15, 0, 0, 0, 0, 0, 0, 0, 0, 0, 15, 0],
     [15, 0, 0, 15, 0, 0, 0, 0, 0, 15, 0, 15, 0],
@@ -69,7 +69,7 @@ SPRITE_BASE = [
     [0, 15, 0, 0, 0, 0, 0, 0, 0, 0, 0, 15, 0],
     [0, 0, 15, 0, 0, 0, 0, 0, 0, 0, 15, 0, 0],
     [0, 0, 0, 15, 0, 15, 15, 15, 0, 15, 0, 0, 0],
-    [0, 0, 0,15, 0, 15, 0, 15, 0, 15, 0, 0, 0],
+    [0, 0, 0, 15, 0, 15, 0, 15, 0, 15, 0, 0, 0],
     [0, 0, 0, 0, 15, 0, 0, 0, 15, 0, 0, 0, 0],
 ]
 
@@ -234,8 +234,8 @@ def draw_character(cx, cy, scale, sprite):
 def create_screen(selected_index, need, sprite, charge):
     """displays the screen"""
     display.fill(0)
-    display.text(need, 25, 20)
-    display.text(str(charge), 50, 10)
+    display.text(need, 25, 20, 15)
+    display.text(str(charge), 50, 10, 15)
 
     if charge > 70 :
         scale = 1
@@ -261,7 +261,7 @@ def create_screen(selected_index, need, sprite, charge):
 
 def create_game_over_screen():
     display.fill(0)
-    display.text("Game-Over",25, 20)
+    display.text("Game-Over",25, 20, 15)
     draw_character(35, 45, 3, SPRITE_DEAD)
     display.show()
 # ------------------------------------gameplay----------------------------------------------
