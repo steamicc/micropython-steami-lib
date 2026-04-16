@@ -163,82 +163,7 @@ SPRITE_DEAD = [
     [ 0, 0, 0, 0, 0, 0, 0,15,15,15,15, 0, 0, 0, 0, 0, 0],
 ]
 
-# ------------------------------------SCREEN----------------------------------------------
-
-def setup_buttons():
-    """Configure all D-PAD buttons as inputs with pull-ups."""
-    for pin_number in BUTTONS:
-        mcp.setup(pin_number, MCP23009_DIR_INPUT, pullup=MCP23009_PULLUP)
-
-
-def wait_for_button():
-    """Wait for a button press and return its name."""
-    for pin_number, name in BUTTONS.items():
-        if mcp.get_level(pin_number) == MCP23009_LOGIC_LOW:
-            while mcp.get_level(pin_number) == MCP23009_LOGIC_LOW:
-                sleep_ms(20)
-            return name
-    return None
-
-def draw_character(cx, cy, scale, sprite):
-    """Draw caractere"""
-    fb = display.framebuf
-    for y, row in enumerate(sprite):
-        for x, color in enumerate(row):
-            for dy in range(scale):
-                for dx in range(scale):
-                    fb.pixel(cx + x*scale + dx, cy + y*scale + dy, color)
-
-
-def creat_screen(selected_index, need, sprite, charge):
-    """displays the screen"""
-    display.fill(0)
-    display.text(need, 25, 20)
-    display.text(str(charge), 50, 10)
-
-    if charge > 70 :
-        scale = 1
-        x = 55
-        y = 60
-    elif charge < 70 and charge > 40 :
-        scale = 2
-        x = 45
-        y = 50
-    else :
-        scale = 3
-        x = 40
-        y = 40
-
-    draw_character(x, y, scale, sprite)
-
-    for index, label in enumerate(ACTION):
-        y = ITEM_Y + index * ITEM_SPACING
-        prefix = ">" if index == selected_index else " "
-        display.text(prefix + label, X0, y, 15)
-
-    display.show()
-
-def creat_game_over_screen():
-    display.fill(0)
-    display.text("Game-Over",25, 20)
-    draw_character(35, 45, 3, SPRITE_DEAD)
-    display.show()
-# ------------------------------------gameplay----------------------------------------------
-
-def action_check(selected_index, need,win):
-    name = ACTION[selected_index]
-    if need == "I'm bored" and name == "play":
-        win = True
-        return win
-    if need == "i'm hungry" and name == "food":
-        win = True
-        return win
-    else :
-        win = False
-        return win
-
-def soud_effect(name):
-    sound = {
+SOUND = {
         "start": [
         (523,  120),
         (659,  120),
@@ -278,7 +203,83 @@ def soud_effect(name):
             (300, 400),
         ]
     }
-    melody = sound[name]
+
+# ------------------------------------SCREEN----------------------------------------------
+
+def setup_buttons():
+    """Configure all D-PAD buttons as inputs with pull-ups."""
+    for pin_number in BUTTONS:
+        mcp.setup(pin_number, MCP23009_DIR_INPUT, pullup=MCP23009_PULLUP)
+
+
+def wait_for_button():
+    """Wait for a button press and return its name."""
+    for pin_number, name in BUTTONS.items():
+        if mcp.get_level(pin_number) == MCP23009_LOGIC_LOW:
+            while mcp.get_level(pin_number) == MCP23009_LOGIC_LOW:
+                sleep_ms(20)
+            return name
+    return None
+
+def draw_character(cx, cy, scale, sprite):
+    """Draw character"""
+    fb = display.framebuf
+    for y, row in enumerate(sprite):
+        for x, color in enumerate(row):
+            for dy in range(scale):
+                for dx in range(scale):
+                    fb.pixel(cx + x*scale + dx, cy + y*scale + dy, color)
+
+
+def create_screen(selected_index, need, sprite, charge):
+    """displays the screen"""
+    display.fill(0)
+    display.text(need, 25, 20)
+    display.text(str(charge), 50, 10)
+
+    if charge > 70 :
+        scale = 1
+        x = 55
+        y = 60
+    elif charge < 70 and charge > 40 :
+        scale = 2
+        x = 45
+        y = 50
+    else :
+        scale = 3
+        x = 40
+        y = 40
+
+    draw_character(x, y, scale, sprite)
+
+    for index, label in enumerate(ACTION):
+        y = ITEM_Y + index * ITEM_SPACING
+        prefix = ">" if index == selected_index else " "
+        display.text(prefix + label, X0, y, 15)
+
+    display.show()
+
+def create_game_over_screen():
+    display.fill(0)
+    display.text("Game-Over",25, 20)
+    draw_character(35, 45, 3, SPRITE_DEAD)
+    display.show()
+# ------------------------------------gameplay----------------------------------------------
+
+def action_check(selected_index, need,win):
+    name = ACTION[selected_index]
+    if need == "I'm bored" and name == "play":
+        win = True
+        return win
+    if need == "i'm hungry" and name == "food":
+        win = True
+        return win
+    else :
+        win = False
+        return win
+
+def sound_effect(name):
+    melody = SOUND[name]
     for freq, duration_ms in melody:
         buzzer_tim.freq(freq)
         buzzer_ch.pulse_width_percent(10)
@@ -291,57 +292,60 @@ def soud_effect(name):
 
 def main():
     setup_buttons()
-  #  soud_effect("start")
+    sound_effect("start")
     is_alive = True
 
-    while is_alive:
-        selected_index = 0
-        charge = fg.state_of_charge()
+    try: 
+        while is_alive:
+            selected_index = 0
+            charge = fg.state_of_charge()
 
-        need = " "
-        creat_screen(selected_index, need, SPRITE_BASE, charge)
-        sleep_ms(1000)
+            need = " "
+            create_screen(selected_index, need, SPRITE_BASE, charge)
+            sleep_ms(1000)
 
-        need = random.choice(NEED)
-        if need == "I'm bored" :
-            sprite = SPRITE_SAD
-            soud_effect("bored")
-        else :
-            sprite = SPRITE_HUNGRY
-            soud_effect("hungry")
+            need = random.choice(NEED)
+            if need == "I'm bored" :
+                sprite = SPRITE_SAD
+                sound_effect("bored")
+            else :
+                sprite = SPRITE_HUNGRY
+                sound_effect("hungry")
 
-        creat_screen(selected_index, need, sprite, charge)
+            create_screen(selected_index, need, sprite, charge)
 
-        start = ticks_ms()
-        win = None
+            start = ticks_ms()
+            win = None
 
-        while True:
-            timer = ticks_diff(ticks_ms(), start)
-            if timer >= 5000:
-                break
+            while True:
+                timer = ticks_diff(ticks_ms(), start)
+                if timer >= 5000:
+                    break
 
 
-            button = wait_for_button()
-            if button == "UP":
-                selected_index = (selected_index - 1)% len(ACTION)
-                creat_screen(selected_index, need, sprite, charge)
-            elif button == "DOWN":
-                selected_index = (selected_index + 1) % len(ACTION)
-                creat_screen(selected_index, need, sprite, charge)
-            elif button == "LEFT":
-                win = action_check(selected_index, need, win)
-                break
-            sleep_ms(20)
+                button = wait_for_button()
+                if button == "UP":
+                    selected_index = (selected_index - 1)% len(ACTION)
+                    create_screen(selected_index, need, sprite, charge)
+                elif button == "DOWN":
+                    selected_index = (selected_index + 1) % len(ACTION)
+                    create_screen(selected_index, need, sprite, charge)
+                elif button == "LEFT":
+                    win = action_check(selected_index, need, win)
+                    break
+                sleep_ms(20)
 
-        if win:
-            creat_screen(selected_index, need, SPRITE_HAPPY, charge)
-            soud_effect("success")
-        else:
-            creat_screen(selected_index, need, SPRITE_HANGRY, charge)
-            soud_effect("fail")
-        sleep_ms(1000)
+            if win:
+                create_screen(selected_index, need, SPRITE_HAPPY, charge)
+                sound_effect("success")
+            else:
+                create_screen(selected_index, need, SPRITE_HANGRY, charge)
+                sound_effect("fail")
+            sleep_ms(1000)
 
-        if charge < 10:
-            is_alive = False
-            creat_game_over_screen()
+            if charge < 10:
+                is_alive = False
+                create_game_over_screen()
+    finally:
+        buzzer_ch.pulse_width_percent(0)
 main()
