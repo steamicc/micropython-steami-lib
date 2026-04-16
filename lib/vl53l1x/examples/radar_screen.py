@@ -52,18 +52,23 @@ try:
         distance = tof.read()
 
         screen.clear()
-        screen.title("RADAR")
 
         proximity, color = compute_display(distance)
 
+        # Draw gauge first so that title/value text layers on top of the arc
         if proximity is None:
             screen.gauge(0, min_val=0, max_val=MAX_DISTANCE_MM, color=DARK)
+        else:
+            screen.gauge(proximity, min_val=0, max_val=MAX_DISTANCE_MM, color=color)
+
+        screen.title("RADAR")
+
+        if proximity is None:
             screen.value("----", unit="mm")
             screen.subtitle("Out of range")
         else:
-            screen.gauge(proximity, min_val=0, max_val=MAX_DISTANCE_MM, color=color)
             screen.value(str(distance), unit="mm")
-            screen.subtitle("Distance")
+            screen.subtitle("Proximity")
 
         screen.show()
         sleep_ms(50)
