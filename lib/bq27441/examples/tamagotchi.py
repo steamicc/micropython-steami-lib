@@ -46,12 +46,17 @@ BUTTONS = {
 }
 
 ACTION = ["food", "play"]
-NEED = ["I'm bored", "i'm hungry"]
+NEED = ["I'm bored", "I'm hungry"]
 
 # position of button
 X0 = 35
 ITEM_Y = 100
 ITEM_SPACING = 14
+
+# setup timing
+IDLE_DISPLAY_MS = 1000
+RESPONSE_TIMEOUT_MS = 5000
+RESULT_DISPLAY_MS = 1000
 
 # sprite
 
@@ -204,7 +209,7 @@ SOUND = {
         ]
     }
 
-# ------------------------------------SCREEN----------------------------------------------
+# ------------------------------------Screen helpers----------------------------------------------
 
 def setup_buttons():
     """Configure all D-PAD buttons as inputs with pull-ups."""
@@ -237,19 +242,7 @@ def create_screen(selected_index, need, sprite, charge):
     display.text(need, 25, 20, 15)
     display.text(str(charge), 50, 10, 15)
 
-    if charge >= 70:
-        scale = 1
-        x = 55
-        y = 60
-    elif charge >= 40:
-        scale = 2
-        x = 45
-        y = 50
-    else:
-        scale = 3
-        x = 40
-        y = 40
-
+    scale, x, y = get_scale(charge)
     draw_character(x, y, scale, sprite)
 
     for index, label in enumerate(ACTION):
@@ -264,19 +257,15 @@ def create_game_over_screen():
     display.text("Game-Over",25, 20, 15)
     draw_character(35, 45, 3, SPRITE_DEAD)
     display.show()
-# ------------------------------------gameplay----------------------------------------------
 
-def action_check(selected_index, need,win):
+# ------------------------------------Gameplay logic----------------------------------------------
+
+def action_check(selected_index, need):
+    """Check if the selected action matches the current need."""
     name = ACTION[selected_index]
     if need == "I'm bored" and name == "play":
-        win = True
-        return win
-    if need == "i'm hungry" and name == "food":
-        win = True
-        return win
-    else :
-        win = False
-        return win
+        return True
+    return bool(need == "I'm hungry" and name == "food")
 
 def sound_effect(name):
     melody = SOUND[name]
@@ -287,39 +276,53 @@ def sound_effect(name):
         buzzer_ch.pulse_width_percent(0)
         sleep_ms(30)
 
+def get_scale(charge):
+    if charge >= 70:
+        return 1, 55, 60
+    elif charge >= 40:
+        return 2, 45, 50
+    else:
+        return 3, 40, 40
 
-# ------------------------------------main----------------------------------------------
+# ------------------------------------Main loop----------------------------------------------
 
 def main():
     setup_buttons()
     sound_effect("start")
     is_alive = True
 
+    previous_scale, _, _ = get_scale(fg.state_of_charge())
     try:
         while is_alive:
-            selected_index = 0
             charge = fg.state_of_charge()
+            current_scale, _, _ = get_scale(charge)
+
+            if current_scale != previous_scale:
+                sound_effect("evolution")
+                previous_scale = current_scale
+
+            selected_index = 0
 
             need = " "
             create_screen(selected_index, need, SPRITE_BASE, charge)
-            sleep_ms(1000)
+            sleep_ms(IDLE_DISPLAY_MS)
+            win = None
 
             need = random.choice(NEED)
-            if need == "I'm bored" :
+            if need == "I'm bored":
                 sprite = SPRITE_SAD
                 sound_effect("bored")
-            else :
+            else:
                 sprite = SPRITE_HUNGRY
                 sound_effect("hungry")
 
             create_screen(selected_index, need, sprite, charge)
 
             start = ticks_ms()
-            win = None
 
             while True:
                 timer = ticks_diff(ticks_ms(), start)
-                if timer >= 5000:
+                if timer >= RESPONSE_TIMEOUT_MS:
                     break
 
 
@@ -331,7 +334,7 @@ def main():
                     selected_index = (selected_index + 1) % len(ACTION)
                     create_screen(selected_index, need, sprite, charge)
                 elif button == "LEFT":
-                    win = action_check(selected_index, need, win)
+                    win = action_check(selected_index, need)
                     break
                 sleep_ms(20)
 
@@ -341,10 +344,11 @@ def main():
             else:
                 create_screen(selected_index, need, SPRITE_HANGRY, charge)
                 sound_effect("fail")
-            sleep_ms(1000)
+            sleep_ms(RESULT_DISPLAY_MS)
 
             if charge < 10:
                 is_alive = False
+                sound_effect("evolution")
                 create_game_over_screen()
     finally:
         buzzer_ch.pulse_width_percent(0)
