@@ -1,5 +1,6 @@
 import math
 
+import micropython
 import ssd1327
 from machine import SPI, Pin
 
@@ -27,6 +28,7 @@ p2y = [0, 0, 0, 0, 0, 0, 0, 0]
 r = [0, 0, 0]
 
 
+@micropython.native
 def draw_cube():
     r[0] = r[0] + pi / 180.0
     r[1] = r[1] + pi / 180.0

@@ -9,6 +9,7 @@ calibration (averages a few samples to compensate accelerometer bias).
 
 from time import sleep_ms
 
+import micropython
 import ssd1327
 from ism330dl import ISM330DL
 from machine import I2C, SPI, Pin
@@ -38,6 +39,7 @@ COLOR_FG = 15
 POLL_RATE_MS = 20
 
 
+@micropython.native
 def fill_circle(fbuf, x0, y0, r, c):
     """Helper to draw a filled circle since framebuf lacks it natively."""
     for y in range(-r, r + 1):

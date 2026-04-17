@@ -35,6 +35,7 @@ lib/<component>/
 - **Time**: use `from time import sleep_ms` (not `utime`, not `sleep()` with float seconds).
 - **Exceptions**: use `except Exception:` instead of bare `except:`. Enforced by ruff (E722).
 - **No debug `print()`** in production driver code. Enforced by ruff (T20, examples and tests excluded).
+- **`@micropython.native`**: do **not** use in driver code (`device.py`) — methods are dominated by I2C/SPI bus time, so native compilation gains nothing and reduces debuggability. In **examples**, it may be used on rendering hot-paths (tight pixel loops, math-heavy drawing functions) where a measurable speedup is expected. Do not apply it to functions with only a few comparisons or I/O calls. Note: the native emitter does not support generators, closures, or `with` statements.
 
 ## Driver API conventions
 
