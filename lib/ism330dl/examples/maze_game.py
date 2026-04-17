@@ -18,6 +18,7 @@ Controls:
 import random
 from time import sleep_ms
 
+import micropython
 import ssd1327
 from ism330dl import ISM330DL
 from machine import I2C, SPI, Pin
@@ -183,6 +184,7 @@ def cell_to_pixel(row, col):
     return SAFE_X + col * CELL_SIZE, SAFE_Y + row * CELL_SIZE
 
 
+@micropython.native
 def draw_maze(maze):
     """Draw all maze walls as filled rectangles."""
     for row in range(len(maze)):

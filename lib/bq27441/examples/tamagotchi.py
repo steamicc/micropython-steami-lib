@@ -13,6 +13,7 @@ Controls:
 import random
 from time import sleep_ms, ticks_diff, ticks_ms
 
+import micropython
 import ssd1327
 from bq27441 import BQ27441
 from machine import I2C, SPI, Pin
@@ -227,6 +228,7 @@ def wait_for_button():
     return None
 
 
+@micropython.native
 def draw_character(cx, cy, scale, sprite):
     """Draw a scaled pixel-art sprite on the display framebuf."""
     fb = display.framebuf
