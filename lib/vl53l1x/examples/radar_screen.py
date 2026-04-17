@@ -7,7 +7,6 @@ Adapted for a round display bezel using steami_screen widgets.
 
 from time import sleep_ms
 
-import micropython
 import ssd1327
 from machine import I2C, SPI, Pin
 from steami_screen import DARK, GRAY, LIGHT, RED, Screen, SSD1327Display
@@ -29,7 +28,6 @@ i2c = I2C(1)
 tof = VL53L1X(i2c)
 
 
-@micropython.native
 def compute_display(distance):
     """Compute proximity and color from distance value.
 
