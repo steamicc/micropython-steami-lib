@@ -9,18 +9,23 @@ Color zones:
     YELLOW → object at medium range (< 350 mm)
     LIGHT  → object far away   (>= 350 mm)
 
+    Note: on SSD1327, WHITE/YELLOW/LIGHT degrade to grayscale (gray4=15/9/11).
+    Visual distinction relies on brightness differences between gray levels.
+    If contrast is insufficient on hardware, arc_width variation alone may
+    be a clearer proximity indicator than color transitions.
+
 Arc width:
     Thicker arc when close, thinner when far.
 
 Reactivity:
-    The sensor is polled every 10 ms but the display is only redrawn
-    when the distance changes by more than REDRAW_THRESHOLD mm,
-    avoiding unnecessary SPI transfers and keeping the gauge fluid.
+    The display is redrawn only when the distance changes by more than
+    REDRAW_THRESHOLD mm, avoiding unnecessary SPI transfers.
+    The loop cadence (30 ms) is chosen to match the effective SSD1327
+    refresh rate while remaining visually fluid.
 """
 
 from time import sleep_ms
 
-import micropython
 import ssd1327
 from machine import I2C, SPI, Pin
 from steami_screen import LIGHT, WHITE, YELLOW, Screen, SSD1327Display
@@ -59,9 +64,13 @@ def dist_to_arc_width(dist):
     return int(5 + ratio * 12)
 
 
-@micropython.native
 def redraw(dist):
-    """Redraw the full gauge screen."""
+    """Redraw the full gauge screen.
+
+    Note: each call performs a full-screen refresh (clear + gauge + text + show).
+    Partial redraw would reduce SPI transfer cost but requires lower-level
+    arc delta tracking. This remains the main rendering bottleneck.
+    """
     color = dist_to_color(dist)
     arc_w = dist_to_arc_width(dist)
     screen.clear()
@@ -73,14 +82,13 @@ def redraw(dist):
 
 # === Main loop ===
 last_dist = -1
-
 try:
     while True:
         dist = sensor.read()
         if abs(dist - last_dist) >= REDRAW_THRESHOLD:
             last_dist = dist
             redraw(dist)
-        sleep_ms(10)
+        sleep_ms(30)  # matches effective SSD1327 refresh rate
 except KeyboardInterrupt:
     pass
 finally:
