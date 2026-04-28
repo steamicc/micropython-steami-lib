@@ -179,8 +179,7 @@ def draw_rect_outline(x, y, w, h, color):
 def draw_text_centered(text, y, color):
     # MicroPython framebuf font is 8 px wide per char
     x = 64 - (len(text) * 8) // 2
-    if x < 0:
-        x = 0
+    x = max(x, 0)
     display.text(text, x, y, color)
 
 
