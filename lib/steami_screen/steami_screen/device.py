@@ -17,25 +17,25 @@ import math
 # --- Color constants (RGB tuples) ---
 # Grays map to exact SSD1327 levels: gray4 * 17 gives R=G=B
 BLACK = (0, 0, 0)
-DARK  = (102, 102, 102)   # gray4=6
-GRAY  = (153, 153, 153)   # gray4=9
-LIGHT = (187, 187, 187)   # gray4=11
-WHITE = (255, 255, 255)   # gray4=15
+DARK = (102, 102, 102)  # gray4=6
+GRAY = (153, 153, 153)  # gray4=9
+LIGHT = (187, 187, 187)  # gray4=11
+WHITE = (255, 255, 255)  # gray4=15
 
 # Accent colors (used on color displays, degrade gracefully to gray on SSD1327)
-GREEN  = (119, 255, 119)
-RED    = (255, 85, 85)
-BLUE   = (85, 85, 255)
+GREEN = (119, 255, 119)
+RED = (255, 85, 85)
+BLUE = (85, 85, 255)
 YELLOW = (255, 255, 85)
 
 # --- Pixel-art face bitmaps (8x8, MSB = left) ---
 FACES = {
-    "happy":     (0x00, 0x24, 0x24, 0x00, 0x00, 0x42, 0x3C, 0x00),
-    "sad":       (0x00, 0x24, 0x24, 0x00, 0x00, 0x3C, 0x42, 0x00),
+    "happy": (0x00, 0x24, 0x24, 0x00, 0x00, 0x42, 0x3C, 0x00),
+    "sad": (0x00, 0x24, 0x24, 0x00, 0x00, 0x3C, 0x42, 0x00),
     "surprised": (0x00, 0x24, 0x24, 0x00, 0x18, 0x24, 0x24, 0x18),
-    "sleeping":  (0x00, 0x00, 0x66, 0x00, 0x00, 0x18, 0x18, 0x00),
-    "angry":     (0x00, 0x42, 0x24, 0x24, 0x00, 0x3C, 0x42, 0x00),
-    "love":      (0x00, 0x66, 0xFF, 0xFF, 0x7E, 0x3C, 0x18, 0x00),
+    "sleeping": (0x00, 0x00, 0x66, 0x00, 0x00, 0x18, 0x18, 0x00),
+    "angry": (0x00, 0x42, 0x24, 0x24, 0x00, 0x3C, 0x42, 0x00),
+    "love": (0x00, 0x66, 0xFF, 0xFF, 0x7E, 0x3C, 0x18, 0x00),
 }
 
 # --- Cardinal position names ---
@@ -44,13 +44,13 @@ FACES = {
 class Screen:
     """High-level wrapper around a raw display backend."""
 
-    CHAR_W = 8   # framebuf built-in font width
-    CHAR_H = 8   # framebuf built-in font height
+    CHAR_W = 8  # framebuf built-in font width
+    CHAR_H = 8  # framebuf built-in font height
 
     def __init__(self, display, width=None, height=None):
         self._d = display
-        self.width = width or getattr(display, 'width', 128)
-        self.height = height or getattr(display, 'height', 128)
+        self.width = width or getattr(display, "width", 128)
+        self.height = height or getattr(display, "height", 128)
 
     # --- Adaptive properties ---
 
@@ -73,36 +73,31 @@ class Screen:
         width `tw` fits inside the circle. `from_edge` is the baseline
         distance from the circle edge."""
         r = self.radius
-        # At distance d from center, available width = 2*sqrt(r^2 - d^2)
-        # We need 2*sqrt(r^2 - d^2) >= tw, so d <= sqrt(r^2 - (tw/2)^2)
         half_tw = tw / 2
         if half_tw >= r:
-            return r  # text too wide, push to center
+            return r
         max_d = math.sqrt(r * r - half_tw * half_tw)
-        # margin from top = cy - max_d = r - max_d
         min_margin = r - int(max_d)
-        return max(min_margin + 2, from_edge)  # +2px padding
+        return max(min_margin + 2, from_edge)
 
     def _resolve(self, at, text_len=0, scale=1):
         """Return (x, y) for a cardinal position, centering text if needed."""
         cx, cy = self.center
         ch = self.CHAR_H * scale
-        tw = text_len * self.CHAR_W * scale  # total text pixel width
+        tw = text_len * self.CHAR_W * scale
 
-        # Margins adapted to circular screen
-        # Floor at ch*2+4 ensures titles stay at a consistent height
-        margin_ns = self._safe_margin(tw, ch * 2 + 4)  # N/S
-        margin_ew = ch + 4                         # E/W: fixed side margin
+        margin_ns = self._safe_margin(tw, ch * 2 + 4)
+        margin_ew = ch + 4
 
         positions = {
-            "N":      (cx - tw // 2, margin_ns),
-            "NE":     (self.width - margin_ew - tw, margin_ns),
-            "E":      (self.width - margin_ew - tw, cy - ch // 2),
-            "SE":     (self.width - margin_ew - tw, self.height - margin_ns - ch),
-            "S":      (cx - tw // 2, self.height - margin_ns - ch),
-            "SW":     (margin_ew, self.height - margin_ns - ch),
-            "W":      (margin_ew, cy - ch // 2),
-            "NW":     (margin_ew, margin_ns),
+            "N": (cx - tw // 2, margin_ns),
+            "NE": (self.width - margin_ew - tw, margin_ns),
+            "E": (self.width - margin_ew - tw, cy - ch // 2),
+            "SE": (self.width - margin_ew - tw, self.height - margin_ns - ch),
+            "S": (cx - tw // 2, self.height - margin_ns - ch),
+            "SW": (margin_ew, self.height - margin_ns - ch),
+            "W": (margin_ew, cy - ch // 2),
+            "NW": (margin_ew, margin_ns),
             "CENTER": (cx - tw // 2, cy - ch // 2),
         }
         return positions.get(at, positions["CENTER"])
@@ -114,8 +109,9 @@ class Screen:
         x, y = self._resolve("N", len(text))
         self._d.text(text, x, y, color)
 
-    def value(self, val, unit=None, at="CENTER", label=None,
-             color=WHITE, scale=2, y_offset=0):
+    def value(
+        self, val, unit=None, at="CENTER", label=None, color=WHITE, scale=2, y_offset=0
+    ):
         """Draw a large value, optionally with unit below and label above."""
         text = str(val)
         cx, cy = self.center
@@ -123,7 +119,6 @@ class Screen:
         char_h = self.CHAR_H * scale
         tw = len(text) * char_w // 2
 
-        # Compute vertical position: center the value+unit block
         if unit:
             gap = char_h // 3
             unit_h = self.CHAR_H
@@ -144,19 +139,16 @@ class Screen:
         else:
             x, y = self._resolve(at, len(text), scale)
 
-        # Optional label above
         if label:
             lx = x + tw // 2 - len(label) * self.CHAR_W // 2
             self._d.text(label, lx, y - self.CHAR_H - 4, GRAY)
 
-        # Value (large)
         self._draw_scaled_text(text, x, y, color, scale)
 
-        # Optional unit below (medium font if backend supports it)
         if unit:
             unit_y = y + char_h
             ux = x + tw // 2 - len(unit) * self.CHAR_W // 2
-            if hasattr(self._d, 'draw_medium_text'):
+            if hasattr(self._d, "draw_medium_text"):
                 self._d.draw_medium_text(unit, ux, unit_y, LIGHT)
             else:
                 self._d.text(unit, ux, unit_y, LIGHT)
@@ -176,7 +168,7 @@ class Screen:
             block_h = (n - 1) * line_h
             start_y = base_y - block_h // 2
 
-        draw = getattr(self._d, 'draw_small_text', self._d.text)
+        draw = getattr(self._d, "draw_small_text", self._d.text)
         for i, line in enumerate(lines):
             x, _ = self._resolve("S", len(line))
             y = start_y + i * line_h
@@ -191,54 +183,54 @@ class Screen:
         by = cy + 20 + y_offset
         fill_w = int(bar_w * min(val, max_val) / max_val) if max_val else 0
 
-        # Background
         self._fill_rect(bx, by, bar_w, bar_h, DARK)
-        # Fill
         if fill_w > 0:
             self._fill_rect(bx, by, fill_w, bar_h, color)
 
-    def gauge(self, val, min_val=0, max_val=100, color=LIGHT):
+    def gauge(self, val, min_val=0, max_val=100, color=LIGHT, arc_width=None):
         """Draw a circular arc gauge (270 deg, gap at bottom).
 
-        The arc is drawn close to the screen border.  Call gauge() before
+        The arc is drawn close to the screen border. Call gauge() before
         title() so that text layers on top of the arc.
+
+        Args:
+            val: Current value to display.
+            min_val: Minimum value (empty gauge).
+            max_val: Maximum value (full gauge).
+            color: Color of the filled arc.
+            arc_width: Optional custom arc thickness in pixels.
+                       Defaults to max(5, radius // 9).
         """
         cx, cy = self.center
-        arc_w = max(5, self.radius // 9)
+        arc_w = arc_width if arc_width is not None else max(5, self.radius // 9)
         r = self.radius - arc_w // 2 - 1
         start_angle = 135
         sweep = 270
-        ratio = (val - min_val) / (max_val - min_val) if max_val != min_val else 0  # Avoid division by zero; show empty gauge if min=max
+        ratio = (val - min_val) / (max_val - min_val) if max_val != min_val else 0
         ratio = max(0.0, min(1.0, ratio))
 
         # Background arc
         self._draw_arc(cx, cy, r, start_angle, sweep, DARK, arc_w)
         # Filled arc
         if ratio > 0:
-            self._draw_arc(cx, cy, r, start_angle, int(sweep * ratio),
-                           color, arc_w + 2)  # +1 to fill gaps between segments
+            self._draw_arc(cx, cy, r, start_angle, int(sweep * ratio), color, arc_w + 2)
 
-        # Min/max labels at arc endpoints (slightly inward to stay visible)
+        # Min/max labels
         min_t = str(int(min_val))
         max_t = str(int(max_val))
         r_label = r - arc_w - 10
-        # Nudge angles inward (toward bottom center) so labels stay on screen
         angle_s = math.radians(start_angle + 8)
         angle_e = math.radians(start_angle + sweep - 8)
         lx = int(cx + r_label * math.cos(angle_s)) - len(min_t) * self.CHAR_W // 2
         ly = int(cy + r_label * math.sin(angle_s))
         rx = int(cx + r_label * math.cos(angle_e)) - len(max_t) * self.CHAR_W // 2
         ry = int(cy + r_label * math.sin(angle_e))
-        draw_sm = getattr(self._d, 'draw_small_text', self._d.text)
+        draw_sm = getattr(self._d, "draw_small_text", self._d.text)
         draw_sm(min_t, lx, ly, GRAY)
         draw_sm(max_t, rx, ry, GRAY)
 
     def graph(self, data, min_val=0, max_val=100, color=LIGHT):
-        """Draw a scrolling line graph with the current value above.
-
-        The last data point is displayed as a large value above the
-        graph area.  Call title() before graph() for proper layout.
-        """
+        """Draw a scrolling line graph with the current value above."""
         cx, _cy = self.center
         margin = 15
         gx = margin + 6
@@ -246,34 +238,28 @@ class Screen:
         gw = self.width - margin - gx
         gh = 52
 
-        # Current value just below title area (fixed position)
         if data:
             text = str(int(data[-1]))
-            draw_fn = getattr(self._d, 'draw_medium_text',
-                              self._d.text)
+            draw_fn = getattr(self._d, "draw_medium_text", self._d.text)
             tw = len(text) * self.CHAR_W
             vx = cx - tw // 2
             vy = 31
             draw_fn(text, vx, vy, WHITE)
 
-        # Y-axis labels (max, mid, min)
         def _fmt(v):
             if v >= 1000 and v % 1000 == 0:
                 return str(int(v // 1000)) + "k"
             return str(int(v))
 
-        draw_sm = getattr(self._d, 'draw_small_text', self._d.text)
+        draw_sm = getattr(self._d, "draw_small_text", self._d.text)
         mid_val = (min_val + max_val) / 2
-        for val, yp in [(max_val, gy),
-                        (mid_val, gy + gh // 2),
-                        (min_val, gy + gh)]:
+        for val, yp in [(max_val, gy), (mid_val, gy + gh // 2), (min_val, gy + gh)]:
             label = _fmt(val)
             cw = int(self.CHAR_W * 0.85)
             lx = gx - len(label) * cw - 1
             ly = yp - self.CHAR_H // 2
             draw_sm(label, lx, ly, DARK)
 
-        # Dashed grid line at midpoint
         mid_y = gy + gh // 2
         dash, gap = 3, 3
         x = gx + 1
@@ -282,15 +268,12 @@ class Screen:
             self._line(x, mid_y, x2, mid_y, (51, 51, 51))
             x += dash + gap
 
-        # Y axis (extend +1 to meet X axis corner)
         self._vline(gx, gy, gh + 1, DARK)
-        # X axis
         self._hline(gx, gy + gh, gw, DARK)
 
         if len(data) < 2:
             return
 
-        # Map data points to graph area
         step = gw / (len(data) - 1) if len(data) > 1 else gw
         span = max_val - min_val
         if span == 0:
@@ -310,8 +293,6 @@ class Screen:
         """Draw a scrollable list menu."""
         item_h = self.CHAR_H + 6
         visible = min(len(items), (self.height - 40) // item_h)
-
-        # Scroll window
         start = max(0, min(selected - visible // 2, len(items) - visible))
         y = 35
 
@@ -328,18 +309,15 @@ class Screen:
         cx, cy = self.center
         r = self.radius - 12
 
-        # Rose circles
         self._draw_circle(cx, cy, r, DARK)
         self._draw_circle(cx, cy, int(r * 0.7), DARK)
 
-        # Cardinal labels
         for label, angle in (("N", 0), ("E", 90), ("S", 180), ("W", 270)):
             lx = cx + int((r + 5) * math.sin(math.radians(angle)))
             ly = cy - int((r + 5) * math.cos(math.radians(angle)))
             c = WHITE if label == "N" else GRAY
             self._d.text(label, lx - self.CHAR_W // 2, ly - self.CHAR_H // 2, c)
 
-        # Tick marks (8 directions)
         for angle in range(0, 360, 45):
             inner = r - 6
             outer = r
@@ -351,27 +329,19 @@ class Screen:
             c = LIGHT if angle % 90 == 0 else DARK
             self._line(x1, y1, x2, y2, c)
 
-        # Needle
         rad = math.radians(heading)
         needle_len = int(r * 0.85)
         half_w = 3
 
-        # Tip (north side of needle, bright)
         nx = cx + int(needle_len * math.sin(rad))
         ny = cy - int(needle_len * math.cos(rad))
-        # Tail (south side, dark)
         sx = cx - int(needle_len * math.sin(rad))
         sy = cy + int(needle_len * math.cos(rad))
-        # Perpendicular offset for width
         px = int(half_w * math.cos(rad))
         py = int(half_w * math.sin(rad))
 
-        # North half (bright)
         self._fill_triangle(nx, ny, cx - px, cy - py, cx + px, cy + py, color)
-        # South half (dark)
         self._fill_triangle(sx, sy, cx - px, cy - py, cx + px, cy + py, DARK)
-
-        # Center pivot
         self._fill_circle(cx, cy, 3, GRAY)
 
     def watch(self, hours, minutes, seconds=0, color=LIGHT):
@@ -379,10 +349,8 @@ class Screen:
         cx, cy = self.center
         r = self.radius - 8
 
-        # Clock face circle
         self._draw_circle(cx, cy, r, DARK)
 
-        # 12 hour tick marks
         for i in range(12):
             angle = i * 30
             rad = math.radians(angle)
@@ -398,7 +366,6 @@ class Screen:
             y2 = cy - int(r * math.cos(rad))
             self._line(x1, y1, x2, y2, c)
 
-        # Cardinal numbers: 12, 3, 6, 9
         for num, angle in ((12, 0), (3, 90), (6, 180), (9, 270)):
             text = str(num)
             rad = math.radians(angle)
@@ -407,7 +374,6 @@ class Screen:
             tw = len(text) * self.CHAR_W
             self._d.text(text, lx - tw // 2, ly - self.CHAR_H // 2, WHITE)
 
-        # Hour hand (short, thick)
         h_angle = (hours % 12 + minutes / 60) * 30
         h_rad = math.radians(h_angle)
         h_len = int(r * 0.50)
@@ -418,7 +384,6 @@ class Screen:
         py = int(h_w * math.sin(h_rad))
         self._fill_triangle(hx, hy, cx - px, cy - py, cx + px, cy + py, color)
 
-        # Minute hand (longer, thinner)
         m_angle = (minutes + seconds / 60) * 6
         m_rad = math.radians(m_angle)
         m_len = int(r * 0.75)
@@ -429,26 +394,16 @@ class Screen:
         py = int(m_w * math.sin(m_rad))
         self._fill_triangle(mx, my, cx - px, cy - py, cx + px, cy + py, color)
 
-        # Second hand (thin line)
         s_angle = seconds * 6
         s_rad = math.radians(s_angle)
         s_len = int(r * 0.85)
         sx = cx + int(s_len * math.sin(s_rad))
         sy = cy - int(s_len * math.cos(s_rad))
         self._line(cx, cy, sx, sy, GRAY)
-
-        # Center pivot
         self._fill_circle(cx, cy, 3, GRAY)
 
     def face(self, expression, compact=False, color=LIGHT):
-        """Draw a pixel-art face expression (8x8 bitmap scaled up).
-
-        Args:
-            expression: Name ("happy", "sad", "surprised", "sleeping",
-                        "angry", "love") or tuple of 8 ints (custom).
-            compact: If True, smaller scale leaving room for title/subtitle.
-            color: Color for lit pixels.
-        """
+        """Draw a pixel-art face expression (8x8 bitmap scaled up)."""
         if isinstance(expression, str):
             bitmap = FACES.get(expression)
             if bitmap is None:
@@ -458,11 +413,11 @@ class Screen:
 
         cx, cy = self.center
         if compact:
-            scale = self.width // 16    # 8 on 128px
+            scale = self.width // 16
             ox = cx - 4 * scale
             oy = cy - 4 * scale - scale // 2
         else:
-            scale = (self.width * 11) // 128  # 11 on 128px
+            scale = (self.width * 11) // 128
             ox = cx - 4 * scale
             oy = cy - 4 * scale
 
@@ -470,8 +425,9 @@ class Screen:
             byte = bitmap[row]
             for col in range(8):
                 if byte & (0x80 >> col):
-                    self._fill_rect(ox + col * scale, oy + row * scale,
-                                    scale, scale, color)
+                    self._fill_rect(
+                        ox + col * scale, oy + row * scale, scale, scale, color
+                    )
 
     # --- Level 2: Cardinal text & shapes ---
 
@@ -524,14 +480,14 @@ class Screen:
         self._d.line(x, y, x, y + h - 1, c)
 
     def _fill_rect(self, x, y, w, h, c):
-        if hasattr(self._d, 'fill_rect'):
+        if hasattr(self._d, "fill_rect"):
             self._d.fill_rect(x, y, w, h, c)
         else:
             for row in range(h):
                 self._d.line(x, y + row, x + w - 1, y + row, c)
 
     def _rect(self, x, y, w, h, c):
-        if hasattr(self._d, 'rect'):
+        if hasattr(self._d, "rect"):
             self._d.rect(x, y, w, h, c)
         else:
             self._hline(x, y, w, c)
@@ -546,17 +502,12 @@ class Screen:
         Otherwise, the text is drawn multiple times with a 1px offset to
         produce a bold effect (not a true pixel-scale zoom).
         """
-        if hasattr(self._d, 'draw_scaled_text'):
+        if hasattr(self._d, "draw_scaled_text"):
             self._d.draw_scaled_text(text, x, y, color, scale)
             return
-        # On real hardware without scaled text support, draw at scale=1
-        # centered at the same position (best effort)
-        if not hasattr(self._d, 'pixel'):
+        if not hasattr(self._d, "pixel"):
             self._d.text(text, x, y, color)
             return
-        # Render at 1x to a temporary buffer, then scale up
-        # For MicroPython: draw each character using the display's text method
-        # but multiple times offset for a bold effect at scale 2
         if scale == 2:
             for dx in range(2):
                 for dy in range(2):
@@ -570,13 +521,12 @@ class Screen:
 
     def _draw_arc(self, cx, cy, r, start_deg, sweep_deg, color, width=3):
         """Draw a thick arc."""
-        if hasattr(self._d, 'draw_arc'):
+        if hasattr(self._d, "draw_arc"):
             self._d.draw_arc(cx, cy, r, start_deg, sweep_deg, color, width)
             return
 
-        # Number of steps based on arc length, with oversampling to avoid gaps
         arc_len = abs(math.radians(sweep_deg) * r)
-        steps = max(int(arc_len * 2), 1)  # Oversample to avoid gaps
+        steps = max(int(arc_len * 1.5), 1)
         half_w = width // 2
 
         prev_points = None
@@ -604,8 +554,16 @@ class Screen:
         """Bresenham circle."""
         x, y, d = r, 0, 1 - r
         while x >= y:
-            for sx, sy in ((x, y), (y, x), (-x, y), (-y, x),
-                           (x, -y), (y, -x), (-x, -y), (-y, -x)):
+            for sx, sy in (
+                (x, y),
+                (y, x),
+                (-x, y),
+                (-y, x),
+                (x, -y),
+                (y, -x),
+                (-x, -y),
+                (-y, -x),
+            ):
                 px, py = cx + sx, cy + sy
                 if 0 <= px < self.width and 0 <= py < self.height:
                     self._d.pixel(px, py, color)
@@ -628,7 +586,6 @@ class Screen:
 
     def _fill_triangle(self, x0, y0, x1, y1, x2, y2, color):
         """Filled triangle using scanline."""
-        # Sort by y
         pts = sorted([(x0, y0), (x1, y1), (x2, y2)], key=lambda p: p[1])
         (ax, ay), (bx, by), (cx, cy_) = pts
 
