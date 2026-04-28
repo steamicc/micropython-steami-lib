@@ -1,7 +1,7 @@
-# Tetris pour STeaMi — contrôle par accéléromètre ISM330DL
-# Ecran SSD1327 128x128, 4-bit greyscale
-# Incliner gauche/droite pour déplacer, secouer pour tourner
-# Bouton A pour hard drop
+# Tetris for STeaMi — controlled via ISM330DL accelerometer
+# SSD1327 128x128 OLED, 4-bit greyscale
+# Tilt left/right to move, shake to rotate, button A for hard drop,
+# button B for soft rotation.
 
 import random
 from time import sleep_ms, ticks_ms
@@ -10,7 +10,7 @@ import ssd1327
 from ism330dl import ISM330DL
 from machine import I2C, SPI, Pin
 
-# === Ecran ===
+# === Display ===
 spi = SPI(1)
 dc = Pin("DATA_COMMAND_DISPLAY")
 res = Pin("RST_DISPLAY")
@@ -21,63 +21,65 @@ display = ssd1327.WS_OLED_128X128_SPI(spi, dc, res, cs)
 i2c = I2C(1)
 imu = ISM330DL(i2c)
 
-# === Boutons ===
+# === Buttons ===
 BTN_A = Pin("A_BUTTON", Pin.IN, Pin.PULL_UP)
 BTN_B = Pin("B_BUTTON", Pin.IN, Pin.PULL_UP)
 
-# === Parametres du jeu ===
+# === Game parameters ===
 COLS = 10
 ROWS = 20
-CELL = 5          # taille d'une cellule en pixels
-GRID_X = 14      # position X de la grille
-GRID_Y = 4       # position Y de la grille
-TILT_THRESH = 0.35   # seuil inclinaison (g)
-SHAKE_THRESH = 1.8   # seuil secousse (g)
-MOVE_DELAY = 180     # ms entre deux deplacements lateraux
-SHAKE_COOLDOWN = 400  # ms entre deux rotations
+CELL = 5  # cell size in pixels
+GRID_X = 25  # grid X position (centered for round OLED)
+GRID_Y = 14  # grid Y position (centered for round OLED)
+TILT_THRESH = 0.35  # tilt threshold (g)
+SHAKE_THRESH = 1.8  # shake threshold (g)
+MOVE_DELAY = 180  # ms between two lateral moves
+SHAKE_COOLDOWN = 400  # ms between two rotations
 
-# === Couleurs (0-15) ===
+# === Colors (0-15) ===
 COL_BG = 0
-COL_GRID = 1
 COL_BORDER = 8
 COL_TEXT = 15
 COL_GHOST = 3
 
-# Couleurs des pieces (1-15)
+# Piece colors (1-15)
 PIECE_COLORS = [0, 12, 14, 11, 13, 10, 9, 15]
 
-# === Pieces Tetris (tetrominoes) ===
-# Format : liste de rotations, chaque rotation = liste de (row, col)
+# === Tetris pieces (tetrominoes) ===
+# Format: list of rotations, each rotation = list of (row, col)
 PIECES = [
     # I
-    [[(0, 0), (0, 1), (0, 2), (0, 3)],
-     [(0, 0), (1, 0), (2, 0), (3, 0)]],
+    [[(0, 0), (0, 1), (0, 2), (0, 3)], [(0, 0), (1, 0), (2, 0), (3, 0)]],
     # O
     [[(0, 0), (0, 1), (1, 0), (1, 1)]],
     # T
-    [[(0, 1), (1, 0), (1, 1), (1, 2)],
-     [(0, 0), (1, 0), (2, 0), (1, 1)],  # corrigé
-     [(1, 0), (1, 1), (1, 2), (0, 1)],
-     [(0, 1), (1, 1), (2, 1), (1, 0)]],
+    [
+        [(0, 1), (1, 0), (1, 1), (1, 2)],
+        [(0, 0), (1, 0), (2, 0), (1, 1)],
+        [(1, 0), (1, 1), (1, 2), (0, 1)],
+        [(0, 1), (1, 1), (2, 1), (1, 0)],
+    ],
     # S
-    [[(0, 1), (0, 2), (1, 0), (1, 1)],
-     [(0, 0), (1, 0), (1, 1), (2, 1)]],
+    [[(0, 1), (0, 2), (1, 0), (1, 1)], [(0, 0), (1, 0), (1, 1), (2, 1)]],
     # Z
-    [[(0, 0), (0, 1), (1, 1), (1, 2)],
-     [(0, 1), (1, 0), (1, 1), (2, 0)]],
+    [[(0, 0), (0, 1), (1, 1), (1, 2)], [(0, 1), (1, 0), (1, 1), (2, 0)]],
     # J
-    [[(0, 0), (1, 0), (1, 1), (1, 2)],
-     [(0, 0), (0, 1), (1, 0), (2, 0)],
-     [(1, 0), (1, 1), (1, 2), (0, 2)],
-     [(0, 1), (1, 1), (2, 0), (2, 1)]],
+    [
+        [(0, 0), (1, 0), (1, 1), (1, 2)],
+        [(0, 0), (0, 1), (1, 0), (2, 0)],
+        [(1, 0), (1, 1), (1, 2), (0, 2)],
+        [(0, 1), (1, 1), (2, 0), (2, 1)],
+    ],
     # L
-    [[(0, 2), (1, 0), (1, 1), (1, 2)],
-     [(0, 0), (1, 0), (2, 0), (2, 1)],
-     [(1, 0), (1, 1), (1, 2), (0, 0)],
-     [(0, 0), (0, 1), (1, 1), (2, 1)]],
+    [
+        [(0, 2), (1, 0), (1, 1), (1, 2)],
+        [(0, 0), (1, 0), (2, 0), (2, 1)],
+        [(1, 0), (1, 1), (1, 2), (0, 0)],
+        [(0, 0), (0, 1), (1, 1), (2, 1)],
+    ],
 ]
 
-# === Etat du jeu ===
+# === Game state ===
 grid = [[0] * COLS for _ in range(ROWS)]
 score = 0
 level = 1
@@ -129,7 +131,7 @@ def lock_piece():
         if 0 <= r < ROWS and 0 <= c < COLS:
             grid[r][c] = color
 
-    # Effacer les lignes completes
+    # Clear full lines
     full = [r for r in range(ROWS) if all(grid[r])]
     for r in full:
         del grid[r]
@@ -174,14 +176,23 @@ def draw_rect_outline(x, y, w, h, color):
     draw_vline(x + w, y, h, color)
 
 
+def draw_text_centered(text, y, color):
+    # MicroPython framebuf font is 8 px wide per char
+    x = 64 - (len(text) * 8) // 2
+    if x < 0:
+        x = 0
+    display.text(text, x, y, color)
+
+
 def draw_screen():
     display.fill(COL_BG)
 
-    # Bordure grille
-    draw_rect_outline(GRID_X - 1, GRID_Y - 1,
-                      COLS * CELL + 1, ROWS * CELL + 1, COL_BORDER)
+    # Grid border
+    draw_rect_outline(
+        GRID_X - 1, GRID_Y - 1, COLS * CELL + 1, ROWS * CELL + 1, COL_BORDER
+    )
 
-    # Grille de fond
+    # Background grid (locked cells)
     for r in range(ROWS):
         for c in range(COLS):
             if grid[r][c]:
@@ -194,13 +205,13 @@ def draw_screen():
             if 0 <= r < ROWS and 0 <= c < COLS:
                 draw_cell(r, c, COL_GHOST)
 
-    # Piece courante
+    # Current piece
     color = PIECE_COLORS[piece_type + 1]
     for r, c in get_cells(piece_row, piece_col, piece_rot):
         if 0 <= r < ROWS and 0 <= c < COLS:
             draw_cell(r, c, color)
 
-    # === Panneau droite ===
+    # === Right info panel ===
     px = GRID_X + COLS * CELL + 4
     py = GRID_Y
 
@@ -232,20 +243,21 @@ def draw_screen():
 
 def draw_game_over():
     display.fill(0)
-    display.text("GAME", 35, 45, 15)
-    display.text("OVER", 35, 57, 15)
-    display.text(f"SCR:{score}", 20, 75, 10)
-    display.text("B=restart", 15, 95, 7)
+    draw_text_centered("GAME", 45, 15)
+    draw_text_centered("OVER", 57, 15)
+    draw_text_centered("SCR:" + str(score), 75, 10)
+    draw_text_centered("B=restart", 95, 7)
     display.show()
 
 
 def draw_start():
     display.fill(0)
-    display.text("TETRIS", 28, 30, 15)
-    display.text("Tilt=move", 15, 55, 10)
-    display.text("Shake=rot", 15, 67, 10)
-    display.text("A=drop", 25, 79, 10)
-    display.text("A to start", 14, 100, 7)
+    draw_text_centered("TETRIS", 22, 15)
+    draw_text_centered("Tilt=move", 45, 10)
+    draw_text_centered("Shake=rot", 57, 10)
+    draw_text_centered("B=rot", 69, 10)
+    draw_text_centered("A=drop", 81, 10)
+    draw_text_centered("A to start", 102, 7)
     display.show()
 
 
@@ -265,16 +277,16 @@ def reset_game():
     last_shake = ticks_ms()
 
 
-# === Ecran de démarrage ===
+# === Start screen ===
 draw_start()
 while BTN_A.value() == 1:
     sleep_ms(50)
 sleep_ms(200)
 
-# === Init jeu ===
+# === Init game ===
 reset_game()
 
-# === Boucle principale ===
+# === Main loop ===
 while True:
     now = ticks_ms()
 
@@ -286,18 +298,18 @@ while True:
         reset_game()
         continue
 
-    # Lecture IMU
+    # IMU read
     ax, ay, az = imu.acceleration_g()
 
-    # Secousse → rotation
-    magnitude = (ax*ax + ay*ay + az*az) ** 0.5
+    # Shake -> rotation
+    magnitude = (ax * ax + ay * ay + az * az) ** 0.5
     if magnitude > SHAKE_THRESH and (now - last_shake) > SHAKE_COOLDOWN:
         new_rot = (piece_rot + 1) % len(PIECES[piece_type])
         if valid_pos(piece_row, piece_col, new_rot):
             piece_rot = new_rot
         last_shake = now
 
-    # Inclinaison → deplacement lateral
+    # Tilt -> lateral movement
     if (now - last_move) > MOVE_DELAY:
         if ay > TILT_THRESH:
             if valid_pos(piece_row, piece_col + 1, piece_rot):
@@ -308,7 +320,7 @@ while True:
                 piece_col -= 1
             last_move = now
 
-    # Bouton A → hard drop
+    # Button A -> hard drop
     if BTN_A.value() == 0:
         while valid_pos(piece_row + 1, piece_col, piece_rot):
             piece_row += 1
@@ -317,7 +329,7 @@ while True:
         last_fall = now
         sleep_ms(150)
 
-    # Bouton B → rotation douce
+    # Button B -> soft rotation
     if BTN_B.value() == 0 and (now - last_shake) > SHAKE_COOLDOWN:
         new_rot = (piece_rot + 1) % len(PIECES[piece_type])
         if valid_pos(piece_row, piece_col, new_rot):
@@ -325,7 +337,7 @@ while True:
         last_shake = now
         sleep_ms(150)
 
-    # Chute automatique
+    # Automatic fall
     if (now - last_fall) > fall_interval:
         if valid_pos(piece_row + 1, piece_col, piece_rot):
             piece_row += 1
