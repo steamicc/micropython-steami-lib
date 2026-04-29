@@ -14,43 +14,41 @@ Works with any backend that implements the display interface:
 
 import math
 
-# --- Color constants (RGB tuples) ---
-# Grays map to exact SSD1327 levels: gray4 * 17 gives R=G=B
-BLACK = (0, 0, 0)
-DARK  = (102, 102, 102)   # gray4=6
-GRAY  = (153, 153, 153)   # gray4=9
-LIGHT = (187, 187, 187)   # gray4=11
-WHITE = (255, 255, 255)   # gray4=15
-
-# Accent colors (used on color displays, degrade gracefully to gray on SSD1327)
-GREEN  = (119, 255, 119)
-RED    = (255, 85, 85)
-BLUE   = (85, 85, 255)
-YELLOW = (255, 255, 85)
-
-# --- Pixel-art face bitmaps (8x8, MSB = left) ---
-FACES = {
-    "happy":     (0x00, 0x24, 0x24, 0x00, 0x00, 0x42, 0x3C, 0x00),
-    "sad":       (0x00, 0x24, 0x24, 0x00, 0x00, 0x3C, 0x42, 0x00),
-    "surprised": (0x00, 0x24, 0x24, 0x00, 0x18, 0x24, 0x24, 0x18),
-    "sleeping":  (0x00, 0x00, 0x66, 0x00, 0x00, 0x18, 0x18, 0x00),
-    "angry":     (0x00, 0x42, 0x24, 0x24, 0x00, 0x3C, 0x42, 0x00),
-    "love":      (0x00, 0x66, 0xFF, 0xFF, 0x7E, 0x3C, 0x18, 0x00),
-}
-
-# --- Cardinal position names ---
+from steami_screen.const import (
+    BLACK,
+    DARK,
+    FACES,
+    GRAY,
+    GRID_DARK,
+    LIGHT,
+    STEAMI_CHAR_H,
+    STEAMI_CHAR_W,
+    STEAMI_DEFAULT_HEIGHT,
+    STEAMI_DEFAULT_WIDTH,
+    STEAMI_GAUGE_START_ANGLE,
+    STEAMI_GAUGE_SWEEP,
+    STEAMI_GRAPH_DASH,
+    STEAMI_GRAPH_GAP,
+    STEAMI_GRAPH_HEIGHT,
+    STEAMI_GRAPH_MARGIN,
+    STEAMI_GRAPH_VALUE_Y,
+    STEAMI_GRAPH_X_OFFSET,
+    STEAMI_GRAPH_Y,
+    WHITE,
+)
 
 
 class Screen:
     """High-level wrapper around a raw display backend."""
 
-    CHAR_W = 8   # framebuf built-in font width
-    CHAR_H = 8   # framebuf built-in font height
+    # Exposed as class attributes for backward compatibility (public API).
+    CHAR_W = STEAMI_CHAR_W
+    CHAR_H = STEAMI_CHAR_H
 
     def __init__(self, display, width=None, height=None):
         self._d = display
-        self.width = width or getattr(display, 'width', 128)
-        self.height = height or getattr(display, 'height', 128)
+        self.width = width or getattr(display, "width", STEAMI_DEFAULT_WIDTH)
+        self.height = height or getattr(display, "height", STEAMI_DEFAULT_HEIGHT)
 
     # --- Adaptive properties ---
 
@@ -92,17 +90,17 @@ class Screen:
         # Margins adapted to circular screen
         # Floor at ch*2+4 ensures titles stay at a consistent height
         margin_ns = self._safe_margin(tw, ch * 2 + 4)  # N/S
-        margin_ew = ch + 4                         # E/W: fixed side margin
+        margin_ew = ch + 4  # E/W: fixed side margin
 
         positions = {
-            "N":      (cx - tw // 2, margin_ns),
-            "NE":     (self.width - margin_ew - tw, margin_ns),
-            "E":      (self.width - margin_ew - tw, cy - ch // 2),
-            "SE":     (self.width - margin_ew - tw, self.height - margin_ns - ch),
-            "S":      (cx - tw // 2, self.height - margin_ns - ch),
-            "SW":     (margin_ew, self.height - margin_ns - ch),
-            "W":      (margin_ew, cy - ch // 2),
-            "NW":     (margin_ew, margin_ns),
+            "N": (cx - tw // 2, margin_ns),
+            "NE": (self.width - margin_ew - tw, margin_ns),
+            "E": (self.width - margin_ew - tw, cy - ch // 2),
+            "SE": (self.width - margin_ew - tw, self.height - margin_ns - ch),
+            "S": (cx - tw // 2, self.height - margin_ns - ch),
+            "SW": (margin_ew, self.height - margin_ns - ch),
+            "W": (margin_ew, cy - ch // 2),
+            "NW": (margin_ew, margin_ns),
             "CENTER": (cx - tw // 2, cy - ch // 2),
         }
         return positions.get(at, positions["CENTER"])
@@ -114,8 +112,7 @@ class Screen:
         x, y = self._resolve("N", len(text))
         self._d.text(text, x, y, color)
 
-    def value(self, val, unit=None, at="CENTER", label=None,
-             color=WHITE, scale=2, y_offset=0):
+    def value(self, val, unit=None, at="CENTER", label=None, color=WHITE, scale=2, y_offset=0):
         """Draw a large value, optionally with unit below and label above."""
         text = str(val)
         cx, cy = self.center
@@ -156,7 +153,7 @@ class Screen:
         if unit:
             unit_y = y + char_h
             ux = x + tw // 2 - len(unit) * self.CHAR_W // 2
-            if hasattr(self._d, 'draw_medium_text'):
+            if hasattr(self._d, "draw_medium_text"):
                 self._d.draw_medium_text(unit, ux, unit_y, LIGHT)
             else:
                 self._d.text(unit, ux, unit_y, LIGHT)
@@ -176,7 +173,7 @@ class Screen:
             block_h = (n - 1) * line_h
             start_y = base_y - block_h // 2
 
-        draw = getattr(self._d, 'draw_small_text', self._d.text)
+        draw = getattr(self._d, "draw_small_text", self._d.text)
         for i, line in enumerate(lines):
             x, _ = self._resolve("S", len(line))
             y = start_y + i * line_h
@@ -206,17 +203,19 @@ class Screen:
         cx, cy = self.center
         arc_w = max(5, self.radius // 9)
         r = self.radius - arc_w // 2 - 1
-        start_angle = 135
-        sweep = 270
-        ratio = (val - min_val) / (max_val - min_val) if max_val != min_val else 0  # Avoid division by zero; show empty gauge if min=max
+        start_angle = STEAMI_GAUGE_START_ANGLE
+        sweep = STEAMI_GAUGE_SWEEP
+        # Avoid division by zero; show empty gauge if min=max
+        ratio = (val - min_val) / (max_val - min_val) if max_val != min_val else 0
         ratio = max(0.0, min(1.0, ratio))
 
         # Background arc
         self._draw_arc(cx, cy, r, start_angle, sweep, DARK, arc_w)
         # Filled arc
         if ratio > 0:
-            self._draw_arc(cx, cy, r, start_angle, int(sweep * ratio),
-                           color, arc_w + 2)  # +1 to fill gaps between segments
+            self._draw_arc(
+                cx, cy, r, start_angle, int(sweep * ratio), color, arc_w + 2
+            )  # +1 to fill gaps between segments
 
         # Min/max labels at arc endpoints (slightly inward to stay visible)
         min_t = str(int(min_val))
@@ -229,7 +228,7 @@ class Screen:
         ly = int(cy + r_label * math.sin(angle_s))
         rx = int(cx + r_label * math.cos(angle_e)) - len(max_t) * self.CHAR_W // 2
         ry = int(cy + r_label * math.sin(angle_e))
-        draw_sm = getattr(self._d, 'draw_small_text', self._d.text)
+        draw_sm = getattr(self._d, "draw_small_text", self._d.text)
         draw_sm(min_t, lx, ly, GRAY)
         draw_sm(max_t, rx, ry, GRAY)
 
@@ -240,20 +239,19 @@ class Screen:
         graph area.  Call title() before graph() for proper layout.
         """
         cx, _cy = self.center
-        margin = 15
-        gx = margin + 6
-        gy = 38
+        margin = STEAMI_GRAPH_MARGIN
+        gx = margin + STEAMI_GRAPH_X_OFFSET
+        gy = STEAMI_GRAPH_Y
         gw = self.width - margin - gx
-        gh = 52
+        gh = STEAMI_GRAPH_HEIGHT
 
         # Current value just below title area (fixed position)
         if data:
             text = str(int(data[-1]))
-            draw_fn = getattr(self._d, 'draw_medium_text',
-                              self._d.text)
+            draw_fn = getattr(self._d, "draw_medium_text", self._d.text)
             tw = len(text) * self.CHAR_W
             vx = cx - tw // 2
-            vy = 31
+            vy = STEAMI_GRAPH_VALUE_Y
             draw_fn(text, vx, vy, WHITE)
 
         # Y-axis labels (max, mid, min)
@@ -262,11 +260,9 @@ class Screen:
                 return str(int(v // 1000)) + "k"
             return str(int(v))
 
-        draw_sm = getattr(self._d, 'draw_small_text', self._d.text)
+        draw_sm = getattr(self._d, "draw_small_text", self._d.text)
         mid_val = (min_val + max_val) / 2
-        for val, yp in [(max_val, gy),
-                        (mid_val, gy + gh // 2),
-                        (min_val, gy + gh)]:
+        for val, yp in [(max_val, gy), (mid_val, gy + gh // 2), (min_val, gy + gh)]:
             label = _fmt(val)
             cw = int(self.CHAR_W * 0.85)
             lx = gx - len(label) * cw - 1
@@ -275,11 +271,11 @@ class Screen:
 
         # Dashed grid line at midpoint
         mid_y = gy + gh // 2
-        dash, gap = 3, 3
+        dash, gap = STEAMI_GRAPH_DASH, STEAMI_GRAPH_GAP
         x = gx + 1
         while x < gx + gw:
             x2 = min(x + dash - 1, gx + gw - 1)
-            self._line(x, mid_y, x2, mid_y, (51, 51, 51))
+            self._line(x, mid_y, x2, mid_y, GRID_DARK)
             x += dash + gap
 
         # Y axis (extend +1 to meet X axis corner)
@@ -458,7 +454,7 @@ class Screen:
 
         cx, cy = self.center
         if compact:
-            scale = self.width // 16    # 8 on 128px
+            scale = self.width // 16  # 8 on 128px
             ox = cx - 4 * scale
             oy = cy - 4 * scale - scale // 2
         else:
@@ -470,8 +466,7 @@ class Screen:
             byte = bitmap[row]
             for col in range(8):
                 if byte & (0x80 >> col):
-                    self._fill_rect(ox + col * scale, oy + row * scale,
-                                    scale, scale, color)
+                    self._fill_rect(ox + col * scale, oy + row * scale, scale, scale, color)
 
     # --- Level 2: Cardinal text & shapes ---
 
@@ -524,14 +519,14 @@ class Screen:
         self._d.line(x, y, x, y + h - 1, c)
 
     def _fill_rect(self, x, y, w, h, c):
-        if hasattr(self._d, 'fill_rect'):
+        if hasattr(self._d, "fill_rect"):
             self._d.fill_rect(x, y, w, h, c)
         else:
             for row in range(h):
                 self._d.line(x, y + row, x + w - 1, y + row, c)
 
     def _rect(self, x, y, w, h, c):
-        if hasattr(self._d, 'rect'):
+        if hasattr(self._d, "rect"):
             self._d.rect(x, y, w, h, c)
         else:
             self._hline(x, y, w, c)
@@ -546,12 +541,12 @@ class Screen:
         Otherwise, the text is drawn multiple times with a 1px offset to
         produce a bold effect (not a true pixel-scale zoom).
         """
-        if hasattr(self._d, 'draw_scaled_text'):
+        if hasattr(self._d, "draw_scaled_text"):
             self._d.draw_scaled_text(text, x, y, color, scale)
             return
         # On real hardware without scaled text support, draw at scale=1
         # centered at the same position (best effort)
-        if not hasattr(self._d, 'pixel'):
+        if not hasattr(self._d, "pixel"):
             self._d.text(text, x, y, color)
             return
         # Render at 1x to a temporary buffer, then scale up
@@ -570,7 +565,7 @@ class Screen:
 
     def _draw_arc(self, cx, cy, r, start_deg, sweep_deg, color, width=3):
         """Draw a thick arc."""
-        if hasattr(self._d, 'draw_arc'):
+        if hasattr(self._d, "draw_arc"):
             self._d.draw_arc(cx, cy, r, start_deg, sweep_deg, color, width)
             return
 
@@ -604,8 +599,7 @@ class Screen:
         """Bresenham circle."""
         x, y, d = r, 0, 1 - r
         while x >= y:
-            for sx, sy in ((x, y), (y, x), (-x, y), (-y, x),
-                           (x, -y), (y, -x), (-x, -y), (-y, -x)):
+            for sx, sy in ((x, y), (y, x), (-x, y), (-y, x), (x, -y), (y, -x), (-x, -y), (-y, -x)):
                 px, py = cx + sx, cy + sy
                 if 0 <= px < self.width and 0 <= py < self.height:
                     self._d.pixel(px, py, color)
