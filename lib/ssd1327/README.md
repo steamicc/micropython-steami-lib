@@ -117,6 +117,7 @@ display = WS_OLED_128X128_SPI(spi, dc, res, cs)
 | `rotating_3d_cube.py` | Animate a rotating wireframe 3D cube                 |
 | `rotation.py`         | Demonstrate 180° display rotation                    |
 | `shades.py`           | Display 15 shades of grey as vertical bands          |
+| `blink_animation.py`  | Blink animation using framebuf blit and pixel scaling|
 
 ```bash
 mpremote mount lib/ssd1327 run lib/ssd1327/examples/hello_world.py
