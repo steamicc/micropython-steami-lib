@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [0.26.0](https://github.com/steamicc/micropython-steami-lib/compare/v0.25.1...v0.26.0) (2026-09-29)
+
+
+### Features
+
+* **ssd1327:** Add blink animation example with framebuf scaling ([#420](https://github.com/steamicc/micropython-steami-lib/issues/420)). ([476c4a5](https://github.com/steamicc/micropython-steami-lib/commit/476c4a5b15f4b3abc9c4416bcd00cf244dae0945))
+
 ## [0.25.1](https://github.com/steamicc/micropython-steami-lib/compare/v0.25.0...v0.25.1) (2026-09-29)
 
 
