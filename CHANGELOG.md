@@ -3,6 +3,22 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [0.25.0](https://github.com/steamicc/micropython-steami-lib/compare/v0.24.1...v0.25.0) (2026-09-23)
+
+
+### Features
+
+* **ism330dl:** Add Tetris example with accelerometer tilt controls ([#423](https://github.com/steamicc/micropython-steami-lib/issues/423)). ([fa2ce7a](https://github.com/steamicc/micropython-steami-lib/commit/fa2ce7a1f7891ada5c9f1d623e26150c4f68ad11))
+
+## [0.24.1](https://github.com/steamicc/micropython-steami-lib/compare/v0.24.0...v0.24.1) (2026-09-23)
+
+# [0.24.0](https://github.com/steamicc/micropython-steami-lib/compare/v0.23.2...v0.24.0) (2026-09-21)
+
+
+### Features
+
+* **bq27441:** Add clear error when battery is not connected. ([#429](https://github.com/steamicc/micropython-steami-lib/issues/429)) ([0132c28](https://github.com/steamicc/micropython-steami-lib/commit/0132c2849ab9d11ec09aa2ebbbd2a3af43667d44))
+
 ## [0.23.2](https://github.com/steamicc/micropython-steami-lib/compare/v0.23.1...v0.23.2) (2026-04-27)
 
 ## [0.23.1](https://github.com/steamicc/micropython-steami-lib/compare/v0.23.0...v0.23.1) (2026-04-16)

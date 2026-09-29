@@ -139,12 +139,21 @@ class BQ27441(object):
         self._seal_flag = False
         self.gpout_pin = gpout_pin
         self.capacity_mAh = capacity_mAh
+
+        # The BQ27441 is powered by the battery.
+        # If no battery is connected, the device will not appear on the I2C bus.
+        if self.address not in self.i2c.scan():
+            raise OSError(
+                "BQ27441 not detected at I2C address 0x{:02X}. "
+                "Make sure a battery is connected.".format(self.address)
+            )
+
         self.configure_gpout_input()
         self.power_on()
 
     def configure_gpout_input(self):
-        if self.gpout_pin:
-            self.gpout = Pin(self.gpout_pin, mode=Pin.IN, pull=Pin.PULL_UP)
+            if self.gpout_pin:
+                self.gpout = Pin(self.gpout_pin, mode=Pin.IN, pull=Pin.PULL_UP)
 
     def configure_gpout_output(self):
         if self.gpout_pin:

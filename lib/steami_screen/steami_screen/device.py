@@ -14,43 +14,41 @@ Works with any backend that implements the display interface:
 
 import math
 
-# --- Color constants (RGB tuples) ---
-# Grays map to exact SSD1327 levels: gray4 * 17 gives R=G=B
-BLACK = (0, 0, 0)
-DARK = (102, 102, 102)  # gray4=6
-GRAY = (153, 153, 153)  # gray4=9
-LIGHT = (187, 187, 187)  # gray4=11
-WHITE = (255, 255, 255)  # gray4=15
-
-# Accent colors (used on color displays, degrade gracefully to gray on SSD1327)
-GREEN = (119, 255, 119)
-RED = (255, 85, 85)
-BLUE = (85, 85, 255)
-YELLOW = (255, 255, 85)
-
-# --- Pixel-art face bitmaps (8x8, MSB = left) ---
-FACES = {
-    "happy": (0x00, 0x24, 0x24, 0x00, 0x00, 0x42, 0x3C, 0x00),
-    "sad": (0x00, 0x24, 0x24, 0x00, 0x00, 0x3C, 0x42, 0x00),
-    "surprised": (0x00, 0x24, 0x24, 0x00, 0x18, 0x24, 0x24, 0x18),
-    "sleeping": (0x00, 0x00, 0x66, 0x00, 0x00, 0x18, 0x18, 0x00),
-    "angry": (0x00, 0x42, 0x24, 0x24, 0x00, 0x3C, 0x42, 0x00),
-    "love": (0x00, 0x66, 0xFF, 0xFF, 0x7E, 0x3C, 0x18, 0x00),
-}
-
-# --- Cardinal position names ---
+from steami_screen.const import (
+    BLACK,
+    DARK,
+    FACES,
+    GRAY,
+    GRID_DARK,
+    LIGHT,
+    STEAMI_CHAR_H,
+    STEAMI_CHAR_W,
+    STEAMI_DEFAULT_HEIGHT,
+    STEAMI_DEFAULT_WIDTH,
+    STEAMI_GAUGE_START_ANGLE,
+    STEAMI_GAUGE_SWEEP,
+    STEAMI_GRAPH_DASH,
+    STEAMI_GRAPH_GAP,
+    STEAMI_GRAPH_HEIGHT,
+    STEAMI_GRAPH_MARGIN,
+    STEAMI_GRAPH_VALUE_Y,
+    STEAMI_GRAPH_X_OFFSET,
+    STEAMI_GRAPH_Y,
+    WHITE,
+)
 
 
 class Screen:
     """High-level wrapper around a raw display backend."""
 
-    CHAR_W = 8  # framebuf built-in font width
-    CHAR_H = 8  # framebuf built-in font height
+    # Exposed as class attributes for backward compatibility (public API).
+    CHAR_W = STEAMI_CHAR_W
+    CHAR_H = STEAMI_CHAR_H
 
     def __init__(self, display, width=None, height=None):
         self._d = display
-        self.width = width or getattr(display, "width", 128)
-        self.height = height or getattr(display, "height", 128)
+        self.width = width or getattr(display, "width", STEAMI_DEFAULT_WIDTH)
+        self.height = height or getattr(display, "height", STEAMI_DEFAULT_HEIGHT)
 
     # --- Adaptive properties ---
 
@@ -86,8 +84,10 @@ class Screen:
         ch = self.CHAR_H * scale
         tw = text_len * self.CHAR_W * scale
 
-        margin_ns = self._safe_margin(tw, ch * 2 + 4)
-        margin_ew = ch + 4
+        # Margins adapted to circular screen
+        # Floor at ch*2+4 ensures titles stay at a consistent height
+        margin_ns = self._safe_margin(tw, ch * 2 + 4)  # N/S
+        margin_ew = ch + 4  # E/W: fixed side margin
 
         positions = {
             "N": (cx - tw // 2, margin_ns),
@@ -109,9 +109,7 @@ class Screen:
         x, y = self._resolve("N", len(text))
         self._d.text(text, x, y, color)
 
-    def value(
-        self, val, unit=None, at="CENTER", label=None, color=WHITE, scale=2, y_offset=0
-    ):
+    def value(self, val, unit=None, at="CENTER", label=None, color=WHITE, scale=2, y_offset=0):
         """Draw a large value, optionally with unit below and label above."""
         text = str(val)
         cx, cy = self.center
@@ -232,18 +230,18 @@ class Screen:
     def graph(self, data, min_val=0, max_val=100, color=LIGHT):
         """Draw a scrolling line graph with the current value above."""
         cx, _cy = self.center
-        margin = 15
-        gx = margin + 6
-        gy = 38
+        margin = STEAMI_GRAPH_MARGIN
+        gx = margin + STEAMI_GRAPH_X_OFFSET
+        gy = STEAMI_GRAPH_Y
         gw = self.width - margin - gx
-        gh = 52
+        gh = STEAMI_GRAPH_HEIGHT
 
         if data:
             text = str(int(data[-1]))
             draw_fn = getattr(self._d, "draw_medium_text", self._d.text)
             tw = len(text) * self.CHAR_W
             vx = cx - tw // 2
-            vy = 31
+            vy = STEAMI_GRAPH_VALUE_Y
             draw_fn(text, vx, vy, WHITE)
 
         def _fmt(v):
@@ -261,11 +259,11 @@ class Screen:
             draw_sm(label, lx, ly, DARK)
 
         mid_y = gy + gh // 2
-        dash, gap = 3, 3
+        dash, gap = STEAMI_GRAPH_DASH, STEAMI_GRAPH_GAP
         x = gx + 1
         while x < gx + gw:
             x2 = min(x + dash - 1, gx + gw - 1)
-            self._line(x, mid_y, x2, mid_y, (51, 51, 51))
+            self._line(x, mid_y, x2, mid_y, GRID_DARK)
             x += dash + gap
 
         self._vline(gx, gy, gh + 1, DARK)
@@ -413,7 +411,7 @@ class Screen:
 
         cx, cy = self.center
         if compact:
-            scale = self.width // 16
+            scale = self.width // 16  # 8 on 128px
             ox = cx - 4 * scale
             oy = cy - 4 * scale - scale // 2
         else:
@@ -425,9 +423,7 @@ class Screen:
             byte = bitmap[row]
             for col in range(8):
                 if byte & (0x80 >> col):
-                    self._fill_rect(
-                        ox + col * scale, oy + row * scale, scale, scale, color
-                    )
+                    self._fill_rect(ox + col * scale, oy + row * scale, scale, scale, color)
 
     # --- Level 2: Cardinal text & shapes ---
 
@@ -505,6 +501,8 @@ class Screen:
         if hasattr(self._d, "draw_scaled_text"):
             self._d.draw_scaled_text(text, x, y, color, scale)
             return
+        # On real hardware without scaled text support, draw at scale=1
+        # centered at the same position (best effort)
         if not hasattr(self._d, "pixel"):
             self._d.text(text, x, y, color)
             return
@@ -554,16 +552,7 @@ class Screen:
         """Bresenham circle."""
         x, y, d = r, 0, 1 - r
         while x >= y:
-            for sx, sy in (
-                (x, y),
-                (y, x),
-                (-x, y),
-                (-y, x),
-                (x, -y),
-                (y, -x),
-                (-x, -y),
-                (-y, -x),
-            ):
+            for sx, sy in ((x, y), (y, x), (-x, y), (-y, x), (x, -y), (y, -x), (-x, -y), (-y, -x)):
                 px, py = cx + sx, cy + sy
                 if 0 <= px < self.width and 0 <= py < self.height:
                     self._d.pixel(px, py, color)
