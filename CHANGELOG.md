@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [0.25.1](https://github.com/steamicc/micropython-steami-lib/compare/v0.25.0...v0.25.1) (2026-09-29)
+
+
+### Bug Fixes
+
+* **steami_screen:** Improve gauge reactivity and readability ([#421](https://github.com/steamicc/micropython-steami-lib/issues/421)). ([927e96b](https://github.com/steamicc/micropython-steami-lib/commit/927e96b3e7f032378342cb269bd1b96bf90aa1f4))
+
 # [0.25.0](https://github.com/steamicc/micropython-steami-lib/compare/v0.24.1...v0.25.0) (2026-09-23)
 
 
