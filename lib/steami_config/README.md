@@ -72,8 +72,8 @@ same code is used by the Arduino library and documented on the STeaMi wiki.
 
 ## Temperature Calibration
 
-Five sensors are supported: `hts221`, `lis2mdl`, `ism330dl`, `wsen_hids`,
-`wsen_pads`.
+Six sensors are supported: `hts221`, `lis2mdl`, `ism330dl`, `wsen_hids`,
+`wsen_pads`, `bme280`.
 
 ### Store calibration
 
@@ -208,7 +208,7 @@ Data is stored as compact JSON to fit within 1 KB:
 | `bc` | Boot counter |
 
 Sensor short keys: `hts` (HTS221), `mag` (LIS2MDL), `ism` (ISM330DL),
-`hid` (WSEN-HIDS), `pad` (WSEN-PADS).
+`hid` (WSEN-HIDS), `pad` (WSEN-PADS), `bme` (BME280).
 
 ---
 

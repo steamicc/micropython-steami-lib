@@ -40,6 +40,8 @@ class BME280(object):
         self.i2c = i2c
         self.address = address
         self.sea_level_pressure_hpa = 1013.25
+        self._temp_gain = 1.0
+        self._temp_offset = 0.0
         self._check_device()
         self._wait_boot()
         self._read_calibration()
@@ -322,6 +324,14 @@ class BME280(object):
         self.t_fine = var1 + var2
         return (self.t_fine * 5 + 128) >> 8
 
+    def _corrected_temperature(self, raw_temp):
+        """Return the temperature in degrees C with gain/offset applied.
+
+        ``t_fine`` (used by pressure and humidity) stays uncorrected.
+        """
+        factory = self._compensate_temperature(raw_temp) / 100.0
+        return self._temp_gain * factory + self._temp_offset
+
     def _compensate_pressure(self, raw_press):
         """Compute compensated pressure in Pa (Q24.8 fixed point)."""
         var1 = self.t_fine - 128000
@@ -372,7 +382,7 @@ class BME280(object):
         """
         self._ensure_data()
         raw_temp, _, _ = self._read_raw()
-        return self._compensate_temperature(raw_temp) / 100.0
+        return self._corrected_temperature(raw_temp)
 
     def pressure_hpa(self):
         """Return compensated pressure in hPa (float).
@@ -404,7 +414,7 @@ class BME280(object):
         """
         self._ensure_data()
         raw_temp, raw_press, raw_hum = self._read_raw()
-        temp_c = self._compensate_temperature(raw_temp) / 100.0
+        temp_c = self._corrected_temperature(raw_temp)
         press_hpa = self._compensate_pressure(raw_press) / 25600.0
         hum_rh = self._compensate_humidity(raw_hum) / 1024.0
         return temp_c, press_hpa, hum_rh
@@ -418,7 +428,7 @@ class BME280(object):
         self.trigger_one_shot()
         self._wait_measurement()
         raw_temp, raw_press, raw_hum = self._read_raw()
-        temp_c = self._compensate_temperature(raw_temp) / 100.0
+        temp_c = self._corrected_temperature(raw_temp)
         press_hpa = self._compensate_pressure(raw_press) / 25600.0
         hum_rh = self._compensate_humidity(raw_hum) / 1024.0
         return temp_c, press_hpa, hum_rh

@@ -706,3 +706,65 @@ tests:
       dev.set_oversampling(temperature=OSRS_X1, pressure=OSRS_X1, humidity=OSRS_X1)
     expect_true: true
     mode: [mock]
+
+  # ----- Temperature calibration (steami_config) -----
+
+  - name: "Temperature gain and offset default to identity"
+    action: script
+    script: |
+      result = dev._temp_gain == 1.0 and dev._temp_offset == 0.0
+    expect_true: true
+    mode: [mock]
+
+  - name: "Temperature calibration offset lowers every temperature path by 2.0"
+    action: script
+    script: |
+      base_t = dev.temperature()
+      base_p = dev.pressure_hpa()
+      base_h = dev.humidity()
+      dev._temp_gain = 1.0
+      dev._temp_offset = -2.0
+      t = dev.temperature()
+      rt, rp, rh = dev.read()
+      result = (
+          abs(t - (base_t - 2.0)) < 1e-6
+          and abs(rt - (base_t - 2.0)) < 1e-6
+          and abs(dev.pressure_hpa() - base_p) < 1e-6
+          and abs(dev.humidity() - base_h) < 1e-6
+          and abs(rp - base_p) < 1e-6
+          and abs(rh - base_h) < 1e-6
+      )
+      dev._temp_gain = 1.0
+      dev._temp_offset = 0.0
+    expect_true: true
+    mode: [mock]
+
+  - name: "Temperature calibration gain scales the factory temperature"
+    action: script
+    script: |
+      base_t = dev.temperature()
+      dev._temp_gain = 1.1
+      dev._temp_offset = 0.5
+      t = dev.temperature()
+      result = abs(t - (1.1 * base_t + 0.5)) < 1e-6
+      dev._temp_gain = 1.0
+      dev._temp_offset = 0.0
+    expect_true: true
+    mode: [mock]
+
+  - name: "Temperature calibration applies to read_one_shot"
+    action: script
+    script: |
+      base_t, base_p, base_h = dev.read_one_shot()
+      dev._temp_gain = 1.0
+      dev._temp_offset = -2.0
+      t, p, h = dev.read_one_shot()
+      result = (
+          abs(t - (base_t - 2.0)) < 1e-6
+          and abs(p - base_p) < 1e-6
+          and abs(h - base_h) < 1e-6
+      )
+      dev._temp_gain = 1.0
+      dev._temp_offset = 0.0
+    expect_true: true
+    mode: [mock]
