@@ -7,6 +7,7 @@ _SENSOR_KEYS = {
     "ism330dl": "ism",
     "wsen_hids": "hid",
     "wsen_pads": "pad",
+    "bme280": "bme",
 }
 
 # Reverse map: short key -> sensor name.
