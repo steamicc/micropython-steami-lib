@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [0.27.1](https://github.com/steamicc/micropython-steami-lib/compare/v0.27.0...v0.27.1) (2026-11-25)
+
+
+### Bug Fixes
+
+* **lis2mdl:** Make the flat heading clockwise from north. ([#435](https://github.com/steamicc/micropython-steami-lib/issues/435)) ([3684706](https://github.com/steamicc/micropython-steami-lib/commit/36847065fec35134ba79ffa2786b01cb867c1fcf)), closes [#434](https://github.com/steamicc/micropython-steami-lib/issues/434)
+
 # [0.27.0](https://github.com/steamicc/micropython-steami-lib/compare/v0.26.0...v0.27.0) (2026-11-25)
 
 
