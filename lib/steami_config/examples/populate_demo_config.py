@@ -14,7 +14,7 @@ bridge = DaplinkBridge(i2c)
 config = SteamiConfig(bridge)
 
 # Board info
-config.board_revision = 3
+config.board_revision = 131  # series V1c (schematic index C1)
 config.board_name = "STeaMi Demo Board"
 
 # Temperature calibration (example values)

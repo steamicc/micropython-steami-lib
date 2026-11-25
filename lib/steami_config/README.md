@@ -46,11 +46,27 @@ config.save()   # internal dict -> JSON -> config zone
 
 ```python
 config.board_revision          # -> int or None
-config.board_revision = 3
+config.board_revision = 131    # series V1c (schematic index C1)
 
 config.board_name              # -> str or None
 config.board_name = "STeaMi-01"
 ```
+
+### Board revision code
+
+`board_revision` is a three-digit decimal code, written at the factory:
+
+| Digit    | Meaning         | Values                                                  |
+| -------- | --------------- | ------------------------------------------------------- |
+| hundreds | generation      | 1 = V1                                                  |
+| tens     | release         | 1 = a, 2 = b, 3 = c                                     |
+| units    | schematic index | 0 = prototype (A, B, C), 1 = series (A1, B1, C1)        |
+
+So A = 110, A1 = 111, B = 120, B1 = 121, C = 130, C1 = 131. Any other value
+(for example the `3` written by older examples) is not a valid code. Boards
+already in classrooms have no code yet: detect the release from the sensors
+instead (BME280 on V1c; WSEN-HIDS, WSEN-PADS and APDS-9960 on V1a/V1b). The
+same code is used by the Arduino library and documented on the STeaMi wiki.
 
 ---
 
@@ -174,12 +190,12 @@ config.increment_boot_count()
 Data is stored as compact JSON to fit within 1 KB:
 
 ```json
-{"rev":3,"name":"STeaMi-01","tc":{"hts":{"g":1.0,"o":-0.5}},"cm":{"hx":12.3,"hy":-5.1,"hz":0.8,"sx":1.01,"sy":0.98,"sz":1.0},"ca":{"ox":0.01,"oy":-0.02,"oz":0.03},"bc":0}
+{"rev":131,"name":"STeaMi-01","tc":{"hts":{"g":1.0,"o":-0.5}},"cm":{"hx":12.3,"hy":-5.1,"hz":0.8,"sx":1.01,"sy":0.98,"sz":1.0},"ca":{"ox":0.01,"oy":-0.02,"oz":0.03},"bc":0}
 ```
 
 | Key | Content |
 | --- | ------- |
-| `rev` | Board revision (int) |
+| `rev` | Board revision code (int, see [Board revision code](#board-revision-code)) |
 | `name` | Board name (str) |
 | `tc` | Temperature calibration dict |
 | `tc.<key>.g` | Gain factor |
