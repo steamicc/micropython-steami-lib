@@ -14,6 +14,19 @@ def print_kv(label, value):
     print("{:<16} {}".format(label + ":", value))
 
 
+def describe_revision(rev):
+    """Decode the board revision code: generation, release, schematic index."""
+    generation = rev // 100
+    release = (rev // 10) % 10
+    index = rev % 10
+    if not 100 <= rev <= 999 or generation != 1 or not 1 <= release <= 3:
+        return "{} (unknown code)".format(rev)
+    name = "V1" + "abc"[release - 1]
+    if index == 0:
+        return "{} ({}, prototype)".format(rev, name)
+    return "{} ({}, index {})".format(rev, name, index)
+
+
 i2c = I2C(1)
 bridge = DaplinkBridge(i2c)
 config = SteamiConfig(bridge)
@@ -30,7 +43,7 @@ print_section("Board info")
 rev = config.board_revision
 name = config.board_name
 
-print_kv("Board revision", rev if rev is not None else "(not set)")
+print_kv("Board revision", describe_revision(rev) if rev is not None else "(not set)")
 print_kv("Board name", name if name is not None else "(not set)")
 print()
 
