@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [0.27.0](https://github.com/steamicc/micropython-steami-lib/compare/v0.26.0...v0.27.0) (2026-11-25)
+
+
+### Features
+
+* **steami_config:** Add the bme calibration key for the BME280. ([#433](https://github.com/steamicc/micropython-steami-lib/issues/433)) ([f882e6f](https://github.com/steamicc/micropython-steami-lib/commit/f882e6fdc9a2a24e61e13d6c4c0c66ebd07f0b4e))
+
 # [0.26.0](https://github.com/steamicc/micropython-steami-lib/compare/v0.25.1...v0.26.0) (2026-09-29)
 
 
