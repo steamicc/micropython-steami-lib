@@ -1,6 +1,7 @@
 """
 Heading that works even when the board is tilted.
 Combine heading_with_tilt_compensation() with the ISM330DL accelerometer.
+Note: the tilt-compensated heading keeps the old, unverified axis convention and may differ from heading_flat_only().
 Show heading + pitch/roll. Demonstrates cross-sensor fusion (magnetometer + accelerometer).
 """
 

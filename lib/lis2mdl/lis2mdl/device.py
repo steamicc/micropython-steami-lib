@@ -174,7 +174,7 @@ class LIS2MDL(object):
     def set_declination(self, deg: float):
         self._declination_deg = float(deg)
 
-    # (remember to correct your heading_flat_only with atan2(y, x) then + offsets)
+    # (heading_flat_only uses atan2(-x, y) on the calibrated X/Y, then adds offsets)
 
     def _write_reg(self, reg, data):
         # Write a byte to a specific register.
@@ -515,8 +515,10 @@ class LIS2MDL(object):
 
     @staticmethod
     def _normalize_deg(a):
-        a = a % 360.0
-        return a if a >= 0 else a + 360.0
+        full_turn = 360.0
+        a = a % full_turn
+        # a tiny negative angle can round to exactly 360.0: never return it
+        return 0.0 if a >= full_turn else a
 
     def _apply_heading_offsets(self, angle_deg):
         angle_deg = angle_deg + self._heading_offset_deg + self._declination_deg
@@ -546,7 +548,9 @@ class LIS2MDL(object):
 
     def heading_from_vectors(self, x, y, z, calibrated=True):
         """
-        Computes the angle (0..360°) from a triplet.
+        Computes the flat heading (0..360°, never 360), clockwise from north.
+        Board flat, screen up: the top of the screen (side opposite the USB
+        connector) is the reference direction.
         - calibrated=True: applies offset/scale per axis (recommended)
         - flat only (uses XY)
         """
@@ -554,8 +558,9 @@ class LIS2MDL(object):
         if calibrated:
             x = (x - self.x_off) / (self.x_scale or 1.0)
             y = (y - self.y_off) / (self.y_scale or 1.0)
-        # IMPORTANT: atan2(Y, X)
-        ang = math.degrees(math.atan2(x, y))  # atan2(Y, X) for compass heading (Y is forward, X is right)
+        # Clockwise from north (measured on a V1c, issue #434): atan2(-X, Y),
+        # with Y towards the top of the screen. North -> 0, east -> 90.
+        ang = math.degrees(math.atan2(-x, y))
         ang = self._apply_heading_offsets(ang)
         return self._filter_heading(ang)
 
@@ -571,9 +576,14 @@ class LIS2MDL(object):
         """
         Tilt-compensated compass (if an accelerometer is available).
         read_accel() must return (ax, ay, az) ~g.
+
+        Note: this keeps the old, unverified axis convention (atan2(yh, xh)).
+        It has not been checked on hardware and may differ from the heading
+        returned by heading_flat_only() / heading_from_vectors().
         """
 
         x, y, z = self.magnetic_field()
+        # NOTE: formula and axes not verified on hardware (see docstring).
         # 3D calibration
         x = (x - self.x_off) / (self.x_scale or 1.0)
         y = (y - self.y_off) / (self.y_scale or 1.0)
@@ -595,11 +605,14 @@ class LIS2MDL(object):
         return self._filter_heading(ang)
 
     def direction_label(self, angle=None):
-        """Returns N/NE/E/... ; if angle=None, reads heading_flat_only()."""
+        """Returns N/NE/E/... ; if angle=None, reads heading_flat_only().
+
+        Sectors are centred on the points: "N" covers [337.5, 22.5).
+        """
         if angle is None:
             angle = self.heading_flat_only()
-        dirs = ["N", "NE", "E", "SE", "S", "SW", "W", "NW", "N"]
-        idx = int((angle) // 45)
+        dirs = ["N", "NE", "E", "SE", "S", "SW", "W", "NW"]
+        idx = int((angle + 22.5) // 45) % 8
         return dirs[idx]
 
     ##

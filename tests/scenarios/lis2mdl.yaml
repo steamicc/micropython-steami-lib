@@ -391,6 +391,48 @@ tests:
     expect_true: true
     mode: [mock]
 
+  - name: "heading_from_vectors is clockwise from north (flat)"
+    action: script
+    script: |
+      dev.calibrate_reset()
+      dev.set_heading_offset(0)
+      dev.set_declination(0)
+      dev.set_heading_filter(0)
+      cases = [((0, 1, 0), 0), ((-1, 0, 0), 90), ((0, -1, 0), 180), ((1, 0, 0), 270)]
+      ok = True
+      for (x, y, z), expected in cases:
+          h = dev.heading_from_vectors(x, y, z)
+          if abs(h - expected) > 0.01:
+              ok = False
+      result = ok
+    expect_true: true
+    mode: [mock]
+
+  - name: "direction_label uses centred sectors"
+    action: script
+    script: |
+      cases = [(350, "N"), (10, "N"), (30, "NE"), (337.4, "NW"), (337.6, "N"),
+               (22.4, "N"), (22.6, "NE"), (359.99, "N"), (0, "N"), (90, "E"),
+               (180, "S"), (270, "W")]
+      result = all(dev.direction_label(a) == e for a, e in cases)
+    expect_true: true
+    mode: [mock]
+
+  - name: "heading never reaches 360 for a tiny negative angle"
+    action: script
+    script: |
+      dev.calibrate_reset()
+      dev.set_heading_offset(0)
+      dev.set_declination(0)
+      dev.set_heading_filter(0)
+      # atan2(-x, y) is a tiny negative angle for x = 1e-30 -> -0.0 -> 360.0 with a plain modulo
+      h = dev.heading_from_vectors(1e-30, 1e-4, 0)
+      dev.set_heading_offset(-1e-20)
+      h2 = dev.heading_from_vectors(0, 1, 0)
+      result = 0 <= h < 360 and 0 <= h2 < 360
+    expect_true: true
+    mode: [mock]
+
   - name: "Fresh magnitude after power down"
     action: script
     script: |
