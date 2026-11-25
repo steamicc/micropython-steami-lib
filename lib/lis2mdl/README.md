@@ -74,6 +74,15 @@ heading = mag.heading_flat_only()
 print("Heading: {:.1f}° {}".format(heading, mag.direction_label(heading)))
 ```
 
+The heading is in degrees, **clockwise from north**, in `[0, 360)` (never exactly 360).
+It is measured with the board flat, screen up: the top of the screen (the side opposite the
+USB connector) is the pointing direction. North is 0°, east 90°, south 180°, west 270°.
+It is computed as `atan2(-x, y)` on the calibrated X and Y axes, so run a calibration first
+(see below).
+
+`direction_label()` uses sectors centred on each point: `"N"` covers 337.5° to 22.5°,
+`"NE"` 22.5° to 67.5°, and so on.
+
 ### With tilt compensation
 
 Requires a function returning accelerometer data `(ax, ay, az)` in g:
@@ -84,6 +93,10 @@ def read_accel():
 
 heading = mag.heading_with_tilt_compensation(read_accel)
 ```
+
+> **Note:** `heading_with_tilt_compensation()` keeps the previous axis convention, which has not been
+> verified on hardware. It may differ from `heading_flat_only()`; use the flat heading when the
+> board is held level.
 
 ---
 
@@ -207,7 +220,7 @@ print("Register dump:", regs)
 | `magnetic_field_raw()`                | Raw sensor values (int16)      |
 | `magnetic_field_ut()`                 | Magnetic field in µT           |
 | `calibrated_field()`    | Calibrated and normalized data |
-| `heading_flat_only()`              | Flat compass heading           |
+| `heading_flat_only()`              | Flat compass heading (clockwise from north) |
 | `heading_with_tilt_compensation()` | Tilt-corrected heading         |
 | `temperature()`             | Read relative temperature      |
 | `power_on()` / `power_off()`      | Power management               |
