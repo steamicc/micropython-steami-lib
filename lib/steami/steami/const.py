@@ -29,6 +29,9 @@ class Chip:
     LIS2MDL = "LIS2MDL"
     BQ27441 = "BQ27441"
     MCP23009E = "MCP23009E"
+    # Screens, on the SPI bus.
+    SSD1327 = "SSD1327"
+    GC9A01 = "GC9A01"
 
 
 class Function:
@@ -47,6 +50,7 @@ class Function:
     GESTURE = "gesture"
     BATTERY = "battery"
     BUTTONS = "buttons"
+    SCREEN = "screen"
 
 
 class Status:
@@ -57,6 +61,7 @@ class Status:
     NOT_RESPONDING = "not responding"
     NOT_ON_THIS_BOARD = "not on this board"
     UNKNOWN_BOARD = "unknown board"
+    NO_MEMORY = "no memory"
 
 
 class Origin:
@@ -68,12 +73,14 @@ class Origin:
     PROBE = "probe"
 
 
-# Message codes, as in Arduino (no E03, E30 or E31 here).
+# Message codes, as in Arduino (no E03 here).
 E_UNKNOWN_BOARD = "E01"
 E_UNKNOWN_REVISION = "E02"
 E_NOT_ANSWERING = "E10"
 E_RELEASE_CONTRADICTED = "E11"
 E_NOT_ON_THIS_BOARD = "E20"
+E_SCREEN_UNKNOWN_BOARD = "E30"
+E_NO_MEMORY = "E31"
 
 # LIS2MDL min/max calibration: sampling rate and the largest sample count.
 # After switching the accelerometer range, wait for two samples at 104 Hz so
@@ -150,6 +157,7 @@ _ROUTES = {
     Function.GESTURE: ((Chip.APDS9960,), (), (Chip.APDS9960,)),
     Function.BATTERY: ((Chip.BQ27441,),) * 3,
     Function.BUTTONS: ((Chip.MCP23009E,),) * 3,
+    Function.SCREEN: ((Chip.SSD1327,), (Chip.GC9A01,), ()),
 }
 
 

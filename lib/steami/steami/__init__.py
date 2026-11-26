@@ -26,6 +26,7 @@ _SUBMODULES = {
     "Color": "color",
     "Gesture": "gesture",
     "Buttons": "buttons",
+    "Screen": "screen",
 }
 
 
