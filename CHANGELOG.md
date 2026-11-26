@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [0.27.2](https://github.com/steamicc/micropython-steami-lib/compare/v0.27.1...v0.27.2) (2026-11-26)
+
+
+### Bug Fixes
+
+* **ci:** Attach the firmware to a draft release, then publish it. ([#440](https://github.com/steamicc/micropython-steami-lib/issues/440)) ([ad7c787](https://github.com/steamicc/micropython-steami-lib/commit/ad7c7878ba38b66d55b28d93a655935dde006a62)), closes [#439](https://github.com/steamicc/micropython-steami-lib/issues/439)
+
 ## [0.27.1](https://github.com/steamicc/micropython-steami-lib/compare/v0.27.0...v0.27.1) (2026-11-25)
 
 
