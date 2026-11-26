@@ -281,9 +281,9 @@ silences them, and `Steami.last_error()` returns the last one.
 * `Screen` is `SteamiScreen`, with the `steami_screen` widgets. Its frame is
   16 colours (28 800 bytes on V1c) instead of RGB565 (115 200 bytes), so E31
   gives that size.
-* Without a screen, `width` and `height` are 128 (unknown release) or the
-  panel's size (not enough RAM), where Arduino gives 0: the widgets need a
-  size to lay out.
+* On an unknown release, `width` and `height` are 128 (the default size of
+  `steami_screen`), where Arduino gives 0: the widgets need a size to lay
+  out. When the frame does not fit in RAM, both give the panel's size.
 * A screen that did not fit in RAM is tried again by the next `begin()` of a
   new `Screen` or by `Steami.display()`; Arduino keeps the failure until
   `Steami.end()`.
