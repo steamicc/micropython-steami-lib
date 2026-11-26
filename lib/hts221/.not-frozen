@@ -1,0 +1,1 @@
+Not frozen in the STeaMi firmware: no released board has an HTS221 (the chip at 0x5F is a WSEN-HIDS, see steami).
