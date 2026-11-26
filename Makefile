@@ -119,7 +119,15 @@ micropython-update: $(MPY_DIR) ## Update the MicroPython clone and board-specifi
 	git -C $(CURDIR)/$(MPY_DIR) fetch origin
 	git -C $(CURDIR)/$(MPY_DIR) checkout $(MICROPYTHON_BRANCH)
 	git -C $(CURDIR)/$(MPY_DIR) checkout -- lib/micropython-steami-lib
-	git -C $(CURDIR)/$(MPY_DIR) pull --ff-only
+	@# The firmware branch can be rewritten (rebased on a new MicroPython
+	@# release), so a fast-forward is not always possible.
+	@if git -C $(CURDIR)/$(MPY_DIR) merge-base --is-ancestor HEAD origin/$(MICROPYTHON_BRANCH); then \
+		git -C $(CURDIR)/$(MPY_DIR) merge --ff-only origin/$(MICROPYTHON_BRANCH); \
+	else \
+		echo "origin/$(MICROPYTHON_BRANCH) was rewritten. Moving $(MICROPYTHON_BRANCH) to it."; \
+		echo "Previous HEAD: $$(git -C $(CURDIR)/$(MPY_DIR) rev-parse HEAD) (also in git reflog)."; \
+		git -C $(CURDIR)/$(MPY_DIR) reset --keep origin/$(MICROPYTHON_BRANCH); \
+	fi
 	@echo "Updating required submodules for $(BOARD)..."
 	$(MAKE) -C $(STM32_DIR) BOARD=$(BOARD) submodules
 
