@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [0.29.0](https://github.com/steamicc/micropython-steami-lib/compare/v0.28.2...v0.29.0) (2026-11-26)
+
+
+### Features
+
+* **steami:** Expose the release version in the firmware. ([#453](https://github.com/steamicc/micropython-steami-lib/issues/453)) ([12a4ce0](https://github.com/steamicc/micropython-steami-lib/commit/12a4ce086899d3758ddb9d8f2c7e92c28fd0d13d)), closes [#452](https://github.com/steamicc/micropython-steami-lib/issues/452)
+
 ## [0.28.2](https://github.com/steamicc/micropython-steami-lib/compare/v0.28.1...v0.28.2) (2026-11-26)
 
 
