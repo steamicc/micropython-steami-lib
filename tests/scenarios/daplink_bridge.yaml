@@ -79,6 +79,47 @@ tests:
     expect_true: true
     mode: [mock]
 
+  - name: "Config zone present"
+    action: script
+    script: |
+      i2c.clear_write_log()
+      result = dev.has_config_zone() is True and (0x20, b"\x00\x00") in i2c.get_write_log()
+    expect_true: true
+    mode: [mock]
+
+  - name: "Config zone absent (old firmware)"
+    action: script
+    script: |
+      i2c.set_register_sequence(0x81, [b"\x00", b"\x80"])
+      result = dev.has_config_zone() is False
+    expect_true: true
+    mode: [mock]
+
+  - name: "Bridge still busy is not cached"
+    action: script
+    script: |
+      # Idle before the probe, then busy at every later read.
+      i2c._registers[0x80] = b"\x80"
+      i2c.clear_write_log()
+      i2c.set_register_sequence(0x80, [b"\x00"])
+      first = dev.has_config_zone()
+      i2c.set_register_sequence(0x80, [b"\x00"])
+      second = dev.has_config_zone()
+      probes = [e for e in i2c.get_write_log() if e[0] == 0x20]
+      result = first is False and second is False and len(probes) == 2
+    expect_true: true
+    mode: [mock]
+
+  - name: "Config zone result cached"
+    action: script
+    script: |
+      first = dev.has_config_zone()
+      i2c.clear_write_log()
+      second = dev.has_config_zone()
+      result = first is True and second is True and i2c.get_write_log() == []
+    expect_true: true
+    mode: [mock]
+
   # ----- Hardware -----
 
   - name: "Status register readable"

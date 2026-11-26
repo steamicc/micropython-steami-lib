@@ -60,6 +60,17 @@ Returns `True` if the bridge is currently busy, otherwise `False`.
 
 The config zone is a **1 KB persistent storage area** in the STM32F103 internal flash. It is separate from the external flash file storage and survives `clear_flash()` operations.
 
+### `has_config_zone()`
+
+```python
+if bridge.has_config_zone():
+    bridge.write_config("board_rev=3")
+```
+
+Return `True` when the DAPLink firmware has the config zone. Call it before any other config command: old DAPLink firmwares do not have the zone and lock up on config commands.
+
+The probe asks for flash sector 0 with a 2-byte sector number. Firmwares without the zone only handle a 1-byte number and flag the request as failed. The result is cached once it is known (`True` or `False`), so the probe runs once. A bridge that cannot be probed (busy, no answer) returns `False` without caching, so the next call probes again.
+
 ### `clear_config()`
 
 ```python

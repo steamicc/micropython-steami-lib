@@ -3,11 +3,14 @@ from time import sleep_ms
 from daplink_bridge.const import (
     CMD_CLEAR_CONFIG,
     CMD_READ_CONFIG,
+    CMD_READ_SECTOR,
     CMD_WHO_AM_I,
     CMD_WRITE_CONFIG,
     CONFIG_SIZE,
     DAPLINK_BRIDGE_DEFAULT_ADDR,
     MAX_WRITE_CHUNK,
+    PROBE_SETTLE_MS,
+    PROBE_TIMEOUT_MS,
     REG_ERROR,
     REG_STATUS,
     SECTOR_SIZE,
@@ -22,6 +25,8 @@ class DaplinkBridge(object):
         self.i2c = i2c
         self.address = address
         self._buffer_1 = bytearray(1)
+        # None = not probed yet, then True / False (see has_config_zone).
+        self._config_zone = None
 
     # --------------------------------------------------
     # Low level I2C
@@ -87,6 +92,45 @@ class DaplinkBridge(object):
     # --------------------------------------------------
     # Config zone (1 KB persistent storage in F103 internal flash)
     # --------------------------------------------------
+
+    def has_config_zone(self):
+        """Return True if the DAPLink firmware has the config zone.
+
+        Firmwares without the zone lock up on the config commands, so
+        call this before using them. The probe runs once and its result
+        is cached. A bridge that cannot be probed (busy, no answer)
+        returns False without caching, so the next call probes again.
+        """
+        if self._config_zone is None:
+            result = self._probe_config_zone()
+            if result is not None:
+                self._config_zone = result
+            return bool(result)
+        return self._config_zone
+
+    def _probe_config_zone(self):
+        """Probe the config zone: True, False, or None if unknown.
+
+        Ask for flash sector 0 with a 2-byte sector number. Firmwares
+        without the zone only handle a 1-byte number and flag the
+        request as failed; newer ones read it without error.
+        """
+        try:
+            self._wait_busy(PROBE_TIMEOUT_MS)
+            self._error()  # reading the error register clears it
+            self._write_reg(CMD_READ_SECTOR, b"\x00\x00")
+            # The failure is only visible in the error register until the
+            # next command, so read it before anything else, then check
+            # that the bridge is idle (the command has run).
+            sleep_ms(PROBE_SETTLE_MS)
+            err = self._error()
+            status = self._status()
+            if status & STATUS_BUSY:
+                self._wait_busy(PROBE_TIMEOUT_MS)
+                return None
+        except OSError:
+            return None
+        return err == 0
 
     def clear_config(self):
         """Erase the 1 KB config zone."""
