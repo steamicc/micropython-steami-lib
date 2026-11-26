@@ -1,6 +1,6 @@
 # The V1c screen in MicroPython (GC9A01) — design
 
-Status: waiting for approval.
+Status: approved on 2026-11-26.
 
 ## Intent
 
