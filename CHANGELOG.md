@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [0.28.0](https://github.com/steamicc/micropython-steami-lib/compare/v0.27.3...v0.28.0) (2026-11-26)
+
+
+### Features
+
+* **steami:** Add board detection and function classes. ([#447](https://github.com/steamicc/micropython-steami-lib/issues/447)) ([6d34fbd](https://github.com/steamicc/micropython-steami-lib/commit/6d34fbd7bc1365b24f28c125a36d0f4bba74bd60))
+
 ## [0.27.3](https://github.com/steamicc/micropython-steami-lib/compare/v0.27.2...v0.27.3) (2026-11-26)
 
 ## [0.27.2](https://github.com/steamicc/micropython-steami-lib/compare/v0.27.1...v0.27.2) (2026-11-26)
