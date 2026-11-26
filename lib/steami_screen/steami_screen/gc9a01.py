@@ -31,6 +31,8 @@ _PALETTE = (
     (0, 0, 128),  # 15 DARK_BLUE
 )
 
+# Bounded: a program sweeping gradients must not fill the heap.
+_CACHE_MAX = 64
 _cache = {}
 
 
@@ -56,6 +58,8 @@ def rgb_to_index(color):
             if dist < best_dist:
                 best = i
                 best_dist = dist
+        if len(_cache) >= _CACHE_MAX:
+            _cache.clear()
         index = _cache[color] = best
     return index
 

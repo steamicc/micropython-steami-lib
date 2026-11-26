@@ -5,6 +5,7 @@ palette indexes of the gc9a01 driver. Pixel tests run on the real driver
 frame (GS4_HMSB) built on a FakeSPI; forwarding tests use a recording raw.
 """
 
+import importlib
 import sys
 
 import pytest
@@ -12,26 +13,6 @@ import pytest
 from tests.fake_machine import FakePin, FakeSPI
 from tests.fake_machine.font_petme128 import FONT_PETME128_8X8
 from tests.runner.executor import cleanup_driver, load_driver_mock
-
-# Palette of the global constraints (index: RGB).
-PALETTE = (
-    (0, 0, 0),
-    (51, 51, 51),
-    (102, 102, 102),
-    (153, 153, 153),
-    (187, 187, 187),
-    (255, 255, 255),
-    (119, 255, 119),
-    (255, 85, 85),
-    (85, 85, 255),
-    (255, 255, 85),
-    (85, 255, 255),
-    (255, 85, 255),
-    (255, 165, 0),
-    (0, 128, 0),
-    (128, 0, 0),
-    (0, 0, 128),
-)
 
 # Named colours of steami_screen and their palette index.
 NAMED = {
@@ -54,13 +35,18 @@ NAMED = {
 }
 
 
+def driver_palette():
+    """PALETTE of the gc9a01 driver (the single source of truth)."""
+    return tuple(map(tuple, importlib.import_module("gc9a01.const").PALETTE))
+
+
 def nearest(rgb):
     """Index of the palette entry nearest to rgb (squared RGB distance)."""
-    best = min(
+    palette = driver_palette()
+    return min(
         range(16),
-        key=lambda i: sum((a - b) ** 2 for a, b in zip(PALETTE[i], rgb)),
+        key=lambda i: sum((a - b) ** 2 for a, b in zip(palette[i], rgb)),
     )
-    return best
 
 
 class RecordingRaw:
@@ -170,9 +156,41 @@ def test_legacy_int_is_clamped_to_the_grey4_range(adapter_mod):
     assert adapter_mod.rgb_to_index(-3) == 0
 
 
-def test_mapping_is_cached(adapter_mod):
+def test_adapter_palette_matches_the_driver_palette(adapter_mod):
+    # The adapter keeps its own copy (it must not import gc9a01): this test
+    # catches any drift from gc9a01.const.PALETTE.
+    assert driver_palette() == adapter_mod._PALETTE
+    assert len(adapter_mod._PALETTE) == 16
+
+
+def test_named_colours_are_the_driver_palette_entries(adapter_mod):
+    palette = driver_palette()
+    for rgb, index in NAMED.values():
+        assert palette[index] == rgb
+
+
+def test_adapter_does_not_import_the_driver(adapter_mod):
+    import ast
+    import inspect
+
+    for node in ast.walk(ast.parse(inspect.getsource(adapter_mod))):
+        if isinstance(node, ast.Import):
+            assert not any(a.name.split(".")[0] == "gc9a01" for a in node.names)
+        if isinstance(node, ast.ImportFrom):
+            assert (node.module or "").split(".")[0] != "gc9a01"
+
+
+def test_mapping_is_repeatable_and_cached(adapter_mod):
     first = adapter_mod.rgb_to_index((200, 100, 50))
+    assert (200, 100, 50) in adapter_mod._cache
     assert adapter_mod.rgb_to_index((200, 100, 50)) == first
+
+
+def test_cache_stays_bounded_and_results_stay_correct(adapter_mod):
+    for n in range(1000):
+        color = (n % 256, (n * 7) % 256, (n * 13) % 256)
+        assert adapter_mod.rgb_to_index(color) == nearest(color)
+        assert len(adapter_mod._cache) <= adapter_mod._CACHE_MAX
 
 
 # ----- Forwarding -----
