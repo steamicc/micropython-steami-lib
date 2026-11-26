@@ -247,7 +247,7 @@ The legacy short names (`make firmware`, `make deploy`, etc.) are deprecated and
 
 The MicroPython firmware source is cloned into `.build/micropython-steami/` (gitignored). A symbolic link replaces the submodule `lib/micropython-steami-lib` with your local working directory, so the firmware always includes your latest changes — even uncommitted ones.
 
-Use `make micropython-firmware` for normal rebuilds from the existing local clone. Use `make micropython-update` only when you want to refresh the `micropython-steami` checkout itself or resync the board-specific submodules before rebuilding.
+Use `make micropython-firmware` for normal rebuilds from the existing local clone. Use `make micropython-update` only when you want to refresh the `micropython-steami` checkout itself or resync the board-specific submodules before rebuilding. If the firmware branch was rewritten upstream (for example, rebased on a new MicroPython release), `make micropython-update` moves the local branch to the new one and prints the previous commit, which stays in `git reflog`.
 
 All these tools are included in the dev container. For local development, see the [Prerequisites](#prerequisites) section.
 
