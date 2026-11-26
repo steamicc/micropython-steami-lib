@@ -13,10 +13,12 @@ from steami import Light
 
 light = Light()
 
-if light.begin():
+light.begin()
+if light.is_available():
     print("Light sensor:", light.chip())
 else:
     print("No light sensor:", light.error())
+    raise SystemExit
 
 while True:
     print("light", light.read())

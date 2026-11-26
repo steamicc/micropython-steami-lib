@@ -75,6 +75,11 @@ E_NOT_ANSWERING = "E10"
 E_RELEASE_CONTRADICTED = "E11"
 E_NOT_ON_THIS_BOARD = "E20"
 
+# LIS2MDL min/max calibration: sampling rate and the largest sample count.
+MAG_CAL_SAMPLES_PER_SECOND = const(50)
+MAG_CAL_SAMPLE_DELAY_MS = const(20)
+MAG_CAL_MAX_SAMPLES = const(65535)
+
 # I2C address of each chip on the internal bus.
 ADDRESS = {
     Chip.BME280: const(0x76),

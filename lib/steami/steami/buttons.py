@@ -124,9 +124,12 @@ class Buttons(Handle):
         for i in range(len(_NAMES)):
             bit = 1 << i
             changed = self._changed_at[i]
-            if (now & bit) == (self._state & bit) or (
-                changed is not None and ticks_diff(t, changed) < DEBOUNCE_MS
-            ):
+            if changed is not None:
+                if ticks_diff(t, changed) < DEBOUNCE_MS:
+                    continue
+                # Forget it: ticks wrap, an old stamp would turn negative.
+                self._changed_at[i] = None
+            if (now & bit) == (self._state & bit):
                 continue
             self._state = (self._state & ~bit) | (now & bit)
             self._changed_at[i] = t

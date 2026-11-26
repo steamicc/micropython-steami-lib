@@ -50,7 +50,10 @@ class Gesture(Handle):
         return ok
 
     def read(self, timeout_ms=0):
-        """The gesture in progress (Gesture.UP, ...), read for at most timeout_ms.
+        """The gesture in progress (Gesture.UP, ...).
+
+        Stops retrying after timeout_ms; one decode can take longer while a
+        hand stays over the sensor.
 
         Gesture.NONE when the sensor has not seen a gesture (it does not wait
         for one to start) or when unavailable. Call it on every loop turn; with

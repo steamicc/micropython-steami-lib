@@ -151,6 +151,8 @@ class _Board(object):
                 self.i2c().writeto(ADDRESS[chip], b"")
                 return driver
             return cls(self.i2c())
+        except (MemoryError, ImportError):
+            raise
         except Exception:
             # Each driver raises its own exception (or OSError) when the chip is absent.
             return None

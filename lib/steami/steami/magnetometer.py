@@ -1,12 +1,16 @@
 import math
 
-from steami.const import Function, Vector
+from steami.const import (
+    MAG_CAL_MAX_SAMPLES,
+    MAG_CAL_SAMPLE_DELAY_MS,
+    MAG_CAL_SAMPLES_PER_SECOND,
+    Function,
+    Vector,
+)
 from steami.handle import NAN, Handle
 
 _ABSENT = Vector(NAN, NAN, NAN)
 _UT_PER_LSB = 0.15  # 1.5 mG/LSB
-_SAMPLES_PER_SECOND = 50
-_SAMPLE_DELAY_MS = 20
 
 
 def calibrate_minmax(driver, seconds):
@@ -17,8 +21,8 @@ def calibrate_minmax(driver, seconds):
     """
     if seconds <= 0:
         return
-    samples = min(int(seconds * _SAMPLES_PER_SECOND), 65535)
-    driver.calibrate_minmax_3d(samples, _SAMPLE_DELAY_MS)
+    samples = min(int(seconds * MAG_CAL_SAMPLES_PER_SECOND), MAG_CAL_MAX_SAMPLES)
+    driver.calibrate_minmax_3d(samples, MAG_CAL_SAMPLE_DELAY_MS)
 
 
 def _field_ut(driver):
