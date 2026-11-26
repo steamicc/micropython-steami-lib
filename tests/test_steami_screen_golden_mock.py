@@ -1,13 +1,18 @@
 """Golden test: the 128 px drawing calls of every steami_screen widget.
 
-The reference JSON was recorded on the SSD1327 code, before the GC9A01
-scaling rule. It proves the 128 px output stays identical.
+The calls are recorded at the raw driver level: a recording raw display is
+wrapped in the real SSD1327Display, inside a Screen. The recorded colours are
+the grey4 ints the panel receives, and the scaled text goes through
+SSD1327Display.draw_scaled_text. The reference JSON was recorded before the
+GC9A01 scaling rule; it proves the 128 px output stays identical.
 
 Regenerate (only on purpose): STEAMI_GOLDEN_WRITE=1 python3 -m pytest <this file>
 """
 
 import json
 import os
+import sys
+import types
 from pathlib import Path
 
 import pytest
@@ -17,8 +22,8 @@ from tests.runner.executor import cleanup_driver, load_driver_mock
 GOLDEN = Path(__file__).parent / "golden" / "steami_screen_128.json"
 
 
-class FakeDisplay:
-    """Records every drawing call (same as tests/scenarios/steami_screen.yaml)."""
+class RawDisplay:
+    """Records every raw drawing call (what an SSD1327 driver would receive)."""
 
     def __init__(self):
         self.calls = []
@@ -45,6 +50,30 @@ class FakeDisplay:
 
     def show(self):
         self.calls.append(("show",))
+
+
+class _GlyphFrameBuffer:
+    """Tiny MONO_HLSB framebuf: text() lights a deterministic pattern per char.
+
+    Test-local on purpose: the shared stub draws no glyph, and this keeps the
+    golden independent of any later stub change.
+    """
+
+    def __init__(self, buffer, width, height, fmt):
+        self.pixels = {}
+
+    def fill(self, col):
+        self.pixels = {}
+
+    def text(self, string, x, y, col=1):
+        code = ord(string[0])
+        for py in range(8):
+            for px in range(8):
+                if (code * (px + 1) + py * 3) % 3 == 0:
+                    self.pixels[(x + px, y + py)] = col
+
+    def pixel(self, x, y, col=None):
+        return self.pixels.get((x, y), 0)
 
 
 AT_POSITIONS = ("N", "NE", "E", "SE", "S", "SW", "W", "NW", "CENTER")
@@ -136,12 +165,17 @@ def _jsonable(value):
 
 
 def record_calls(widget_name):
-    """Replay the scripted calls of one widget on a 128x128 FakeDisplay."""
+    """Replay the scripted calls of one widget on a 128x128 raw display behind SSD1327Display."""
     module, _ = load_driver_mock("steami_screen", None)
     try:
-        display = FakeDisplay()
+        fake_framebuf = types.ModuleType("framebuf")
+        fake_framebuf.MONO_HLSB = 3
+        fake_framebuf.FrameBuffer = _GlyphFrameBuffer
+        sys.modules["framebuf"] = fake_framebuf
+        raw = RawDisplay()
+        display = sys.modules["steami_screen"].SSD1327Display(raw)
         SCRIPTS[widget_name](module.Screen(display))
-        return [_jsonable(call) for call in display.calls]
+        return [_jsonable(call) for call in raw.calls]
     finally:
         cleanup_driver("steami_screen")
 
