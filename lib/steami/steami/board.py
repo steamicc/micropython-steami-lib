@@ -1,5 +1,6 @@
 from steami.const import (
     ADDRESS,
+    CHIPS,
     DRIVERS,
     E_UNKNOWN_BOARD,
     E_UNKNOWN_REVISION,
@@ -24,7 +25,6 @@ _UNKNOWN_REVISION = (
     "the board is detected from its sensors instead."
 )
 
-CHIPS = tuple(DRIVERS)
 _FUNCTIONS = tuple(getattr(Function, n) for n in dir(Function) if not n.startswith("_"))
 _FORCEABLE = (Release.V1A, Release.V1B, Release.V1C)
 
@@ -52,6 +52,7 @@ class _Board(object):
         self._drivers = {}  # chip -> driver, or None when it did not answer
         self._calibration_tried = []
         self._calibration_applied = []
+        self._banner_delivered = False
         self._reported = []
         self._last_error = ""
         self._logger = print
@@ -145,7 +146,10 @@ class _Board(object):
             if chip == Chip.MCP23009E:
                 from machine import Pin
 
-                return cls(self.i2c(), ADDRESS[chip], Pin("RST_EXPANDER", Pin.OUT))
+                driver = cls(self.i2c(), ADDRESS[chip], Pin("RST_EXPANDER", Pin.OUT))
+                # Its constructor makes no transfer: probe the address (ACK).
+                self.i2c().writeto(ADDRESS[chip], b"")
+                return driver
             return cls(self.i2c())
         except Exception:
             # Each driver raises its own exception (or OSError) when the chip is absent.
@@ -255,7 +259,8 @@ class _Board(object):
     def print_info(self):
         """Send the board line, then one line per chip of this release."""
         self.begin()
-        self._log_banner()
+        if not self._banner_delivered:
+            self._log_banner()
         for chip in CHIPS:
             if not any(chip in route(self._release, f) for f in _FUNCTIONS):
                 continue
@@ -376,6 +381,7 @@ class _Board(object):
             text = "detected: {} at 0x{:02X}".format(self._probed_chip, ADDRESS[self._probed_chip])
         else:
             text = "nothing detected"
+        self._banner_delivered = self._logger is not None
         self._deliver("[STeaMi] Board {} ({})".format(name, text))
 
 

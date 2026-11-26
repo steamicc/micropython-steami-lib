@@ -83,6 +83,19 @@ ADDRESS = {
     Chip.MCP23009E: const(0x20),
 }
 
+# Chips in the order of the Arduino enum, for printing.
+CHIPS = (
+    Chip.BME280,
+    Chip.WSEN_HIDS,
+    Chip.WSEN_PADS,
+    Chip.APDS9960,
+    Chip.ISM330DL,
+    Chip.LIS2MDL,
+    Chip.VL53L1X,
+    Chip.BQ27441,
+    Chip.MCP23009E,
+)
+
 # Driver of each chip: (module, class). The module is imported on first claim.
 DRIVERS = {
     Chip.BME280: ("bme280", "BME280"),

@@ -498,8 +498,7 @@ def test_mock_print_info(board_module):
     s.steami.begin("V1c")
     s.lines.clear()
     s.steami.print_info()
-    assert s.lines[0].startswith("[STeaMi] Board V1c")
-    assert s.lines[1:] == [
+    assert s.lines == [
         "BME280 0x76 not tried",
         "ISM330DL 0x6B not tried",
         "LIS2MDL 0x1E not tried",
@@ -520,3 +519,24 @@ def test_mock_print_info_not_responding(board_module):
     s.lines.clear()
     s.steami.print_info()
     assert "LIS2MDL 0x1E not responding" in s.lines
+
+
+def test_mock_print_info_banner_not_delivered(board_module):
+    s = Setup(board_module)
+    s.steami.set_logger(None)
+    s.steami.begin("V1c")
+    assert s.lines == []
+    s.steami.set_logger(s.lines.append)
+    s.steami.print_info()
+    assert s.lines[0].startswith("[STeaMi] Board V1c")
+    assert len(banner(s)) == 1
+    s.steami.print_info()
+    assert len(banner(s)) == 1
+
+
+def test_mock_claim_expander_missing(board_module):
+    s = Setup(board_module, missing=("MCP23009E",))
+    assert s.steami.claim(s.const.Chip.MCP23009E) == s.const.Status.NOT_RESPONDING
+    assert s.steami.mcp23009e() is None
+    s = Setup(board_module)
+    assert s.steami.claim(s.const.Chip.MCP23009E) == s.const.Status.OK
