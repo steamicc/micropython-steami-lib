@@ -43,11 +43,14 @@ def steami(board_module):  # noqa: F811 (the imported fixture)
     """The board module, the const module and the function classes."""
     from steami.accelerometer import Accelerometer
     from steami.battery import Battery
+    from steami.color import Color
     from steami.compass import Compass
     from steami.distance import Distance
+    from steami.gesture import Gesture
     from steami.gyroscope import Gyroscope
     from steami.handle import Handle
     from steami.humidity import Humidity
+    from steami.light import Light
     from steami.magnetometer import Magnetometer
     from steami.pressure import Pressure
     from steami.temperature import Temperature
@@ -65,6 +68,9 @@ def steami(board_module):  # noqa: F811 (the imported fixture)
         "Gyroscope": Gyroscope,
         "Magnetometer": Magnetometer,
         "Compass": Compass,
+        "Light": Light,
+        "Color": Color,
+        "Gesture": Gesture,
     }
 
 
@@ -1042,3 +1048,237 @@ def test_mock_compass_heading_uses_the_calibration(steami, fake_time):
     set_field(s, -50, 100)
     s.steami.lis2mdl().set_calibrate_step(-50, 0, 0, 1, 1, 1)  # the offset cancels x
     assert compass.heading() == pytest.approx(0)
+
+
+# --------------------------
+# Light, Color and Gesture
+# --------------------------
+
+ENABLE = 0x80
+AEN, GEN = 1 << 1, 1 << 6  # ambient light and gesture engines in ENABLE
+
+
+def enable_bits(s):
+    return s.bus._devices[0x39][ENABLE][0]
+
+
+def enable_writes(s):
+    return [w for w in s.bus.get_write_log() if w[:2] == (0x39, ENABLE)]
+
+
+@pytest.fixture
+def apds_time(steami):
+    """The clock and the sleeps of the gesture function and of the APDS-9960 driver."""
+    import apds9960.device
+    import steami.gesture
+
+    clock = [0]
+    saved = (apds9960.device.sleep_ms, steami.gesture.ticks_ms, steami.gesture.ticks_diff)
+    apds9960.device.sleep_ms = lambda ms: None
+    steami.gesture.ticks_ms = lambda: clock[0]
+    steami.gesture.ticks_diff = lambda a, b: a - b
+    yield clock
+    apds9960.device.sleep_ms, steami.gesture.ticks_ms, steami.gesture.ticks_diff = saved
+
+
+def test_mock_light_reads_the_clear_channel(steami):
+    s = board(steami, V1AB)
+    light = steami["Light"]()
+    assert light.read() == 256
+    assert light.chip() == "APDS-9960"
+    assert s.messages() == []
+
+
+def test_mock_color_reads_a_tuple_and_each_channel(steami):
+    board(steami, V1AB)
+    color = steami["Color"]()
+    assert color.read() == (128, 64, 32)
+    assert isinstance(color.read(), tuple)
+    assert (color.red(), color.green(), color.blue()) == (128, 64, 32)
+
+
+def test_mock_light_color_and_gesture_share_one_driver(steami):
+    s = board(steami, V1AB)
+    light, color, gesture = steami["Light"](), steami["Color"](), steami["Gesture"]()
+    assert light.begin() and color.begin() and gesture.begin()
+    assert light._driver() is color._driver() is gesture._driver() is s.steami.apds9960()
+
+
+def test_mock_light_and_color_do_not_turn_the_gesture_engine_on(steami):
+    s = board(steami, V1AB)
+    assert steami["Light"]().read() == 256
+    assert steami["Color"]().read() == (128, 64, 32)
+    assert enable_bits(s) & AEN
+    assert not enable_bits(s) & GEN
+
+
+def test_mock_gesture_begin_enables_its_engine_once_and_keeps_the_light_one(steami):
+    s = board(steami, V1AB)
+    steami["Light"]().read()
+    gesture = steami["Gesture"]()
+    s.bus.clear_write_log()
+    assert gesture.begin() is True
+    assert enable_bits(s) & GEN and enable_bits(s) & AEN
+    written = enable_writes(s)
+    assert written
+    assert gesture.begin() is True
+    assert gesture.read() == steami["Gesture"].NONE
+    assert enable_writes(s) == written
+
+
+def test_mock_light_after_gesture_keeps_the_gesture_engine(steami):
+    s = board(steami, V1AB)
+    assert steami["Gesture"]().begin() is True
+    assert steami["Light"]().read() == 256
+    assert enable_bits(s) & GEN and enable_bits(s) & AEN
+
+
+def test_mock_gesture_constants_are_the_arduino_texts(steami):
+    gesture_cls = steami["Gesture"]
+    assert (gesture_cls.NONE, gesture_cls.UP, gesture_cls.DOWN, gesture_cls.LEFT, gesture_cls.RIGHT) == (
+        "NONE", "UP", "DOWN", "LEFT", "RIGHT",
+    )
+    assert (gesture_cls.NEAR, gesture_cls.FAR) == ("NEAR", "FAR")
+    for text in ("NONE", "LEFT", "RIGHT", "UP", "DOWN", "NEAR", "FAR"):
+        assert gesture_cls.name(getattr(gesture_cls, text)) == text
+    assert gesture_cls.name("sideways") == "NONE"
+
+
+def test_mock_gesture_names_follow_the_driver_directions(steami):
+    import apds9960.const as c
+
+    s = board(steami, V1AB)
+    gesture = steami["Gesture"]()
+    driver = s.steami.apds9960()
+    expected = {
+        c.APDS9960_DIR_NONE: "NONE",
+        c.APDS9960_DIR_LEFT: "LEFT",
+        c.APDS9960_DIR_RIGHT: "RIGHT",
+        c.APDS9960_DIR_UP: "UP",
+        c.APDS9960_DIR_DOWN: "DOWN",
+        c.APDS9960_DIR_NEAR: "NEAR",
+        c.APDS9960_DIR_FAR: "FAR",
+    }
+    assert gesture.begin() is True
+    for direction, text in expected.items():
+        driver.gesture = lambda direction=direction: direction
+        assert gesture.read() == text
+
+
+def test_mock_gesture_default_timeout_reads_once(steami, apds_time):
+    s = board(steami, V1AB)
+    gesture = steami["Gesture"]()
+    driver = s.steami.apds9960()
+    calls = []
+
+    def noise():
+        calls.append(1)
+        apds_time[0] += 10
+        return 0
+
+    driver.gesture = noise
+    driver.is_gesture_available = lambda: True
+    assert gesture.read() == "NONE"
+    assert len(calls) == 1
+
+
+def test_mock_gesture_timeout_bounds_the_retries(steami, apds_time):
+    s = board(steami, V1AB)
+    gesture = steami["Gesture"]()
+    driver = s.steami.apds9960()
+    calls = []
+
+    def noise():
+        calls.append(1)
+        apds_time[0] += 10
+        return 0
+
+    driver.gesture = noise
+    driver.is_gesture_available = lambda: True
+    assert gesture.read(50) == "NONE"
+    assert len(calls) == 5  # 10, 20, 30, 40, 50 ms: the timeout is reached
+
+
+def test_mock_gesture_retries_stop_when_the_chip_holds_no_more_data(steami, apds_time):
+    s = board(steami, V1AB)
+    gesture = steami["Gesture"]()
+    driver = s.steami.apds9960()
+    calls = []
+    driver.gesture = lambda: calls.append(1) or 0
+    driver.is_gesture_available = lambda: False
+    assert gesture.read(1000) == "NONE"
+    assert len(calls) == 1
+
+
+def test_mock_gesture_retry_finds_the_gesture(steami, apds_time):
+    s = board(steami, V1AB)
+    gesture = steami["Gesture"]()
+    driver = s.steami.apds9960()
+    answers = [0, 0, 4]
+    driver.gesture = lambda: answers.pop(0)
+    driver.is_gesture_available = lambda: True
+    assert gesture.read(1000) == "DOWN"
+
+
+@pytest.mark.parametrize("cls", ["Light", "Color", "Gesture"])
+def test_mock_apds_function_is_not_on_a_v1c(steami, cls):
+    s = board(steami)
+    function = steami[cls]()
+    assert function.begin() is False
+    assert function.status() == steami["const"].Status.NOT_ON_THIS_BOARD
+    assert function.error() == "not on this board"
+    assert function.chip() == ""
+    fallback = {
+        "Light": "read() will return 0.",
+        "Color": "read() will return (0, 0, 0).",
+        "Gesture": "read() will return NONE.",
+    }[cls]
+    noun = {"Light": "light", "Color": "colour", "Gesture": "gesture"}[cls]
+    assert s.messages() == [
+        "[STeaMi] {}: this STeaMi is a V1c, it has no {} sensor (APDS-9960 is on V1a/V1b "
+        "only). {} (E20)".format(cls, noun, fallback)
+    ]
+
+
+def test_mock_apds_absence_values_on_a_v1c(steami):
+    s = board(steami)
+    color = steami["Color"]()
+    assert steami["Light"]().read() == 0
+    assert color.read() == (0, 0, 0)
+    assert (color.red(), color.green(), color.blue()) == (0, 0, 0)
+    assert steami["Gesture"]().read(100) == steami["Gesture"].NONE
+    assert len(s.messages()) == 3
+    assert s.bus.get_write_log() == []
+
+
+@pytest.mark.parametrize("cls", ["Light", "Color", "Gesture"])
+def test_mock_apds_function_absent_on_a_v1ab_gives_e10(steami, cls):
+    s = board(steami, V1AB, missing=("APDS-9960",))
+    function = steami[cls]()
+    assert function.begin() is False
+    assert function.error() == "no answer"
+    assert s.messages()[0].startswith("[STeaMi] {}: the APDS-9960 ".format(cls))
+    assert s.messages()[0].endswith("(E10)")
+
+
+def test_mock_apds_failed_reads(steami):
+    s = board(steami, V1AB)
+    light, color, gesture = steami["Light"](), steami["Color"](), steami["Gesture"]()
+    assert light.begin() and color.begin() and gesture.begin()
+    del s.bus._devices[0x39]
+    assert light.read() == 0
+    assert color.read() == (0, 0, 0)
+    assert gesture.read(100) == "NONE"
+
+
+def test_mock_color_failing_channel_gives_all_zeros(steami):
+    s = board(steami, V1AB)
+    color = steami["Color"]()
+    assert color.begin() is True
+
+    def fail():
+        raise OSError("bus")
+
+    s.steami.apds9960().green_light = fail
+    assert color.read() == (0, 0, 0)
+    assert color.blue() == 0
