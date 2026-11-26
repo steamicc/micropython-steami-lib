@@ -12,6 +12,9 @@ It is the MicroPython counterpart of the Arduino library `steami_board`
 (`SteamiTemperature`, `SteamiCompass`, ...), with the same names in snake_case
 and without the `Steami` prefix on the function classes.
 
+`steami.version.VERSION` holds the release of the library frozen into the
+firmware (`"vX.Y.Z"`), or `"dev"` for a local build.
+
 ---
 
 # Dependencies
