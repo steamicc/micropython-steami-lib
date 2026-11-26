@@ -76,6 +76,9 @@ E_RELEASE_CONTRADICTED = "E11"
 E_NOT_ON_THIS_BOARD = "E20"
 
 # LIS2MDL min/max calibration: sampling rate and the largest sample count.
+# After switching the accelerometer range, wait for two samples at 104 Hz so
+# that no sample taken at the old range is read with the new scale.
+ACCEL_SETTLE_MS = const(20)
 MAG_CAL_SAMPLES_PER_SECOND = const(50)
 MAG_CAL_SAMPLE_DELAY_MS = const(20)
 MAG_CAL_MAX_SAMPLES = const(65535)
