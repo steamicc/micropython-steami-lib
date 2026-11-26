@@ -240,7 +240,7 @@ from steami_screen import RED, GREEN, BLUE, YELLOW
 
 Colors are RGB tuples. On SSD1327 they degrade to greyscale automatically.
 
-On the GC9A01 round screen the frame holds 16 colours. `GC9A01Display` maps any RGB tuple to the nearest entry of the driver palette (smallest squared RGB distance) with `rgb_to_index(color)`. A legacy int is a grey4 level: it becomes the grey `level * 17`, then the nearest palette entry.
+On the GC9A01 round screen the frame holds 16 colours: each pixel is a palette index (0-15), not an RGB565 value. `GC9A01Display` maps any RGB tuple to the nearest entry of the driver palette (smallest squared RGB distance) with `steami_screen.gc9a01.rgb_to_index(color)`. A legacy int is a grey4 level: it becomes the grey `level * 17`, then the nearest palette entry.
 
 ---
 
@@ -274,7 +274,7 @@ from steami_screen import rgb_to_gray4, rgb_to_rgb565, rgb_to_rgb8
 | Function | Output |
 |----------|--------|
 | `rgb_to_gray4(color)` | 4-bit greyscale (0-15) for SSD1327 |
-| `rgb_to_rgb565(color)` | 16-bit RGB565 for GC9A01 |
+| `rgb_to_rgb565(color)` | 16-bit RGB565 (a plain helper: the gc9a01 driver takes palette indexes, see `steami_screen.gc9a01.rgb_to_index`) |
 | `rgb_to_rgb8(color)` | RGB tuple pass-through |
 
 All accept int values for backward compatibility.
