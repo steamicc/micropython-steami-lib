@@ -46,8 +46,22 @@ class Handle(object):
       what the reads return instead ("read() will return 0.").
     - ``_driver()`` returns the shared driver, calling ``begin()`` on first
       use, or None when the function is not available.
-    - ``_read(absent, method, *args)`` calls a method of that driver and
-      returns ``absent`` when there is no driver or the read fails.
+    - ``_read(absent, method, *args)`` reads from that driver: ``method`` is
+      the name of a driver method, called with ``args``, or a function called
+      as ``method(driver, *args)`` for reads that combine several driver
+      calls. It returns ``absent`` when there is no driver or when the driver
+      raises (the chip stopped answering). ``TypeError``, ``AttributeError``
+      and ``NameError`` are programming errors and propagate.
+    - A class that must set its chip up once (start ranging, set a range)
+      overrides ``begin()``; ``_driver()`` calls it on first use too::
+
+          def begin(self):
+              if self._status != Status.NOT_STARTED:
+                  return super().begin()
+              ok = super().begin()
+              if ok:
+                  self._driver().start()
+              return ok
 
     Messages are reported under the name of the subclass.
     """
@@ -114,8 +128,14 @@ class Handle(object):
         driver = self._driver()
         if driver is None:
             return absent
+        # Looked up outside the try: a misspelt method name raises AttributeError.
+        call = getattr(driver, method) if isinstance(method, str) else None
         try:
-            return getattr(driver, method)(*args)
+            if call is not None:
+                return call(*args)
+            return method(driver, *args)
+        except (TypeError, AttributeError, NameError):
+            raise  # a programming error, not a chip that stopped answering
         except Exception:
             # Each driver raises its own error when the chip stops answering
             # (OSError, or a class of its own such as WSENHIDSCommunicationError).

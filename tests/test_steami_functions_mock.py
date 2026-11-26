@@ -452,3 +452,66 @@ def test_mock_begin_is_idempotent(steami):
     reads = len(s.reads)
     assert temperature.begin() is True
     assert len(s.reads) == reads
+
+
+# --------------------------------------------------
+# Errors inside reads
+# --------------------------------------------------
+
+
+def probe(steami, method, *args):
+    """A temperature handle whose read() is _read(nan, method, *args)."""
+
+    class Probe(steami["Handle"]):
+        _NOUN = "temperature sensor"
+
+        def __init__(self):
+            super().__init__(steami["const"].Function.TEMPERATURE)
+
+        def read(self):
+            return self._read(float("nan"), method, *args)
+
+    return Probe()
+
+
+def test_mock_read_misspelt_method_raises(steami):
+    board(steami)
+    handle = probe(steami, "temprature")
+    with pytest.raises(AttributeError):
+        handle.read()
+    assert handle.status() == steami["const"].Status.OK
+
+
+def test_mock_read_wrong_argument_count_raises(steami):
+    board(steami)
+    with pytest.raises(TypeError):
+        probe(steami, "temperature", 1).read()
+
+
+def test_mock_read_driver_exception_gives_absent_value(steami):
+    from wsen_hids.exceptions import WSENHIDSError
+
+    s = board(steami, V1AB)
+    humidity = steami["Humidity"]()
+    assert humidity.begin() is True
+    del s.bus._devices[0x5F]
+    # The driver raises its own class, which is not an OSError.
+    with pytest.raises(WSENHIDSError) as info:
+        s.steami.wsen_hids().humidity()
+    assert not isinstance(info.value, OSError)
+    assert math.isnan(humidity.read())
+
+
+def test_mock_read_with_a_function(steami):
+    s = board(steami)
+    assert probe(steami, lambda d, k: d.temperature() * k, 2).read() == pytest.approx(
+        2 * expected("BME280", "temperature")
+    )
+    # Same policy as a method name: driver errors give the absent value...
+    del s.bus._devices[0x76]
+    assert math.isnan(probe(steami, lambda d: d.pressure_hpa()).read())
+    # ...programming errors propagate.
+    with pytest.raises(AttributeError):
+        probe(steami, lambda d: d.no_such_method()).read()
+    with pytest.raises(TypeError):
+        probe(steami, lambda d: d.temperature(), 1).read()
