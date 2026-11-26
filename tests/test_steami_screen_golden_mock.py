@@ -1,0 +1,172 @@
+"""Golden test: the 128 px drawing calls of every steami_screen widget.
+
+The reference JSON was recorded on the SSD1327 code, before the GC9A01
+scaling rule. It proves the 128 px output stays identical.
+
+Regenerate (only on purpose): STEAMI_GOLDEN_WRITE=1 python3 -m pytest <this file>
+"""
+
+import json
+import os
+from pathlib import Path
+
+import pytest
+
+from tests.runner.executor import cleanup_driver, load_driver_mock
+
+GOLDEN = Path(__file__).parent / "golden" / "steami_screen_128.json"
+
+
+class FakeDisplay:
+    """Records every drawing call (same as tests/scenarios/steami_screen.yaml)."""
+
+    def __init__(self):
+        self.calls = []
+        self.width = 128
+        self.height = 128
+
+    def fill(self, color):
+        self.calls.append(("fill", color))
+
+    def pixel(self, x, y, color):
+        self.calls.append(("pixel", x, y, color))
+
+    def text(self, text, x, y, color):
+        self.calls.append(("text", text, x, y, color))
+
+    def line(self, x1, y1, x2, y2, color):
+        self.calls.append(("line", x1, y1, x2, y2, color))
+
+    def fill_rect(self, x, y, w, h, color):
+        self.calls.append(("fill_rect", x, y, w, h, color))
+
+    def rect(self, x, y, w, h, color):
+        self.calls.append(("rect", x, y, w, h, color))
+
+    def show(self):
+        self.calls.append(("show",))
+
+
+AT_POSITIONS = ("N", "NE", "E", "SE", "S", "SW", "W", "NW", "CENTER")
+FACES = ("happy", "sad", "surprised", "sleeping", "angry", "love")
+
+# Each script receives a Screen and draws with fixed arguments.
+SCRIPTS = {
+    "title": lambda s: (s.title("Hello"), s.title("A long title here", color=5)),
+    "value": lambda s: (
+        s.value(23.5),
+        s.value(42, unit="C"),
+        s.value(7, unit="%", label="Hum", color=3),
+        s.value(1, at="W"),
+        s.value(2, at="E", unit="cm"),
+        s.value(3, at="N"),
+        s.value(88, scale=3, y_offset=5),
+        s.value(5, unit="V", y_offset=-10, scale=1),
+    ),
+    "subtitle": lambda s: (
+        s.subtitle("one line"),
+        s.subtitle("first", "second"),
+        s.subtitle("a", "bb", "ccc", color=3),
+        s.subtitle(),
+    ),
+    "bar": lambda s: (
+        s.bar(0),
+        s.bar(50),
+        s.bar(100, y_offset=12, color=5),
+        s.bar(150, max_val=100),
+        s.bar(3, max_val=0),
+    ),
+    "gauge": lambda s: (
+        s.gauge(0),
+        s.gauge(50),
+        s.gauge(100, color=5),
+        s.gauge(-5, min_val=-10, max_val=40),
+        s.gauge(25, arc_width=8),
+        s.gauge(1500, min_val=0, max_val=3000),
+    ),
+    "graph": lambda s: (
+        s.graph([10, 30, 20, 70, 55, 90]),
+        s.graph([5], min_val=0, max_val=10),
+        s.graph([], min_val=0, max_val=2000),
+        s.graph([0, 1000, 2000], min_val=0, max_val=2000, color=5),
+    ),
+    "menu": lambda s: (
+        s.menu(["Temperature", "Humidity", "Pressure"], selected=1),
+        s.menu(["A", "B", "C", "D", "E", "F", "G", "H", "I", "J"], selected=7),
+        s.menu(["Only"], selected=0, color=5),
+    ),
+    "compass": lambda s: (s.compass(0), s.compass(45), s.compass(200, color=5)),
+    "watch": lambda s: (
+        s.watch(10, 10),
+        s.watch(3, 45, 30),
+        s.watch(23, 59, 59, color=5),
+    ),
+    "face_normal": lambda s: [s.face(name) for name in FACES],
+    "face_compact": lambda s: [s.face(name, compact=True, color=5) for name in FACES],
+    "face_bitmap": lambda s: (
+        s.face((0x3C, 0x42, 0xA5, 0x81, 0xA5, 0x99, 0x42, 0x3C)),
+        s.face("unknown"),
+    ),
+    "text_at": lambda s: [s.text("Hi", at=at) for at in AT_POSITIONS],
+    "text_at_scaled": lambda s: [s.text("Hi", at=at, scale=2, color=3) for at in AT_POSITIONS],
+    "text_xy": lambda s: (
+        s.text("xy", at=(10, 20)),
+        s.text("big", at=(30, 40), scale=3, color=5),
+        s.text("", at="N"),
+    ),
+    "line": lambda s: (s.line(0, 0, 127, 127), s.line(10, 20, 100, 20, color=3)),
+    "circle": lambda s: (
+        s.circle(64, 64, 30),
+        s.circle(40, 50, 10, color=3, fill=True),
+        s.circle(100, 100, 0),
+    ),
+    "rect": lambda s: (
+        s.rect(10, 10, 50, 30),
+        s.rect(20, 60, 40, 20, color=3, fill=True),
+    ),
+    "pixel": lambda s: (s.pixel(5, 6), s.pixel(127, 127, 3)),
+    "clear": lambda s: (s.clear(), s.clear(7), s.show()),
+}
+
+
+def _jsonable(value):
+    if isinstance(value, (tuple, list)):
+        return [_jsonable(v) for v in value]
+    return value
+
+
+def record_calls(widget_name):
+    """Replay the scripted calls of one widget on a 128x128 FakeDisplay."""
+    module, _ = load_driver_mock("steami_screen", None)
+    try:
+        display = FakeDisplay()
+        SCRIPTS[widget_name](module.Screen(display))
+        return [_jsonable(call) for call in display.calls]
+    finally:
+        cleanup_driver("steami_screen")
+
+
+def _write_golden():
+    data = {name: record_calls(name) for name in SCRIPTS}
+    GOLDEN.parent.mkdir(parents=True, exist_ok=True)
+    lines = []
+    for name, calls in data.items():
+        body = ",\n".join("  " + json.dumps(call) for call in calls)
+        lines.append(f"{json.dumps(name)}: [\n{body}\n]")
+    GOLDEN.write_text("{\n" + ",\n".join(lines) + "\n}\n")
+
+
+if os.environ.get("STEAMI_GOLDEN_WRITE") == "1":
+    _write_golden()
+
+
+@pytest.mark.parametrize("widget", sorted(SCRIPTS))
+def test_mock_ssd1327_output_unchanged(widget):
+    golden = json.loads(GOLDEN.read_text())
+    calls = record_calls(widget)
+    assert calls, "script drew nothing"
+    assert calls == golden[widget]
+
+
+def test_mock_golden_covers_every_script():
+    assert set(json.loads(GOLDEN.read_text())) == set(SCRIPTS)
