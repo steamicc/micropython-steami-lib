@@ -41,10 +41,14 @@ class Board(Setup):
 @pytest.fixture
 def steami(board_module):  # noqa: F811 (the imported fixture)
     """The board module, the const module and the function classes."""
+    from steami.accelerometer import Accelerometer
     from steami.battery import Battery
+    from steami.compass import Compass
     from steami.distance import Distance
+    from steami.gyroscope import Gyroscope
     from steami.handle import Handle
     from steami.humidity import Humidity
+    from steami.magnetometer import Magnetometer
     from steami.pressure import Pressure
     from steami.temperature import Temperature
 
@@ -57,6 +61,10 @@ def steami(board_module):  # noqa: F811 (the imported fixture)
         "Temperature": Temperature,
         "Humidity": Humidity,
         "Pressure": Pressure,
+        "Accelerometer": Accelerometer,
+        "Gyroscope": Gyroscope,
+        "Magnetometer": Magnetometer,
+        "Compass": Compass,
     }
 
 
@@ -571,7 +579,9 @@ def test_mock_distance_absent(steami):
     assert math.isnan(distance.cm())
     assert distance.status() == steami["const"].Status.NOT_RESPONDING
     assert s.messages() == [
-        "[STeaMi] Distance: the VL53L1X distance sensor (I2C 0x29) did not answer. " + HINT + " (E10)"
+        "[STeaMi] Distance: the VL53L1X distance sensor (I2C 0x29) did not answer. "
+        + HINT
+        + " (E10)"
     ]
 
 
@@ -597,7 +607,9 @@ def test_mock_battery_reads(steami):
     assert s.messages() == []
 
 
-@pytest.mark.parametrize(("raw", "charging"), [(b"\xce\xff", False), (b"\x00\x00", False), (b"\x01\x00", True)])
+@pytest.mark.parametrize(
+    ("raw", "charging"), [(b"\xce\xff", False), (b"\x00\x00", False), (b"\x01\x00", True)]
+)
 def test_mock_battery_is_charging_follows_the_sign_of_the_current(steami, raw, charging):
     s = board(steami)
     battery = steami["Battery"]()
@@ -638,3 +650,395 @@ def test_mock_battery_failed_read(steami):
     assert math.isnan(battery.voltage())
     assert battery.current() == 0
     assert battery.is_charging() is False
+
+
+# --------------------------------------------------
+# Accelerometer, Gyroscope, Magnetometer and Compass
+# --------------------------------------------------
+
+CTRL1_XL = (0x6B, 0x10)
+
+
+def set_raw(s, addr, reg, *values):
+    """Put signed 16-bit values (little endian) in consecutive registers of a chip."""
+    s.bus._devices[addr][reg] = b"".join(v.to_bytes(2, "little", signed=True) for v in values)
+
+
+def set_field(s, x, y, z=0):
+    """The raw magnetic field of the LIS2MDL, in LSB."""
+    set_raw(s, 0x1E, 0xE8, x, y, z)
+
+
+def nan_vector(vector):
+    return all(math.isnan(v) for v in vector)
+
+
+def test_mock_vector_is_a_namedtuple(steami):
+    vector = steami["const"].Vector(1, 2, 3)
+    assert (vector.x, vector.y, vector.z) == (1, 2, 3)
+    assert tuple(vector) == (1, 2, 3)
+    assert steami["const"].Vector._fields == ("x", "y", "z")
+
+
+def test_mock_accelerometer_and_gyroscope_share_one_driver(steami):
+    s = board(steami)
+    accelerometer, gyroscope = steami["Accelerometer"](), steami["Gyroscope"]()
+    assert accelerometer.begin() is True
+    assert gyroscope.begin() is True
+    assert accelerometer._driver() is gyroscope._driver() is s.steami.ism330dl()
+    assert accelerometer.chip() == gyroscope.chip() == "ISM330DL"
+
+
+def test_mock_accelerometer_begin_sets_8g_at_104hz(steami):
+    s = board(steami)
+    accelerometer = steami["Accelerometer"]()
+    s.bus.clear_write_log()
+    assert accelerometer.begin() is True
+    # CTRL1_XL = ODR 104 Hz (0x4) << 4 | FS +-8 g (0b11) << 2
+    writes = [w for w in s.bus.get_write_log() if w[:2] == CTRL1_XL]
+    assert writes[-1] == (*CTRL1_XL, b"\x4c")
+    accelerometer.begin()
+    accelerometer.read()
+    assert [w for w in s.bus.get_write_log() if w[:2] == CTRL1_XL] == writes
+
+
+def test_mock_gyroscope_does_not_change_the_accelerometer_range(steami):
+    s = board(steami)
+    gyroscope = steami["Gyroscope"]()
+    assert gyroscope.begin() is True
+    assert (*CTRL1_XL, b"\x4c") not in s.bus.get_write_log()
+
+
+def test_mock_accelerometer_reads_g(steami):
+    s = board(steami)
+    accelerometer = steami["Accelerometer"]()
+    set_raw(s, 0x6B, 0x28, 4096, -8192, 16384)
+    vector = accelerometer.read()
+    assert vector == pytest.approx((0.999424, -1.998848, 3.997696), abs=1e-6)  # 0.244 mg/LSB
+    assert (accelerometer.x(), accelerometer.y(), accelerometer.z()) == pytest.approx(
+        tuple(vector)
+    )
+    assert vector.x == vector[0]
+    assert accelerometer.strength() == pytest.approx(math.sqrt(sum(v * v for v in vector)))
+    assert accelerometer.chip() == "ISM330DL"
+    assert s.messages() == []
+
+
+def test_mock_accelerometer_includes_the_driver_offset(steami):
+    s = board(steami)
+    accelerometer = steami["Accelerometer"]()
+    set_raw(s, 0x6B, 0x28, 0, 0, 4096)
+    s.steami.ism330dl().set_accel_offset(0.0, 0.0, 0.25)
+    assert accelerometer.z() == pytest.approx(0.999424 - 0.25)
+
+
+@pytest.mark.parametrize(
+    ("raw", "g", "shaken"),
+    [((0, 0, 4096), None, False), ((0, 0, 9000), None, True), ((0, 0, 9000), 3.0, False)],
+)
+def test_mock_accelerometer_is_shaken(steami, raw, g, shaken):
+    s = board(steami)
+    accelerometer = steami["Accelerometer"]()
+    set_raw(s, 0x6B, 0x28, *raw)  # 4096 is about 1 g, 9000 about 2.2 g
+    assert (accelerometer.is_shaken() if g is None else accelerometer.is_shaken(g)) is shaken
+
+
+def test_mock_accelerometer_shaken_is_a_strict_comparison(steami):
+    s = board(steami)
+    accelerometer = steami["Accelerometer"]()
+    set_raw(s, 0x6B, 0x28, 0, 0, 4096)
+    assert accelerometer.is_shaken(accelerometer.strength()) is False
+
+
+def test_mock_accelerometer_absent(steami):
+    s = board(steami, missing=("ISM330DL",))
+    accelerometer = steami["Accelerometer"]()
+    assert nan_vector(accelerometer.read())
+    assert math.isnan(accelerometer.x())
+    assert math.isnan(accelerometer.strength())
+    assert accelerometer.is_shaken() is False
+    assert s.messages() == [
+        "[STeaMi] Accelerometer: the ISM330DL accelerometer (I2C 0x6B) did not answer. "
+        + HINT
+        + " (E10)"
+    ]
+
+
+def test_mock_accelerometer_failed_read(steami):
+    s = board(steami)
+    accelerometer = steami["Accelerometer"]()
+    assert accelerometer.begin() is True
+    del s.bus._devices[0x6B]
+    assert nan_vector(accelerometer.read())
+    assert accelerometer.is_shaken() is False
+
+
+def test_mock_gyroscope_reads_dps(steami):
+    s = board(steami)
+    gyroscope = steami["Gyroscope"]()
+    set_raw(s, 0x6B, 0x22, 1000, -2000, 3000)
+    expected_dps = s.steami.ism330dl().gyroscope_dps()
+    vector = gyroscope.read()
+    assert vector == pytest.approx(expected_dps)
+    assert vector.x > 0 > vector.y
+    assert (gyroscope.x(), gyroscope.y(), gyroscope.z()) == pytest.approx(expected_dps)
+    assert s.messages() == []
+
+
+def test_mock_gyroscope_absent(steami):
+    s = board(steami, missing=("ISM330DL",))
+    gyroscope = steami["Gyroscope"]()
+    assert nan_vector(gyroscope.read())
+    assert math.isnan(gyroscope.z())
+    assert s.messages() == [
+        "[STeaMi] Gyroscope: the ISM330DL gyroscope (I2C 0x6B) did not answer. " + HINT + " (E10)"
+    ]
+
+
+def test_mock_gyroscope_failed_read(steami):
+    s = board(steami)
+    gyroscope = steami["Gyroscope"]()
+    assert gyroscope.begin() is True
+    del s.bus._devices[0x6B]
+    assert nan_vector(gyroscope.read())
+
+
+def test_mock_magnetometer_reads_microtesla(steami):
+    s = board(steami)
+    magnetometer = steami["Magnetometer"]()
+    set_field(s, 300, -150, 450)
+    vector = magnetometer.read()
+    assert vector == pytest.approx((45.0, -22.5, 67.5))  # 0.15 uT/LSB
+    assert (magnetometer.x(), magnetometer.y(), magnetometer.z()) == pytest.approx(
+        (45.0, -22.5, 67.5)
+    )
+    assert magnetometer.strength() == pytest.approx(math.sqrt(45.0**2 + 22.5**2 + 67.5**2))
+    assert magnetometer.chip() == "LIS2MDL"
+    assert s.messages() == []
+
+
+def test_mock_magnetometer_subtracts_the_offset_in_lsb(steami):
+    s = board(steami)
+    magnetometer = steami["Magnetometer"]()
+    set_field(s, 300, -150, 450)
+    mag = s.steami.lis2mdl()
+    mag.x_off, mag.y_off, mag.z_off = 100, -50, 50
+    assert magnetometer.read() == pytest.approx((30.0, -15.0, 60.0))
+
+
+def test_mock_magnetometer_uses_the_config_zone_calibration(steami):
+    config = '{"rev": 131, "cm": {"hx": 100, "hy": -50, "hz": 50, "sx": 1, "sy": 1, "sz": 1}}'
+    s = board(steami, config=config, zone=True)
+    magnetometer = steami["Magnetometer"]()
+    set_field(s, 300, -150, 450)
+    assert magnetometer.read() == pytest.approx((30.0, -15.0, 60.0))
+    assert s.steami.calibrated("LIS2MDL") is True
+
+
+def test_mock_magnetometer_absent(steami):
+    s = board(steami, missing=("LIS2MDL",))
+    magnetometer = steami["Magnetometer"]()
+    assert nan_vector(magnetometer.read())
+    assert math.isnan(magnetometer.strength())
+    magnetometer.calibrate(1)  # nothing to calibrate, no error
+    assert s.messages() == [
+        "[STeaMi] Magnetometer: the LIS2MDL magnetometer (I2C 0x1E) did not answer. "
+        + HINT
+        + " (E10)"
+    ]
+
+
+def test_mock_magnetometer_failed_read(steami):
+    s = board(steami)
+    magnetometer = steami["Magnetometer"]()
+    assert magnetometer.begin() is True
+    del s.bus._devices[0x1E]
+    assert nan_vector(magnetometer.read())
+    assert math.isnan(magnetometer.strength())
+
+
+def test_mock_magnetometer_and_compass_share_one_driver(steami):
+    s = board(steami)
+    magnetometer, compass = steami["Magnetometer"](), steami["Compass"]()
+    assert magnetometer.begin() is True
+    assert compass.begin() is True
+    assert magnetometer._driver() is compass._driver() is s.steami.lis2mdl()
+
+
+@pytest.fixture
+def fake_time(steami):
+    """The sleeps of the LIS2MDL driver, recorded instead of waited for."""
+    import lis2mdl.device
+
+    sleeps = []
+    saved = lis2mdl.device.sleep_ms
+    lis2mdl.device.sleep_ms = sleeps.append
+    yield sleeps
+    lis2mdl.device.sleep_ms = saved
+
+
+@pytest.mark.parametrize(
+    ("x", "y", "heading"),
+    [
+        (0, 100, 0),
+        (-100, 100, 45),
+        (-100, 0, 90),
+        (-100, -100, 135),
+        (0, -100, 180),
+        (100, -100, 225),
+        (100, 0, 270),
+        (100, 100, 315),
+    ],
+)
+def test_mock_compass_heading_of_a_known_field(steami, x, y, heading):
+    s = board(steami)
+    compass = steami["Compass"]()
+    set_field(s, x, y, 300)
+    assert compass.heading() == pytest.approx(heading)
+    assert s.messages() == []
+
+
+def test_mock_compass_heading_is_in_0_360(steami):
+    s = board(steami)
+    compass = steami["Compass"]()
+    set_field(s, 300, -150)  # atan2(-300, -150) is negative
+    assert compass.heading() == pytest.approx(243.4349, abs=1e-3)
+
+
+@pytest.mark.parametrize(
+    ("heading", "text"),
+    [
+        (0, "N"),
+        (22.4, "N"),
+        (22.5, "NE"),
+        (45, "NE"),
+        (67.5, "E"),
+        (90, "E"),
+        (112.5, "SE"),
+        (157.5, "S"),
+        (180, "S"),
+        (202.5, "SW"),
+        (247.5, "W"),
+        (270, "W"),
+        (292.5, "NW"),
+        (337.4, "NW"),
+        (337.5, "N"),
+    ],
+)
+def test_mock_compass_direction_sectors(steami, heading, text):
+    s = board(steami)
+    compass = steami["Compass"]()
+    set_field(s, 0, 100)  # north: the declination moves the heading
+    compass.set_declination(heading)
+    assert compass.heading() == pytest.approx(heading)
+    assert compass.direction() == text
+
+
+def test_mock_compass_declination_set_before_begin_is_applied_once_started(steami):
+    s = board(steami)
+    compass = steami["Compass"]()
+    set_field(s, 0, 100)
+    compass.set_declination(-2.5)
+    assert s.bus.get_write_log() == [] and s.reads == []  # still no hardware
+    assert compass.heading() == pytest.approx(357.5)
+    compass.set_declination(10)  # after begin(): reaches the driver at once
+    assert s.steami.lis2mdl()._declination_deg == 10
+    assert compass.heading() == pytest.approx(10)
+
+
+def test_mock_compass_declination_is_shared_with_the_driver_only(steami):
+    s = board(steami)
+    compass = steami["Compass"]()
+    compass.set_declination(3)
+    assert compass.begin() is True
+    assert s.steami.lis2mdl()._declination_deg == 3
+
+
+def test_mock_compass_absent(steami):
+    s = board(steami, missing=("LIS2MDL",))
+    compass = steami["Compass"]()
+    assert math.isnan(compass.heading())
+    assert compass.direction() == ""
+    compass.set_declination(5)
+    compass.calibrate(1)
+    assert s.messages() == [
+        "[STeaMi] Compass: the LIS2MDL compass (I2C 0x1E) did not answer. " + HINT + " (E10)"
+    ]
+
+
+def test_mock_compass_failed_read(steami):
+    s = board(steami)
+    compass = steami["Compass"]()
+    assert compass.begin() is True
+    del s.bus._devices[0x1E]
+    assert math.isnan(compass.heading())
+    assert compass.direction() == ""
+
+
+@pytest.mark.parametrize("cls", ["Magnetometer", "Compass"])
+def test_mock_calibrate_stores_the_result_in_the_driver(steami, fake_time, cls):
+    s = board(steami, config='{"rev": 131}', zone=True)
+    function = steami[cls]()
+    assert function.begin() is True
+    mag = s.steami.lis2mdl()
+    fields = [(100, 200, 300), (300, 600, 500), (200, 400, 100)]
+    calls = []
+
+    def moving_field():
+        calls.append(1)
+        return fields[len(calls) % 3]
+
+    mag.magnetic_field = moving_field
+    s.bus.clear_write_log()
+    fake_time.clear()  # the sleeps of the driver start
+    function.calibrate(2)
+    assert len(calls) == 2 * 50  # 50 samples a second, 20 ms apart
+    assert fake_time == [20] * 100
+    assert (mag.x_off, mag.y_off, mag.z_off) == (200, 400, 300)
+    assert (mag.x_scale, mag.y_scale, mag.z_scale) == (100, 200, 200)
+    # Nothing is written to the board: the config zone keeps what it has.
+    assert s.bus.get_write_log() == []
+    assert s.bridge.config == '{"rev": 131}'
+
+
+@pytest.mark.parametrize("cls", ["Magnetometer", "Compass"])
+def test_mock_calibrate_default_is_12_seconds(steami, fake_time, cls):
+    s = board(steami)
+    function = steami[cls]()
+    set_field(s, 1, 2, 3)
+    assert function.begin() is True
+    fake_time.clear()
+    function.calibrate()
+    assert len(fake_time) == 12 * 50
+
+
+@pytest.mark.parametrize("cls", ["Magnetometer", "Compass"])
+def test_mock_calibrate_zero_seconds_changes_nothing(steami, fake_time, cls):
+    s = board(steami)
+    function = steami[cls]()
+    assert function.begin() is True
+    mag = s.steami.lis2mdl()
+    mag.set_calibrate_step(5, 6, 7, 1.5, 2.5, 3.5)
+    fake_time.clear()
+    function.calibrate(0)
+    assert fake_time == []
+    assert (mag.x_off, mag.y_scale) == (5, 2.5)
+
+
+@pytest.mark.parametrize("cls", ["Magnetometer", "Compass"])
+def test_mock_calibrate_caps_the_samples(steami, cls):
+    s = board(steami)
+    function = steami[cls]()
+    assert function.begin() is True
+    asked = []
+    s.steami.lis2mdl().calibrate_minmax_3d = lambda samples, delay: asked.append((samples, delay))
+    function.calibrate(5000)  # 250000 samples would not fit in 16 bits
+    assert asked == [(65535, 20)]
+
+
+def test_mock_compass_heading_uses_the_calibration(steami, fake_time):
+    s = board(steami)
+    compass = steami["Compass"]()
+    set_field(s, -50, 100)
+    s.steami.lis2mdl().set_calibrate_step(-50, 0, 0, 1, 1, 1)  # the offset cancels x
+    assert compass.heading() == pytest.approx(0)

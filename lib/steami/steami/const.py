@@ -1,4 +1,9 @@
+from collections import namedtuple
+
 from micropython import const
+
+# typing.NamedTuple does not exist in MicroPython.
+Vector = namedtuple("Vector", ("x", "y", "z"))  # noqa: PYI024
 
 
 class Release:
