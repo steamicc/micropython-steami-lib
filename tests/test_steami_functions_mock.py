@@ -41,6 +41,8 @@ class Board(Setup):
 @pytest.fixture
 def steami(board_module):  # noqa: F811 (the imported fixture)
     """The board module, the const module and the function classes."""
+    from steami.battery import Battery
+    from steami.distance import Distance
     from steami.handle import Handle
     from steami.humidity import Humidity
     from steami.pressure import Pressure
@@ -50,6 +52,8 @@ def steami(board_module):  # noqa: F811 (the imported fixture)
         "board": board_module,
         "const": board_module[1],
         "Handle": Handle,
+        "Battery": Battery,
+        "Distance": Distance,
         "Temperature": Temperature,
         "Humidity": Humidity,
         "Pressure": Pressure,
@@ -515,3 +519,122 @@ def test_mock_read_with_a_function(steami):
         probe(steami, lambda d: d.no_such_method()).read()
     with pytest.raises(TypeError):
         probe(steami, lambda d: d.temperature(), 1).read()
+
+
+# --------------------------------------------------
+# Distance and Battery
+# --------------------------------------------------
+
+
+def test_mock_distance_read_and_cm(steami):
+    s = board(steami)
+    distance = steami["Distance"]()
+    assert distance.read() == 250
+    assert isinstance(distance.read(), int)
+    assert distance.cm() == pytest.approx(25.0)
+    assert distance.chip() == "VL53L1X"
+    assert s.messages() == []
+
+
+def test_mock_distance_is_the_same_on_every_release(steami):
+    board(steami, V1AB)
+    assert steami["Distance"]().read() == 250
+
+
+def test_mock_distance_begin_starts_ranging_once(steami):
+    s = board(steami)
+    s.steami.claim("VL53L1X")  # the driver exists; the function has not started it
+    s.bus.clear_write_log()
+    distance = steami["Distance"]()
+    assert s.bus.get_write_log() == []
+    assert distance.begin() is True
+    start = (0x29, 0x0087, b"\x40")
+    assert s.bus.get_write_log().count(start) == 1
+    distance.begin()
+    distance.read()
+    assert s.bus.get_write_log().count(start) == 1
+
+
+def test_mock_distance_zero_means_no_target(steami):
+    s = board(steami)
+    distance = steami["Distance"]()
+    assert distance.begin() is True
+    s.bus._devices[0x29][0x0089] = bytes(17)
+    assert distance.read() == -1
+    assert math.isnan(distance.cm())
+
+
+def test_mock_distance_absent(steami):
+    s = board(steami, missing=("VL53L1X",))
+    distance = steami["Distance"]()
+    assert distance.read() == -1
+    assert math.isnan(distance.cm())
+    assert distance.status() == steami["const"].Status.NOT_RESPONDING
+    assert s.messages() == [
+        "[STeaMi] Distance: the VL53L1X distance sensor (I2C 0x29) did not answer. " + HINT + " (E10)"
+    ]
+
+
+def test_mock_distance_failed_read(steami):
+    s = board(steami)
+    distance = steami["Distance"]()
+    assert distance.begin() is True
+    del s.bus._devices[0x29]
+    assert distance.read() == -1
+    assert math.isnan(distance.cm())
+
+
+def test_mock_battery_reads(steami):
+    s = board(steami)
+    battery = steami["Battery"]()
+    assert battery.percent() == 92
+    assert isinstance(battery.percent(), int)
+    assert battery.voltage() == pytest.approx(3.7)
+    assert battery.current() == 50
+    assert isinstance(battery.current(), int)
+    assert battery.is_charging() is True
+    assert battery.chip() == "BQ27441"
+    assert s.messages() == []
+
+
+@pytest.mark.parametrize(("raw", "charging"), [(b"\xce\xff", False), (b"\x00\x00", False), (b"\x01\x00", True)])
+def test_mock_battery_is_charging_follows_the_sign_of_the_current(steami, raw, charging):
+    s = board(steami)
+    battery = steami["Battery"]()
+    assert battery.begin() is True
+    s.bus._devices[0x55][0x10] = raw
+    assert battery.is_charging() is charging
+    if raw == b"\xce\xff":
+        assert battery.current() == -50
+
+
+def test_mock_battery_zero_voltage_is_nan(steami):
+    s = board(steami)
+    battery = steami["Battery"]()
+    assert battery.begin() is True
+    s.bus._devices[0x55][0x04] = b"\x00\x00"
+    assert math.isnan(battery.voltage())
+
+
+def test_mock_battery_absent(steami):
+    s = board(steami, missing=("BQ27441",))
+    battery = steami["Battery"]()
+    assert battery.percent() == 0
+    assert math.isnan(battery.voltage())
+    assert battery.current() == 0
+    assert battery.is_charging() is False
+    assert s.messages() == [
+        "[STeaMi] Battery: the BQ27441 battery gauge (I2C 0x55) did not answer. "
+        "Plug in a battery, then reset the board. (E10)"
+    ]
+
+
+def test_mock_battery_failed_read(steami):
+    s = board(steami)
+    battery = steami["Battery"]()
+    assert battery.begin() is True
+    del s.bus._devices[0x55]
+    assert battery.percent() == 0
+    assert math.isnan(battery.voltage())
+    assert battery.current() == 0
+    assert battery.is_charging() is False
