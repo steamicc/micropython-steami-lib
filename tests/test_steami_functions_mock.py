@@ -710,6 +710,33 @@ def test_mock_accelerometer_begin_sets_8g_at_104hz(steami):
     assert [w for w in s.bus.get_write_log() if w[:2] == CTRL1_XL] == writes
 
 
+def test_mock_accelerometer_begin_waits_for_a_sample_at_8g(steami, monkeypatch):
+    # The output registers keep the last +-2 g sample until the sensor takes
+    # the next one, about 10 ms at 104 Hz: begin() waits so that the first
+    # read is not converted with the wrong scale (4 times too large).
+    import steami.accelerometer as accelerometer_module
+
+    board(steami)
+    events = []
+    monkeypatch.setattr(accelerometer_module, "sleep_ms", events.append)
+    accelerometer = steami["Accelerometer"]()
+    assert accelerometer.begin() is True
+    assert events == [20]
+    accelerometer.begin()
+    accelerometer.read()
+    assert events == [20]
+
+
+def test_mock_accelerometer_absent_does_not_wait(steami, monkeypatch):
+    import steami.accelerometer as accelerometer_module
+
+    board(steami, missing=("ISM330DL",))
+    events = []
+    monkeypatch.setattr(accelerometer_module, "sleep_ms", events.append)
+    assert steami["Accelerometer"]().begin() is False
+    assert events == []
+
+
 def test_mock_gyroscope_does_not_change_the_accelerometer_range(steami):
     s = board(steami)
     gyroscope = steami["Gyroscope"]()

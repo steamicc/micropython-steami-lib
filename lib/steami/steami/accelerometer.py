@@ -1,6 +1,7 @@
 import math
+from time import sleep_ms
 
-from steami.const import Function, Status, Vector
+from steami.const import ACCEL_SETTLE_MS, Function, Status, Vector
 from steami.handle import NAN, Handle
 
 _ABSENT = Vector(NAN, NAN, NAN)
@@ -32,6 +33,9 @@ class Accelerometer(Handle):
             from ism330dl.const import ACCEL_FS_8G, ACCEL_ODR_104HZ
 
             self._read(None, "configure_accel", ACCEL_ODR_104HZ, ACCEL_FS_8G)
+            # The output registers still hold the last +-2 g sample until the
+            # next one: read too early, it would come out 4 times too large.
+            sleep_ms(ACCEL_SETTLE_MS)
         return ok
 
     def read(self):
