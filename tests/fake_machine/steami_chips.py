@@ -37,10 +37,18 @@ _SCENARIO = {
 }
 
 _RELEASES = {
-    "V1a/V1b": ("WSEN-HIDS", "WSEN-PADS", "APDS-9960", "VL53L1X", "ISM330DL",
-                "LIS2MDL", "BQ27441", "MCP23009E", "DAPLINK"),
-    "V1c": ("BME280", "VL53L1X", "ISM330DL", "LIS2MDL", "BQ27441",
-            "MCP23009E", "DAPLINK"),
+    "V1a/V1b": (
+        "WSEN-HIDS",
+        "WSEN-PADS",
+        "APDS-9960",
+        "VL53L1X",
+        "ISM330DL",
+        "LIS2MDL",
+        "BQ27441",
+        "MCP23009E",
+        "DAPLINK",
+    ),
+    "V1c": ("BME280", "VL53L1X", "ISM330DL", "LIS2MDL", "BQ27441", "MCP23009E", "DAPLINK"),
 }
 
 _SCENARIOS_DIR = Path(__file__).parent.parent / "scenarios"

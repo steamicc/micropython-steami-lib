@@ -612,3 +612,31 @@ def test_mock_lazy_public_names(board_module):
         "Buttons",
     ):
         assert getattr(steami, name).__name__ == name
+
+
+def test_mock_claim_memory_error_propagates(board_module, monkeypatch):
+    import sys
+    import types
+
+    class Boom:
+        def __init__(self, i2c):
+            raise MemoryError
+
+    fake = types.ModuleType("fake_boom_driver")
+    fake.Boom = Boom
+    monkeypatch.setitem(sys.modules, "fake_boom_driver", fake)
+    s = Setup(board_module)
+    monkeypatch.setitem(
+        s.steami._build.__globals__["DRIVERS"], "BME280", ("fake_boom_driver", "Boom")
+    )
+    with pytest.raises(MemoryError):
+        s.steami.claim(s.const.Chip.BME280)
+
+
+def test_mock_claim_import_error_propagates(board_module, monkeypatch):
+    s = Setup(board_module)
+    monkeypatch.setitem(
+        s.steami._build.__globals__["DRIVERS"], "BME280", ("no_such_driver_module_xyz", "X")
+    )
+    with pytest.raises(ImportError):
+        s.steami.claim(s.const.Chip.BME280)

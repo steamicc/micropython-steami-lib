@@ -20,8 +20,16 @@ DRIVERS = {
 }
 
 RELEASES = {
-    "V1a/V1b": ["WSEN-HIDS", "WSEN-PADS", "APDS-9960", "VL53L1X", "ISM330DL",
-                "LIS2MDL", "BQ27441", "MCP23009E"],
+    "V1a/V1b": [
+        "WSEN-HIDS",
+        "WSEN-PADS",
+        "APDS-9960",
+        "VL53L1X",
+        "ISM330DL",
+        "LIS2MDL",
+        "BQ27441",
+        "MCP23009E",
+    ],
     "V1c": ["BME280", "VL53L1X", "ISM330DL", "LIS2MDL", "BQ27441", "MCP23009E"],
 }
 
@@ -75,13 +83,13 @@ def test_registers_are_per_device():
 
 
 def test_sequence_and_into():
-    bus = FakeI2CBus({0x10: {0x05: b"\xAA\xBB"}})
+    bus = FakeI2CBus({0x10: {0x05: b"\xaa\xbb"}})
     bus.set_register_sequence(0x10, 0x05, [b"\x01\x02", b"\x03\x04"])
     buf = bytearray(2)
     bus.readfrom_mem_into(0x10, 0x05, buf)
     assert bytes(buf) == b"\x01\x02"
     assert bus.readfrom_mem(0x10, 0x05, 2) == b"\x03\x04"
-    assert bus.readfrom_mem(0x10, 0x05, 2) == b"\xAA\xBB"
+    assert bus.readfrom_mem(0x10, 0x05, 2) == b"\xaa\xbb"
 
 
 def test_image_is_a_copy():

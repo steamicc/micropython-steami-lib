@@ -1492,3 +1492,23 @@ def test_mock_buttons_wait_for_press_times_out(rig):
     start = rig.now
     assert rig.buttons.wait_for_press(100) is None
     assert 100 <= rig.now - start < 110
+
+
+def test_mock_buttons_a_change_after_the_clock_jumped_is_taken(rig, monkeypatch):
+    # MicroPython ticks wrap: a stamp older than 2**29 ms must not lock the button.
+    import steami.buttons as module
+
+    def ticks_diff(a, b):  # MicroPython semantics: signed, modulo 2**30
+        return ((a - b + 2**29) & (2**30 - 1)) - 2**29
+
+    monkeypatch.setattr(module, "ticks_diff", ticks_diff)
+    rig.buttons.begin()
+    rig.buttons.is_pressed("A")
+    rig.press("A")
+    assert rig.buttons.was_pressed("A") is True
+    rig.advance(30)
+    assert rig.buttons.is_pressed("A") is True  # the stamp is forgotten here
+    rig.advance(2**29 + 1000)
+    rig.release("A")
+    assert rig.buttons.is_pressed("A") is False
+    assert rig.buttons.was_released("A") is True

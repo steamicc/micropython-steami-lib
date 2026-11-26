@@ -17,8 +17,7 @@ class FakeI2CBus:
         self._devices = {}
         for addr, registers in devices.items():
             self._devices[addr] = {
-                reg: bytes([v]) if isinstance(v, int) else bytes(v)
-                for reg, v in registers.items()
+                reg: bytes([v]) if isinstance(v, int) else bytes(v) for reg, v in registers.items()
             }
         self._sequences = {}
         self._write_log = []
