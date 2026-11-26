@@ -63,12 +63,16 @@ Units of the public API:
 * scaled by `k`: widget text and text at a cardinal position (`at="N"`, `"CENTER"`, ...);
 * 128 px units: `y_offset` (for example in `bar()`).
 
-`screen.u(v)` converts a length given in 128 px units to real pixels (`int(v * width / 128)`). Use it so that hard-coded geometry looks the same on both sizes:
+`screen.u(v)` converts a length given in 128 px units to real pixels (`int(v * width / 128)`, so x15/8 on 240 px, not x2). Use it so that hard-coded geometry looks the same on both sizes:
 
 ```python
-box_w = screen.u(56)  # 56 on 128 px, 112 on 240 px
+from steami_screen import BLACK
+
+box_w = screen.u(56)  # 56 on 128 px, 105 on 240 px
 screen.rect(screen.center[0] - box_w // 2, 10, box_w, screen.u(10), BLACK, fill=True)
 ```
+
+Text grows by `k` (x2 on 240 px), not by `u()`: size a box that must hold text from the glyphs, `len(text) * 8 * screen.k` wide and `8 * screen.k` high.
 
 ---
 

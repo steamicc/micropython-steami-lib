@@ -48,9 +48,10 @@ MAX_DIST = 500
 REDRAW_THRESHOLD = 10  # mm — minimum change to trigger a redraw
 
 # === Center text area (erased before each text update) ===
-# Sizes are in 128 px units; u() maps them to real pixels (x2 on 240 px).
-_TEXT_W = screen.u(56)
-_TEXT_H = screen.u(10)
+# Sized from the glyphs it erases: the CENTER text is 8x8 scaled by k (x2 on
+# 240 px), up to 7 characters ("1234 mm"), plus a 1 px margin above and below.
+_TEXT_W = 7 * 8 * screen.k
+_TEXT_H = 8 * screen.k + 2
 _TEXT_X = screen.center[0] - _TEXT_W // 2
 _TEXT_Y = screen.center[1] - _TEXT_H // 2
 
