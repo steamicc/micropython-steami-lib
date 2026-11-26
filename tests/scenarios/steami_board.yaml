@@ -1,0 +1,98 @@
+type: board
+name: "steami_board"
+
+# Hardware-only checks of the `steami` package on a STeaMi V1c.
+# Needs the board in V1c state with no button pressed.
+# Each test starts from a fresh interpreter, so the `Steami` state does not
+# leak from one test to the next.
+#
+# Run with a terminal (hardware_script tests are skipped without one):
+#   python -m pytest tests/ -v -k steami_board --port /dev/ttyACM0 -s
+
+# Mounts lib/ on the board so that lib/steami and the new lib/daplink_bridge
+# (has_config_zone) are used instead of the frozen ones. Every driver folder
+# of lib/ goes on sys.path: a bare /remote/mcp23009e folder (the repository
+# layout) would otherwise hide the frozen package of the same name.
+drivers:
+  - steami
+  - daplink_bridge
+
+tests:
+  - name: "Steami.begin() detects a V1c"
+    action: hardware_script
+    script: |
+      import os, sys
+      for d in os.listdir('/remote'):
+        sys.path.insert(0, '/remote/' + d)
+      from steami import Steami, Release
+      result = Steami.begin() == Release.V1C == "V1c"
+    expect_true: true
+    mode: [hardware]
+
+  - name: "Temperature uses the BME280"
+    action: hardware_script
+    script: |
+      import os, sys
+      for d in os.listdir('/remote'):
+        sys.path.insert(0, '/remote/' + d)
+      from steami import Steami, Temperature, Chip
+      Steami.begin()
+      t = Temperature()
+      t.begin()
+      result = t.chip() == Chip.BME280 == "BME280"
+    expect_true: true
+    mode: [hardware]
+
+  - name: "Temperature reads between 0 and 50 C"
+    action: hardware_script
+    script: |
+      import os, sys
+      for d in os.listdir('/remote'):
+        sys.path.insert(0, '/remote/' + d)
+      from steami import Steami, Temperature
+      Steami.begin()
+      value = Temperature().read()
+      print("temperature:", value)
+      result = 0 <= value <= 50
+    expect_true: true
+    mode: [hardware]
+
+  - name: "Light is not on this board"
+    action: hardware_script
+    script: |
+      import os, sys
+      for d in os.listdir('/remote'):
+        sys.path.insert(0, '/remote/' + d)
+      from steami import Steami, Light, Status
+      Steami.begin()
+      light = Light()
+      light.begin()
+      result = light.status() == Status.NOT_ON_THIS_BOARD
+    expect_true: true
+    mode: [hardware]
+
+  - name: "Battery voltage is between 3.0 and 4.4 V"
+    action: hardware_script
+    script: |
+      import os, sys
+      for d in os.listdir('/remote'):
+        sys.path.insert(0, '/remote/' + d)
+      from steami import Steami, Battery
+      Steami.begin()
+      value = Battery().voltage()
+      print("voltage:", value)
+      result = 3.0 <= value <= 4.4
+    expect_true: true
+    mode: [hardware]
+
+  - name: "Button A is not pressed"
+    action: hardware_script
+    script: |
+      import os, sys
+      for d in os.listdir('/remote'):
+        sys.path.insert(0, '/remote/' + d)
+      from steami import Steami, Buttons
+      Steami.begin()
+      result = Buttons().is_pressed("A") is False
+    expect_true: true
+    mode: [hardware]
