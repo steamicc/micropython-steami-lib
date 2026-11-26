@@ -397,6 +397,34 @@ def test_mock_value_stays_inside_at_every_anchor(panel, at):
         assert not outside(raw, slack=0), (at, text)
 
 
+@pytest.mark.parametrize(
+    "args,kwargs",
+    (
+        ((8, "C", "NE", "TEMP"), {"scale": 1}),
+        ((8, "C", "NW", "TEMP"), {"scale": 1}),
+        (("Temperature",), {"at": "N", "label": "X", "scale": 1}),
+    ),
+)
+def test_mock_value_label_kept_when_the_value_falls_to_factor_1(panel, args, kwargs):
+    # At N/NE/NW the value falls to factor 1 on row 22; the label's rows
+    # 22 - u(4) - 16 = -1.. leave the circle, so it is lowered (never into the
+    # value's rows) instead of being dropped.
+    s, raw = panel()
+    s.value(*args, **kwargs)
+    label = box(raw, GRAY)
+    assert label is not None
+    assert label[3] < 22
+    assert box(raw, WHITE)[1] == 22
+    assert not outside(raw, slack=0)
+
+
+def test_mock_value_label_row_unchanged_when_it_fits(panel):
+    # rule: the label top stays at value top - u(4) - 8k when it fits.
+    s, raw = panel()
+    s.value(8, "C", "NE", "TEMP")
+    assert box(raw, GRAY)[1] == box(raw, WHITE)[1] - 7 - 16
+
+
 # ----- bar, gauge -----
 
 

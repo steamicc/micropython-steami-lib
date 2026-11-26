@@ -309,7 +309,16 @@ class Screen:
         sh = k if side or corner else 0
         align = 3 if side else 1
         if label:
-            self._put(label, ax, y - self.u(4) - 8 * k, GRAY, k, align, lo, hi, sh)
+            ly = y - self.u(4) - 8 * k
+            if not self._fit(label, ly, k, lo, hi, sh)[0]:
+                # Near the top its rows can leave the circle: lower it, at
+                # most down to the value, to the row that keeps the most.
+                best = 0
+                for t in range(ly + 1, y - 8 * k + 1):
+                    n = self._fit(label, t, k, lo, hi, sh)[0]
+                    if n > best:
+                        best, ly = n, t
+            self._put(label, ax, ly, GRAY, k, align, lo, hi, sh)
         if unit:
             self._put(unit, ax, y + 8 * f, LIGHT, k, align, lo, hi, sh)
 
