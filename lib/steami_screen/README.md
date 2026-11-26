@@ -204,6 +204,29 @@ from steami_screen import RED, GREEN, BLUE, YELLOW
 
 Colors are RGB tuples. On SSD1327 they degrade to greyscale automatically.
 
+On the GC9A01 round screen the frame holds 16 colours. `GC9A01Display` maps any RGB tuple to the nearest entry of the driver palette (smallest squared RGB distance) with `rgb_to_index(color)`. A legacy int is a grey4 level: it becomes the grey `level * 17`, then the nearest palette entry.
+
+---
+
+## GC9A01 (round colour screen)
+
+```python
+import gc9a01
+from machine import SPI, Pin
+from steami_screen import Screen, GC9A01Display
+
+raw = gc9a01.GC9A01(
+    SPI(1),
+    Pin("DATA_COMMAND_DISPLAY"),
+    Pin("CS_DISPLAY"),
+    Pin("RST_DISPLAY"),
+)
+raw.init()
+screen = Screen(GC9A01Display(raw))
+```
+
+`GC9A01Display` is 240 x 240 and has the same methods as `SSD1327Display`, including `draw_scaled_text()` for true pixel-scale text.
+
 ---
 
 ## Color Utilities
