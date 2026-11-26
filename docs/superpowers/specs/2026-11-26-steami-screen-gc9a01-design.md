@@ -26,7 +26,7 @@ The Arduino library solved this (`SteamiDisplay`/`SteamiScreen`, with one backen
 
 ## Anti-goals
 
-- **A regression on V1a/V1b.** The SSD1327 output of every `steami_screen` widget must stay pixel-identical (k = 1, layout unchanged at 128 px).
+- **A regression on V1a/V1b.** The SSD1327 output of the `steami_screen` widgets stays almost identical (k = 1, layout unchanged at 128 px). The SSD1327 output may change only to improve the drawing; every change to the 128 px golden is justified.
 - **A screen that cannot coexist with BLE.** With the BLE beacon sample running, about 100 KB of heap is free: the screen must fit next to it.
 - **A firmware that no longer fits.** The flash has about 3 KB free today.
 - **Breaking the LPUART flash-erase fix.** No LTO and no change to the RAM-resident ISR list.
@@ -102,7 +102,7 @@ A plain ×15/8 of today's `device.py` constants is not enough: text, the title r
 - `Screen` derives k from the display width: k = 1 at 128 px, k = 2 at 240 px, as Arduino's `k() = (width + 64) / 128`.
 - It lays widgets out in 128 px units multiplied by width/128 (15/8 at 240 px).
 - Glyphs (text and faces) and strokes are drawn with factor k.
-- SSD1327 output must stay pixel-identical: a golden test captures the SSD1327 framebuffer of each widget before the change and compares after. The CPython framebuf stub draws no text, so record draw calls or extend the stub.
+- The SSD1327 output may change only to improve the drawing; every change to the 128 px golden is justified. A golden test captures the SSD1327 drawing of each widget before the change and compares after; an entry is re-recorded only for a named improvement (so far the gauge, whose arc became a solid ring sector), and every other entry stays byte-identical. The CPython framebuf stub draws no text, so record draw calls or extend the stub.
 - **Units of the public API (builder's call, as Arduino):**
   - drawing primitives (`line`, `circle`, `rect`, `pixel`) and `text(x, y)` take real panel pixels;
   - `text(at=...)` and widget text are scaled by k;

@@ -60,7 +60,7 @@
   - `y_offset` is in 128 px units, and `arc_width` in real pixels;
   - `width`, `height`, `center` and `radius` report real pixels.
 - **Round screen:** when k = 2 only, widgets keep their text inside the circle (Arduino truncation, title-row floor and cap, menu limited to the circle).
-- **SSD1327 output must stay pixel-identical** (k = 1, layout unchanged).
+- **SSD1327 output stays almost identical** (k = 1, layout unchanged). The SSD1327 output may change only to improve the drawing; every change to the 128 px golden is justified.
 - **Messages:** E30 means "unknown board, no screen" and E31 means "not enough RAM". Texts are copied from Arduino `SteamiDisplay.cpp`, adapted like the other `steami` messages (Python class names, no `#define`). E31 detail: `not enough RAM for the screen (N bytes in one block). Call begin() on the Screen first in the program.`
 - **Firmware:**
   - drop `senml` and freeze `gc9a01`; no LTO, and no change to the RAM ISR list;
