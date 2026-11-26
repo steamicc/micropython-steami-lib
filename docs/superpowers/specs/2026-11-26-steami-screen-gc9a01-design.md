@@ -114,7 +114,7 @@ A plain ×15/8 of today's `device.py` constants is not enough: it would give, fo
 
 - Common form of the `steami` classes. The routing is SSD1327 on V1a/V1b and GC9A01 on V1c, as Arduino `steamiRoute()`.
 - An unknown release gives E30 and no screen (as Arduino). Texts are copied from Arduino `SteamiDisplay.cpp`, adapted to Python as in the other classes.
-- A `MemoryError` while allocating the frame gives E31: "not enough RAM for the screen (N bytes in one block). Create the Screen first in the program."
+- A `MemoryError` while allocating the frame gives E31: "not enough RAM for the screen (N bytes in one block). Call begin() on the Screen first in the program."
 - When the screen is unavailable, drawing calls do nothing and `show()` returns quietly, the absence behaviour of the other classes.
 - The drawing API is that of `steami_screen.Screen`, reached through the `Screen` object (forwarding or subclassing is the builder's call). `Screen` is lazily importable like the other classes.
 - `Steami.display()` returns the shared adapter, or `None`.

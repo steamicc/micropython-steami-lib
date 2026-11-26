@@ -10,7 +10,7 @@ _UNKNOWN_BOARD = (
 )
 _NO_MEMORY = (
     "not enough RAM for the screen ({} bytes in one block). "
-    "Create the Screen first in the program."
+    "Call begin() on the Screen first in the program."
 )
 
 

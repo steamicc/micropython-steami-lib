@@ -19,7 +19,7 @@ E30 = (
 )
 E31 = (
     "[STeaMi] Screen: not enough RAM for the screen ({} bytes in one block). "
-    "Create the Screen first in the program. (E31)"
+    "Call begin() on the Screen first in the program. (E31)"
 )
 
 
@@ -219,7 +219,6 @@ def test_mock_display_is_shared(screen_env, monkeypatch):
 
 
 def test_mock_display_kept_after_a_forced_release(screen_env):
-    _, _, _ = screen_env
     s = setup(screen_env, "V1c")
     first = s.steami.display()
     s.steami.begin("V1b")
@@ -227,7 +226,6 @@ def test_mock_display_kept_after_a_forced_release(screen_env):
 
 
 def test_mock_end_forgets_the_display(screen_env):
-    _, _, _ = screen_env
     s = setup(screen_env, "V1c")
     first = s.steami.display()
     s.steami.end()
@@ -330,9 +328,10 @@ def test_mock_no_memory_e31_v1c(screen_env, monkeypatch):
     assert s.steami.display() is None
     assert draw_everything(screen) is None
     assert messages(s) == [E31.format(28800)]
+    assert screen_cls().begin() is False
+    assert messages(s) == [E31.format(28800)]  # once, as E30
     # Once the RAM is free, a new Screen gets the panel.
-    monkeypatch.undo()
-    monkeypatch.setattr(gc9a01.device, "sleep_ms", lambda ms: None)
+    monkeypatch.delattr(gc9a01.device, "bytearray")
     again = screen_cls()
     assert again.begin() is True
     assert screen.is_available() is False  # an object keeps its answer

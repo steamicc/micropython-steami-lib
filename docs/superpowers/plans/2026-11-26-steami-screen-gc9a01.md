@@ -61,7 +61,7 @@
   - `width`, `height`, `center` and `radius` report real pixels.
 - **Round screen:** when k = 2 only, widgets keep their text inside the circle (Arduino truncation, title-row floor and cap, menu limited to the circle).
 - **SSD1327 output must stay pixel-identical** (k = 1, layout unchanged).
-- **Messages:** E30 means "unknown board, no screen" and E31 means "not enough RAM". Texts are copied from Arduino `SteamiDisplay.cpp`, adapted like the other `steami` messages (Python class names, no `#define`). E31 detail: `not enough RAM for the screen (N bytes in one block). Create the Screen first in the program.`
+- **Messages:** E30 means "unknown board, no screen" and E31 means "not enough RAM". Texts are copied from Arduino `SteamiDisplay.cpp`, adapted like the other `steami` messages (Python class names, no `#define`). E31 detail: `not enough RAM for the screen (N bytes in one block). Call begin() on the Screen first in the program.`
 - **Firmware:**
   - drop `senml` and freeze `gc9a01`; no LTO, and no change to the RAM ISR list;
   - fallback if it does not fit: `FLASH_FS` moves from 0x08080000 to 0x08084000 (still 256 KB), and the application flash grows by 16 KB.

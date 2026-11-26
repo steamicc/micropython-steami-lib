@@ -196,8 +196,9 @@ the drawing calls do nothing and `show()` returns quietly:
   `width` and `height` are 128, the default size of `steami_screen`;
 * when the frame does not fit in RAM (28 800 bytes in one block on V1c, 8 192
   on V1a/V1b), the status is `Status.NO_MEMORY` (E31), `chip()` still names
-  the panel, and `width` and `height` are its size. Create the `Screen` and
-  call `begin()` early in the program, before the heap is fragmented.
+  the panel, and `width` and `height` are its size. Call `begin()` on the `Screen` first
+  in the program, before the heap is fragmented: creating it allocates
+  nothing, `begin()` (or the first drawing call) allocates the frame.
 
 ### Routing
 
