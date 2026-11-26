@@ -140,3 +140,29 @@ jobs:
             "steami-daplink-firmware-${VERSION}.bin" \
             "steami-daplink-firmware-${VERSION}.hex" \
             --clobber
+
+  publish-release:
+    name: Publish the draft release
+    needs: [release, micropython-firmware, daplink-firmware]
+    if: needs.release.outputs.new-release-published == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Generate token
+        id: generate_token
+        uses: tibdex/github-app-token@v2
+        with:
+          app_id: ${{ secrets.RELEASE_APP_ID }}
+          private_key: ${{ secrets.RELEASE_APP_SECRET }}
+
+      # The repository uses immutable releases: assets can only be added while
+      # the release is a draft, so the firmware jobs upload first and the
+      # release is published last.
+      - name: Publish release
+        env:
+          GH_TOKEN: ${{ steps.generate_token.outputs.token }}
+        run: |
+          gh release edit "v${{ needs.release.outputs.new-release-version }}" \
+            --repo "${{ github.repository }}" \
+            --draft=false
