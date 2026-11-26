@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [0.28.2](https://github.com/steamicc/micropython-steami-lib/compare/v0.28.1...v0.28.2) (2026-11-26)
+
+
+### Bug Fixes
+
+* **tooling:** Move the .not-frozen marker from steami to hts221. ([#451](https://github.com/steamicc/micropython-steami-lib/issues/451)) ([debca63](https://github.com/steamicc/micropython-steami-lib/commit/debca6301e72cabed3f6894cc57acb4a6266d184)), closes [#450](https://github.com/steamicc/micropython-steami-lib/issues/450)
+
 ## [0.28.1](https://github.com/steamicc/micropython-steami-lib/compare/v0.28.0...v0.28.1) (2026-11-26)
 
 
