@@ -71,6 +71,9 @@ jobs:
         with:
           release: '14.2.Rel1'
 
+      - name: Write release version into the firmware
+        run: python3 scripts/write_firmware_version.py "v${{ needs.release.outputs.new-release-version }}"
+
       - name: Build MicroPython firmware
         run: make micropython-firmware
 
