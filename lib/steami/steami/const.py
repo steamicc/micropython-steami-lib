@@ -175,3 +175,8 @@ def decode_revision(rev):
     if rev // 100 != 1 or release is None:
         return None
     return release, rev % 10 == 0
+
+
+# Buttons: a change is taken at once, then the bounces of the next 20 ms are ignored.
+DEBOUNCE_MS = const(20)
+POLL_MS = const(5)

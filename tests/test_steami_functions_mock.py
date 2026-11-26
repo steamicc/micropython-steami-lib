@@ -4,7 +4,7 @@ import math
 
 import pytest
 
-from tests.fake_machine import steami_chips
+from tests.fake_machine import FakePin, steami_chips
 from tests.fake_machine.i2c_bus import FakeI2CBus
 from tests.test_steami_board_mock import (  # noqa: F401 (board_module is a fixture)
     Setup,
@@ -43,6 +43,7 @@ def steami(board_module):  # noqa: F811 (the imported fixture)
     """The board module, the const module and the function classes."""
     from steami.accelerometer import Accelerometer
     from steami.battery import Battery
+    from steami.buttons import Buttons
     from steami.color import Color
     from steami.compass import Compass
     from steami.distance import Distance
@@ -71,6 +72,7 @@ def steami(board_module):  # noqa: F811 (the imported fixture)
         "Light": Light,
         "Color": Color,
         "Gesture": Gesture,
+        "Buttons": Buttons,
     }
 
 
@@ -1135,8 +1137,18 @@ def test_mock_light_after_gesture_keeps_the_gesture_engine(steami):
 
 def test_mock_gesture_constants_are_the_arduino_texts(steami):
     gesture_cls = steami["Gesture"]
-    assert (gesture_cls.NONE, gesture_cls.UP, gesture_cls.DOWN, gesture_cls.LEFT, gesture_cls.RIGHT) == (
-        "NONE", "UP", "DOWN", "LEFT", "RIGHT",
+    assert (
+        gesture_cls.NONE,
+        gesture_cls.UP,
+        gesture_cls.DOWN,
+        gesture_cls.LEFT,
+        gesture_cls.RIGHT,
+    ) == (
+        "NONE",
+        "UP",
+        "DOWN",
+        "LEFT",
+        "RIGHT",
     )
     assert (gesture_cls.NEAR, gesture_cls.FAR) == ("NEAR", "FAR")
     for text in ("NONE", "LEFT", "RIGHT", "UP", "DOWN", "NEAR", "FAR"):
@@ -1282,3 +1294,201 @@ def test_mock_color_failing_channel_gives_all_zeros(steami):
     s.steami.apds9960().green_light = fail
     assert color.read() == (0, 0, 0)
     assert color.blue() == 0
+
+
+# --------------------------------------------------
+# Buttons
+# --------------------------------------------------
+
+
+class ButtonsRig:
+    """A board, its fake button pins and a clock that only moves when told."""
+
+    def __init__(self, steami, monkeypatch, release="V1c", **kwargs):
+        import steami.buttons as module
+
+        self.pins = {}
+        pins = self.pins
+
+        class PinStub(FakePin):
+            def __init__(self, pin_id, mode=FakePin.IN, pull=None):
+                super().__init__(pin_id, mode, pull)
+                self._value = 1  # pulled up: released
+                pins[pin_id] = self
+
+        self.now = 1000
+        monkeypatch.setattr(module, "Pin", PinStub)
+        monkeypatch.setattr(module, "ticks_ms", lambda: self.now)
+        monkeypatch.setattr(module, "sleep_ms", self.advance)
+        self.board = board(steami, release, **kwargs)
+        self.buttons = steami["Buttons"]()
+
+    def advance(self, ms):
+        self.now += ms
+
+    def press(self, name):
+        self.pins[name + "_BUTTON"].value(0)
+
+    def release(self, name):
+        self.pins[name + "_BUTTON"].value(1)
+
+    def dpad(self, port):
+        """Set the MCP23009E GPIO port (a bit at 0 is a pressed button)."""
+        self.board.bus._devices[0x20][0x09] = bytes([port])
+
+
+@pytest.fixture
+def rig(steami, monkeypatch):
+    return ButtonsRig(steami, monkeypatch)
+
+
+def test_mock_buttons_creating_touches_no_hardware(rig):
+    assert rig.pins == {}
+    assert rig.board.reads == []
+    assert rig.buttons.status() == "not started"
+
+
+def test_mock_buttons_begin_sets_the_pins_up_with_pull_ups(rig):
+    assert rig.buttons.begin() is True
+    assert sorted(rig.pins) == ["A_BUTTON", "B_BUTTON", "MENU_BUTTON"]
+    assert all(pin._pull == FakePin.PULL_UP for pin in rig.pins.values())
+    assert all(pin._mode == FakePin.IN for pin in rig.pins.values())
+    # The four D-pad bits of the MCP23009E are inputs with a pull-up.
+    assert rig.board.bus._devices[0x20][0x06] == bytes([0xF0])  # GPPU: bits 4 to 7
+    assert rig.board.bus._devices[0x20][0x00][0] & 0xF0 == 0xF0  # IODIR
+
+
+def test_mock_buttons_press_gives_one_was_pressed(rig):
+    assert rig.buttons.is_pressed("A") is False
+    rig.press("A")
+    rig.advance(30)
+    assert rig.buttons.was_pressed("A") is True
+    assert rig.buttons.was_pressed("A") is False  # consumed
+    assert rig.buttons.is_pressed("A") is True
+    assert rig.buttons.was_released("A") is False
+    rig.release("A")
+    rig.advance(30)
+    assert rig.buttons.is_pressed("A") is False
+    assert rig.buttons.was_released("A") is True
+    assert rig.buttons.was_released("A") is False
+
+
+def test_mock_buttons_bounces_give_one_press(rig):
+    rig.buttons.begin()
+    rig.buttons.is_pressed("B")
+    rig.press("B")
+    assert rig.buttons.was_pressed("B") is True  # taken at once
+    for level_low in (False, True, False, True):  # bounces within 20 ms
+        rig.advance(4)
+        (rig.press if level_low else rig.release)("B")
+        assert rig.buttons.is_pressed("B") is True
+    assert rig.buttons.was_pressed("B") is False
+    assert rig.buttons.was_released("B") is False
+
+
+def test_mock_buttons_a_short_pulse_is_held_until_20_ms_have_passed(rig):
+    rig.buttons.begin()
+    rig.buttons.is_pressed("MENU")
+    rig.press("MENU")
+    assert rig.buttons.is_pressed("MENU") is True
+    rig.advance(5)
+    rig.release("MENU")
+    assert rig.buttons.is_pressed("MENU") is True  # the release is locked out
+    rig.advance(14)
+    assert rig.buttons.is_pressed("MENU") is True
+    rig.advance(1)
+    assert rig.buttons.is_pressed("MENU") is False
+    assert rig.buttons.was_pressed("MENU") is True
+    assert rig.buttons.was_released("MENU") is True
+
+
+def test_mock_buttons_held_at_start_is_not_a_press(rig):
+    rig.buttons.begin()
+    rig.press("A")  # held before the first read
+    assert rig.buttons.is_pressed("A") is True
+    assert rig.buttons.was_pressed("A") is False
+
+
+def test_mock_buttons_unknown_name_raises(rig):
+    for method in (rig.buttons.is_pressed, rig.buttons.was_pressed, rig.buttons.was_released):
+        for name in ("X", "a", "", None):
+            with pytest.raises(ValueError):
+                method(name)
+
+
+@pytest.mark.parametrize(("name", "bit"), [("UP", 7), ("DOWN", 5), ("LEFT", 6), ("RIGHT", 4)])
+def test_mock_buttons_dpad_bits(rig, name, bit):
+    rig.buttons.begin()
+    rig.dpad(0xFF)
+    assert rig.buttons.is_pressed(name) is False
+    rig.advance(30)
+    rig.dpad(0xFF & ~(1 << bit))
+    pressed = [n for n in ("UP", "DOWN", "LEFT", "RIGHT") if rig.buttons.is_pressed(n)]
+    assert pressed == [name]
+    assert rig.buttons.was_pressed(name) is True
+
+
+def test_mock_buttons_without_the_expander_the_dpad_stays_released(steami, monkeypatch):
+    rig = ButtonsRig(steami, monkeypatch, missing=("MCP23009E",))
+    assert rig.buttons.begin() is False
+    assert rig.buttons.error() == "no answer"
+    assert rig.board.messages()[0] == (
+        "[STeaMi] Buttons: the MCP23009E D-PAD expander (I2C 0x20) did not answer. "
+        "The A, B and MENU buttons still work. (E10)"
+    )
+    for name in ("UP", "DOWN", "LEFT", "RIGHT"):
+        assert rig.buttons.is_pressed(name) is False
+    rig.press("A")
+    rig.advance(30)
+    assert rig.buttons.is_pressed("A") is True
+    assert rig.buttons.was_pressed("A") is True
+    rig.press("MENU")
+    assert rig.buttons.wait_for_press(10) == "MENU"
+
+
+def test_mock_buttons_work_without_begin_and_dpad_failures_read_released(rig):
+    assert rig.buttons.is_pressed("A") is False  # calls begin() itself
+    assert rig.buttons.is_available() is True
+
+    def fail():
+        raise OSError("bus")
+
+    rig.board.steami.mcp23009e().get_gpio = fail
+    rig.press("B")
+    assert rig.buttons.is_pressed("B") is True
+    assert rig.buttons.is_pressed("UP") is False
+
+
+def test_mock_buttons_wait_for_press_returns_the_name(rig):
+    rig.buttons.begin()
+    rig.press("A")  # held at start: not a press
+    rig.buttons.is_pressed("A")
+    presses = []
+
+    def press_later(ms):
+        rig.now += ms
+        if rig.now >= 1100 and not presses:
+            presses.append(1)
+            rig.dpad(0xFF & ~(1 << 5))
+
+    import steami.buttons as module
+
+    module.sleep_ms = press_later
+    assert rig.buttons.wait_for_press() == "DOWN"
+    assert rig.buttons.was_pressed("DOWN") is False  # consumed by the wait
+
+
+def test_mock_buttons_wait_for_press_drops_presses_latched_before(rig):
+    rig.buttons.begin()
+    rig.buttons.is_pressed("A")
+    rig.press("A")
+    rig.advance(30)
+    assert rig.buttons.is_pressed("A") is True  # latched a press of A
+    assert rig.buttons.wait_for_press(100) is None
+    assert rig.buttons.was_pressed("A") is False
+
+
+def test_mock_buttons_wait_for_press_times_out(rig):
+    start = rig.now
+    assert rig.buttons.wait_for_press(100) is None
+    assert 100 <= rig.now - start < 110
