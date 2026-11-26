@@ -83,6 +83,56 @@ ADDRESS = {
     Chip.MCP23009E: const(0x20),
 }
 
+# Driver of each chip: (module, class). The module is imported on first claim.
+DRIVERS = {
+    Chip.BME280: ("bme280", "BME280"),
+    Chip.WSEN_HIDS: ("wsen_hids", "WSEN_HIDS"),
+    Chip.WSEN_PADS: ("wsen_pads", "WSEN_PADS"),
+    Chip.APDS9960: ("apds9960", "uAPDS9960"),  # the MicroPython I2C variant
+    Chip.ISM330DL: ("ism330dl", "ISM330DL"),
+    Chip.LIS2MDL: ("lis2mdl", "LIS2MDL"),
+    Chip.VL53L1X: ("vl53l1x", "VL53L1X"),
+    Chip.BQ27441: ("bq27441", "BQ27441"),
+    Chip.MCP23009E: ("mcp23009e", "MCP23009E"),
+}
+
+# Chips that can serve each function: (V1a/V1b, V1c, unknown release), as in
+# Arduino steamiRoute().
+_ROUTES = {
+    Function.TEMPERATURE: (
+        (Chip.WSEN_HIDS, Chip.WSEN_PADS),
+        (Chip.BME280,),
+        (Chip.BME280, Chip.WSEN_HIDS, Chip.WSEN_PADS),
+    ),
+    Function.HUMIDITY: (
+        (Chip.WSEN_HIDS,),
+        (Chip.BME280,),
+        (Chip.BME280, Chip.WSEN_HIDS),
+    ),
+    Function.PRESSURE: (
+        (Chip.WSEN_PADS,),
+        (Chip.BME280,),
+        (Chip.BME280, Chip.WSEN_PADS),
+    ),
+    Function.DISTANCE: ((Chip.VL53L1X,),) * 3,
+    Function.ACCELEROMETER: ((Chip.ISM330DL,),) * 3,
+    Function.GYROSCOPE: ((Chip.ISM330DL,),) * 3,
+    Function.MAGNETOMETER: ((Chip.LIS2MDL,),) * 3,
+    Function.COMPASS: ((Chip.LIS2MDL,),) * 3,
+    Function.LIGHT: ((Chip.APDS9960,), (), (Chip.APDS9960,)),
+    Function.COLOR: ((Chip.APDS9960,), (), (Chip.APDS9960,)),
+    Function.GESTURE: ((Chip.APDS9960,), (), (Chip.APDS9960,)),
+    Function.BATTERY: ((Chip.BQ27441,),) * 3,
+    Function.BUTTONS: ((Chip.MCP23009E,),) * 3,
+}
+
+
+def route(release, function):
+    """Return the chips that can serve a function on a release, in order."""
+    column = 1 if release == Release.V1C else 2 if release == Release.UNKNOWN else 0
+    return _ROUTES[function][column]
+
+
 # One chip ID read per entry, in probing order: (chip, register, IDs, release).
 # Never 0x3B: that is the DAPLink bridge.
 PROBES = (

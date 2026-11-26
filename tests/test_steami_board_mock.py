@@ -10,6 +10,19 @@ from tests.runner.executor import cleanup_driver, load_driver_mock
 
 ROOT = Path(__file__).parent.parent
 
+DRIVER_DIRS = (
+    "bme280",
+    "wsen-hids",
+    "wsen-pads",
+    "apds9960",
+    "vl53l1x",
+    "ism330dl",
+    "lis2mdl",
+    "bq27441",
+    "mcp23009e",
+)
+DRIVER_MODULES = tuple(d.replace("-", "_") for d in DRIVER_DIRS)
+
 
 class FakeBridge:
     """Stands for DaplinkBridge: only the config zone calls of detection."""
@@ -32,12 +45,12 @@ def board_module():
     """Load steami.board with the fake machine, micropython and time modules."""
     # Reuses the patching of the driver loader (machine, micropython, time).
     load_driver_mock("daplink_bridge", None)
-    for name in ("steami_config", "steami"):
+    for name in ("steami_config", "steami", *DRIVER_DIRS):
         path = str(ROOT / "lib" / name)
         if path not in sys.path:
             sys.path.insert(0, path)
     for mod in list(sys.modules):
-        if mod == "steami" or mod.startswith(("steami.", "steami_config")):
+        if mod == "steami" or mod.startswith(("steami.", "steami_config", *DRIVER_MODULES)):
             del sys.modules[mod]
     import steami.board
     import steami.const
@@ -342,3 +355,168 @@ def test_mock_decode_revision(board_module):
     assert decode(231) is None
     assert decode(None) is None
     assert decode("131") is None
+
+
+def calibration(**tc):
+    return '{"rev": 131, "tc": %s}' % str(tc).replace("'", '"')
+
+
+def test_mock_claim_shared(board_module):
+    s = Setup(board_module)
+    chip = s.const.Chip.ISM330DL
+    assert s.steami.claim(chip) == s.const.Status.OK
+    first = s.steami.ism330dl()
+    assert first is not None
+    assert s.steami.claim(chip) == s.const.Status.OK
+    assert s.steami.ism330dl() is first
+
+
+def test_mock_claim_missing(board_module):
+    s = Setup(board_module, missing=("LIS2MDL",))
+    assert s.steami.claim(s.const.Chip.LIS2MDL) == s.const.Status.NOT_RESPONDING
+    assert s.steami.lis2mdl() is None
+    # The answer is cached: no second attempt on the bus.
+    s.reads.clear()
+    assert s.steami.claim(s.const.Chip.LIS2MDL) == s.const.Status.NOT_RESPONDING
+    assert s.reads == []
+
+
+def test_mock_claim_custom_exception(board_module):
+    s = Setup(board_module, release="V1a/V1b")
+    s.bus._devices[0x5D][0x0F] = b"\x00"  # wrong WHO_AM_I: the driver raises
+    assert s.steami.claim(s.const.Chip.WSEN_PADS) == s.const.Status.NOT_RESPONDING
+    assert s.steami.wsen_pads() is None
+
+
+def test_mock_claim_all_chips(board_module):
+    s = Setup(board_module, release="V1a/V1b")
+    for chip in s.const.ADDRESS:
+        expected = s.const.Status.NOT_RESPONDING if chip == "BME280" else s.const.Status.OK
+        assert s.steami.claim(chip) == expected, chip
+    for name in (
+        "bme280",
+        "wsen_hids",
+        "wsen_pads",
+        "apds9960",
+        "vl53l1x",
+        "ism330dl",
+        "lis2mdl",
+        "bq27441",
+        "mcp23009e",
+    ):
+        driver = getattr(s.steami, name)()
+        assert (driver is None) == (name == "bme280"), name
+
+
+def test_mock_calibrate_bme280(board_module):
+    s = Setup(board_module, config=calibration(bme={"g": 1.1, "o": -0.5}))
+    chip = s.const.Chip.BME280
+    assert s.steami.calibrated(chip) is False
+    assert s.steami.calibrate(chip) is True
+    assert s.steami.calibrated(chip) is True
+    driver = s.steami.bme280()
+    assert (driver._temp_gain, driver._temp_offset) == (1.1, -0.5)
+    driver._temp_gain = 2.0
+    assert s.steami.calibrate(chip) is True
+    assert (driver._temp_gain,) == (2.0,)  # a second call does nothing
+    assert s.bridge.read_calls == 1
+
+
+def test_mock_calibrate_without_data(board_module):
+    s = Setup(board_module, config='{"rev": 131}')
+    assert s.steami.calibrate(s.const.Chip.BME280) is False
+    assert s.steami.calibrated(s.const.Chip.BME280) is False
+    assert s.steami.calibrate(s.const.Chip.VL53L1X) is False
+    s = Setup(board_module)  # no config zone at all
+    assert s.steami.calibrate(s.const.Chip.BME280) is False
+
+
+def test_mock_calibrate_missing_chip(board_module):
+    s = Setup(board_module, missing=("BME280",), config=calibration(bme={"g": 1.1, "o": 0}))
+    assert s.steami.calibrate(s.const.Chip.BME280) is False
+
+
+def test_mock_calibrate_hids_falls_back_to_hts(board_module):
+    both = calibration(hid={"g": 1.0, "o": 0.0}, hts={"g": 1.05, "o": 0.3})
+    s = Setup(board_module, release="V1a/V1b", config=both)
+    assert s.steami.calibrate(s.const.Chip.WSEN_HIDS) is True
+    driver = s.steami.wsen_hids()
+    assert (driver._temp_gain, driver._temp_offset) == (1.05, 0.3)
+    only_hts = calibration(hts={"g": 1.05, "o": 0.3})
+    s = Setup(board_module, release="V1a/V1b", config=only_hts)
+    assert s.steami.calibrate(s.const.Chip.WSEN_HIDS) is True
+    assert (s.steami.wsen_hids()._temp_gain,) == (1.05,)
+    real_hid = calibration(hid={"g": 1.2, "o": 0.1}, hts={"g": 1.05, "o": 0.3})
+    s = Setup(board_module, release="V1a/V1b", config=real_hid)
+    assert s.steami.calibrate(s.const.Chip.WSEN_HIDS) is True
+    driver = s.steami.wsen_hids()
+    assert (driver._temp_gain, driver._temp_offset) == (1.2, 0.1)
+
+
+def test_mock_calibrate_pads_magnetometer_accelerometer(board_module):
+    config = (
+        '{"rev": 131, "tc": {"pad": {"g": 0.9, "o": 0.2}},'
+        ' "cm": {"hx": 1.5, "hy": 2.5, "hz": 3.5, "sx": 1.1, "sy": 1.2, "sz": 1.3},'
+        ' "ca": {"ox": 0.01, "oy": 0.02, "oz": 0.03}}'
+    )
+    s = Setup(board_module, release="V1a/V1b", config=config)
+    chips = s.const.Chip
+    assert s.steami.calibrate(chips.WSEN_PADS) is True
+    assert (s.steami.wsen_pads()._temp_gain,) == (0.9,)
+    assert s.steami.calibrate(chips.LIS2MDL) is True
+    mag = s.steami.lis2mdl()
+    assert (mag.x_off, mag.y_off, mag.z_off) == (1.5, 2.5, 3.5)
+    assert (mag.x_scale, mag.y_scale, mag.z_scale) == (1.1, 1.2, 1.3)
+    assert s.steami.calibrate(chips.ISM330DL) is True
+    assert s.steami.calibrated(chips.ISM330DL) is True
+    assert s.steami.calibrate(chips.APDS9960) is False  # nothing to calibrate
+
+
+def test_mock_calibrate_forced_release(board_module):
+    s = Setup(board_module, config=calibration(bme={"g": 1.1, "o": -0.5}))
+    s.steami.begin("V1c")
+    assert s.steami.calibrate(s.const.Chip.BME280) is True
+    assert (s.steami.bme280()._temp_gain,) == (1.1,)
+
+
+def test_mock_has(board_module):
+    s = Setup(board_module)
+    s.steami.begin("V1c")
+    functions = s.const.Function
+    assert s.steami.has(functions.LIGHT) is False
+    assert s.steami.has(functions.TEMPERATURE) is True
+    assert s.steami.has(functions.BUTTONS) is True
+    s.steami.begin("V1a")
+    assert s.steami.has(functions.LIGHT) is True
+    s.steami.end()
+    s.steami._i2c = steami_chips.board("V1c", missing=("BME280",))
+    assert s.steami.has(functions.LIGHT) is True  # unknown release: any candidate
+
+
+def test_mock_print_info(board_module):
+    s = Setup(board_module, config=calibration(bme={"g": 1.1, "o": -0.5}))
+    s.steami.begin("V1c")
+    s.lines.clear()
+    s.steami.print_info()
+    assert s.lines[0].startswith("[STeaMi] Board V1c")
+    assert s.lines[1:] == [
+        "BME280 0x76 not tried",
+        "ISM330DL 0x6B not tried",
+        "LIS2MDL 0x1E not tried",
+        "VL53L1X 0x29 not tried",
+        "BQ27441 0x55 not tried",
+        "MCP23009E 0x20 not tried",
+    ]
+    s.steami.calibrate(s.const.Chip.BME280)
+    s.lines.clear()
+    s.steami.print_info()
+    assert "BME280 0x76 OK, calibrated" in s.lines
+
+
+def test_mock_print_info_not_responding(board_module):
+    s = Setup(board_module, missing=("LIS2MDL",))
+    s.steami.begin("V1c")
+    s.steami.claim(s.const.Chip.LIS2MDL)
+    s.lines.clear()
+    s.steami.print_info()
+    assert "LIS2MDL 0x1E not responding" in s.lines

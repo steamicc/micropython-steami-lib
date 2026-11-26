@@ -1,11 +1,16 @@
 from steami.const import (
     ADDRESS,
+    DRIVERS,
     E_UNKNOWN_BOARD,
     E_UNKNOWN_REVISION,
     PROBES,
+    Chip,
+    Function,
     Origin,
     Release,
+    Status,
     decode_revision,
+    route,
 )
 
 _WHO = "SteamiBoard"
@@ -19,6 +24,8 @@ _UNKNOWN_REVISION = (
     "the board is detected from its sensors instead."
 )
 
+CHIPS = tuple(DRIVERS)
+_FUNCTIONS = tuple(getattr(Function, n) for n in dir(Function) if not n.startswith("_"))
 _FORCEABLE = (Release.V1A, Release.V1B, Release.V1C)
 
 
@@ -42,6 +49,9 @@ class _Board(object):
         self._origin = Origin.NONE
         self._revision = None
         self._probed_chip = None
+        self._drivers = {}  # chip -> driver, or None when it did not answer
+        self._calibration_tried = []
+        self._calibration_applied = []
         self._reported = []
         self._last_error = ""
         self._logger = print
@@ -110,6 +120,156 @@ class _Board(object):
         except Exception:
             # No bridge or a bad config: the board is detected by probing.
             self._config = None
+
+    # --------------------------------------------------
+    # Chips
+    # --------------------------------------------------
+
+    def claim(self, chip):
+        """Create the shared driver of a chip once; return Status.OK or NOT_RESPONDING.
+
+        The answer is kept: a chip that did not answer is not tried again
+        before end().
+        """
+        if chip not in DRIVERS:
+            return Status.NOT_RESPONDING
+        if chip not in self._drivers:
+            self.begin()
+            self._drivers[chip] = self._build(chip)
+        return Status.OK if self._drivers[chip] is not None else Status.NOT_RESPONDING
+
+    def _build(self, chip):
+        module, name = DRIVERS[chip]
+        try:
+            cls = getattr(__import__(module), name)
+            if chip == Chip.MCP23009E:
+                from machine import Pin
+
+                return cls(self.i2c(), ADDRESS[chip], Pin("RST_EXPANDER", Pin.OUT))
+            return cls(self.i2c())
+        except Exception:
+            # Each driver raises its own exception (or OSError) when the chip is absent.
+            return None
+
+    def _driver(self, chip):
+        self.claim(chip)
+        return self._drivers[chip]
+
+    def bme280(self):
+        return self._driver(Chip.BME280)
+
+    def wsen_hids(self):
+        return self._driver(Chip.WSEN_HIDS)
+
+    def wsen_pads(self):
+        return self._driver(Chip.WSEN_PADS)
+
+    def apds9960(self):
+        return self._driver(Chip.APDS9960)
+
+    def vl53l1x(self):
+        return self._driver(Chip.VL53L1X)
+
+    def ism330dl(self):
+        return self._driver(Chip.ISM330DL)
+
+    def lis2mdl(self):
+        return self._driver(Chip.LIS2MDL)
+
+    def bq27441(self):
+        return self._driver(Chip.BQ27441)
+
+    def mcp23009e(self):
+        return self._driver(Chip.MCP23009E)
+
+    def has(self, function):
+        """Return True when this release has a chip for the function."""
+        return len(route(self.release(), function)) > 0
+
+    # --------------------------------------------------
+    # Calibration
+    # --------------------------------------------------
+
+    def calibrated(self, chip):
+        """Return True when a stored calibration was applied to the chip."""
+        return chip in self._calibration_applied
+
+    def calibrate(self, chip):
+        """Apply the stored calibration to a chip, once. Return True if applied."""
+        if self.claim(chip) != Status.OK:
+            return False
+        if chip in self._calibration_tried:
+            return self.calibrated(chip)
+        self._calibration_tried.append(chip)  # a failing config read is not retried
+        if chip not in (
+            Chip.BME280,
+            Chip.WSEN_HIDS,
+            Chip.WSEN_PADS,
+            Chip.ISM330DL,
+            Chip.LIS2MDL,
+        ):
+            return False
+        config = self.config()
+        if config is None:
+            return False
+        driver = self._drivers[chip]
+        try:
+            applied = self._apply(config, chip, driver)
+        except Exception:
+            applied = False  # a malformed calibration entry
+        if applied:
+            self._calibration_applied.append(chip)
+        return applied
+
+    @staticmethod
+    def _apply(config, chip, driver):
+        if chip == Chip.ISM330DL:
+            if config.get_accelerometer_calibration() is None:
+                return False
+            config.apply_accelerometer_calibration(driver)
+        elif chip == Chip.LIS2MDL:
+            if config.get_magnetometer_calibration() is None:
+                return False
+            config.apply_magnetometer_calibration(driver)
+        else:
+            name = type(driver).__name__.lower()
+            cal = config.get_temperature_calibration(name)
+            if chip == Chip.WSEN_HIDS and (
+                cal is None or (cal["gain"] == 1.0 and cal["offset"] == 0.0)
+            ):
+                # The tool of steami_config stores the real calibration under
+                # "hts" (HTS221 driver); "hid" is the identity Arduino reads.
+                legacy = config.get_temperature_calibration("hts221")
+                if legacy is not None:
+                    cal = legacy
+            if cal is None:
+                return False
+            driver._temp_gain = cal["gain"]
+            driver._temp_offset = cal["offset"]
+        return True
+
+    # --------------------------------------------------
+    # Diagnostics
+    # --------------------------------------------------
+
+    def print_info(self):
+        """Send the board line, then one line per chip of this release."""
+        self.begin()
+        self._log_banner()
+        for chip in CHIPS:
+            if not any(chip in route(self._release, f) for f in _FUNCTIONS):
+                continue
+            if chip not in self._drivers:
+                state = "not tried"
+            elif self._drivers[chip] is None:
+                state = "not responding"
+            else:
+                state = "OK"
+            self._deliver(
+                "{} 0x{:02X} {}{}".format(
+                    chip, ADDRESS[chip], state, ", calibrated" if self.calibrated(chip) else ""
+                )
+            )
 
     # --------------------------------------------------
     # Release
@@ -213,9 +373,7 @@ class _Board(object):
                 self._revision, ", prototype" if decode_revision(self._revision)[1] else ""
             )
         elif origin == Origin.PROBE:
-            text = "detected: {} at 0x{:02X}".format(
-                self._probed_chip, ADDRESS[self._probed_chip]
-            )
+            text = "detected: {} at 0x{:02X}".format(self._probed_chip, ADDRESS[self._probed_chip])
         else:
             text = "nothing detected"
         self._deliver("[STeaMi] Board {} ({})".format(name, text))
