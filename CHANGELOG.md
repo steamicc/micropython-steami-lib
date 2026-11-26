@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [0.28.1](https://github.com/steamicc/micropython-steami-lib/compare/v0.28.0...v0.28.1) (2026-11-26)
+
+
+### Bug Fixes
+
+* **steami:** Wait for a sample at the new accelerometer range. ([#449](https://github.com/steamicc/micropython-steami-lib/issues/449)) ([d2f6b6b](https://github.com/steamicc/micropython-steami-lib/commit/d2f6b6baacdad5255d02f34bd0c5d1e1ff8626bd)), closes [#448](https://github.com/steamicc/micropython-steami-lib/issues/448)
+
 # [0.28.0](https://github.com/steamicc/micropython-steami-lib/compare/v0.27.3...v0.28.0) (2026-11-26)
 
 
