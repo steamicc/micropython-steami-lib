@@ -8,16 +8,19 @@ printed while there is no gesture. begin() turns the gesture engine on, and
 while it tracks a hand the light and colour readings freeze.
 """
 
+from time import sleep
+
 from steami import Gesture
 
 gesture = Gesture()
 
 if gesture.begin():
     print("Gesture sensor:", gesture.chip())
+    while True:
+        direction = gesture.read(200)
+        if direction != Gesture.NONE:
+            print(Gesture.name(direction))
+        # read() returns at once when no gesture is pending: do not spin on the bus.
+        sleep(0.01)
 else:
     print("No gesture sensor:", gesture.error())
-
-while True:
-    direction = gesture.read(200)
-    if direction != Gesture.NONE:
-        print(Gesture.name(direction))
