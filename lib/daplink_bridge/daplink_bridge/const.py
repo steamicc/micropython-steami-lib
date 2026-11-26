@@ -8,6 +8,7 @@ DAPLINK_BRIDGE_WHO_AM_I_VAL = const(0x4C)
 
 # Commands — bridge level
 CMD_WHO_AM_I = const(0x01)
+CMD_READ_SECTOR = const(0x20)
 CMD_WRITE_CONFIG = const(0x30)
 CMD_READ_CONFIG = const(0x31)
 CMD_CLEAR_CONFIG = const(0x32)
@@ -27,3 +28,7 @@ ERROR_CMD_FAILED = const(0x80)
 MAX_WRITE_CHUNK = const(30)
 SECTOR_SIZE = const(256)
 CONFIG_SIZE = const(1024)
+
+# Config zone probe timings (ms)
+PROBE_TIMEOUT_MS = const(500)
+PROBE_SETTLE_MS = const(150)

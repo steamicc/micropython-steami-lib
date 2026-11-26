@@ -25,6 +25,7 @@ module.exports = {
         'lis2mdl',
         'mcp23009e',
         'ssd1327',
+        'steami',
         'steami_config',
         'vl53l1x',
         'wsen-hids',

@@ -40,7 +40,13 @@ class FakeI2C:
 
     def readfrom_mem_into(self, addr, reg, buf, *, addrsize=8):
         self._check_address(addr)
-        data = self._registers.get(reg, b"\x00" * len(buf))
+        seq = self._sequences.get(reg)
+        if seq:
+            data = seq.pop(0)
+            if not seq:
+                del self._sequences[reg]
+        else:
+            data = self._registers.get(reg, b"\x00" * len(buf))
         for i in range(len(buf)):
             buf[i] = data[i] if i < len(data) else 0
 
