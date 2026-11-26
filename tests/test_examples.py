@@ -108,8 +108,9 @@ class TestExampleValidation:
         non_driver_methods = {
             "sleep_ms", "sleep_us", "ticks_ms", "ticks_us", "ticks_diff",
             "collect", "mem_free", "mem_alloc",
-            # steami.Screen adds board-level methods to the steami_screen API.
-            "begin", "is_available", "status", "error", "chip",
+            # steami.Screen adds board-level methods to the steami_screen API;
+            # the steami_screen examples read sensors through steami classes.
+            "begin", "is_available", "status", "error", "chip", "read",
         }
 
         # Find the driver class name to identify which variable holds it
