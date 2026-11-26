@@ -641,8 +641,10 @@ class Screen:
 
         At a cardinal position the glyphs are scaled by k and, when k > 1,
         the text is kept inside the circle (moved, then cut). An explicit
-        (x, y) is in real pixels and the scale is used as given.
+        (x, y) is in real pixels and the scale is used as given. A scale
+        below 1 counts as 1.
         """
+        scale = max(scale, 1)
         if isinstance(at, str):
             k = self.k
             f = scale * k

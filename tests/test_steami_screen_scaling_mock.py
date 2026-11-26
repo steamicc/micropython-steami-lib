@@ -182,6 +182,19 @@ def test_mock_title_rows_and_cut_at_240(panel, text):
     assert set(lit(raw).values()) == {GRAY}
 
 
+@pytest.mark.parametrize("size", (128, 240))
+def test_mock_text_scale_0_counts_as_1(panel, size):
+    # Arduino treats scale 0 as 1; at k > 1 it used to give f = 0 and draw nothing.
+    for at in ("N", "CENTER", "SW"):
+        s, raw = panel(size)
+        s.text("Hi", at=at, scale=0)
+        zero = lit(raw)
+        s, raw = panel(size)
+        s.text("Hi", at=at, scale=1)
+        assert zero, at
+        assert zero == lit(raw), at
+
+
 def test_mock_title_at_scale_2_sits_at_its_floor(panel):
     # Arduino test_title_rows: text("ABCDEFGH", N, WHITE, 2) on 240, 6 cells kept at row 67.
     s, raw = panel()

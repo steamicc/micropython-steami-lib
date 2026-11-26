@@ -97,7 +97,7 @@ This is a fork PR as in v0.28.2, then a lib PR that removes `lib/gc9a01/.not-fro
 - gauge outer radius `radius - u(4)`;
 - face cell `W * 11 / 128`.
 
-A plain ×15/8 of today's `device.py` constants is not enough: it would give, for example, a 165 px bar instead of 200.
+A plain ×15/8 of today's `device.py` constants is not enough: text, the title row and the gauge need the rules above. (Plain layout lengths do scale that way: the bar is W − u(40) = 165 px wide at 240, as in Arduino.)
 
 - `Screen` derives k from the display width: k = 1 at 128 px, k = 2 at 240 px, as Arduino's `k() = (width + 64) / 128`.
 - It lays widgets out in 128 px units multiplied by width/128 (15/8 at 240 px).
