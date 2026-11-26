@@ -55,6 +55,9 @@ function uses. A program only spends RAM on the functions it imports.
 
 # API
 
+Import names explicitly, for example `from steami import Temperature`:
+loading is lazy, so `from steami import *` imports nothing.
+
 Public names: `Steami`, `Release`, `Chip`, `Function`, `Status`, `Origin`,
 `Vector` and the classes `Temperature`, `Humidity`, `Pressure`, `Distance`,
 `Battery`, `Accelerometer`, `Gyroscope`, `Magnetometer`, `Compass`, `Light`,
@@ -70,7 +73,7 @@ Public names: `Steami`, `Release`, `Chip`, `Function`, `Status`, `Origin`,
 Steami.begin()          # detect the release once, return it
 Steami.begin("V1c")     # force it ("V1a", "V1b", "V1c"): no I2C traffic
 Steami.release()        # Release.V1A, V1B, V1C, V1AB ("V1a/V1b") or UNKNOWN ("")
-Steami.release_name()   # same, as text
+Steami.release_name()   # the release as text, "unknown" when it is not known
 Steami.is_v1c()
 Steami.is_v1ab()
 Steami.origin()         # Origin.FORCED, CONFIG, PROBE or NONE
@@ -87,7 +90,8 @@ Detection runs once, in this order, as in Arduino:
 1. **Forced release**: `Steami.begin("V1c")`.
 2. **Config zone**: the board revision stored in the DAPLink config zone (a
    probe checks first that the firmware has one, so old DAPLink firmwares do
-   not hang). 110, 111, 120, 121, 130, 131 give V1a, V1b or V1c.
+   not hang). Revision codes are of the form 1xy where the release digit x is
+   1, 2 or 3 (V1a, V1b, V1c), for example 131 is a V1c.
 3. **I2C probing**: BME280 means V1c; WSEN-HIDS, WSEN-PADS or APDS-9960 means
    V1a/V1b (the probe cannot tell them apart).
 4. Otherwise the release is unknown (E01) and the function classes try every
@@ -115,7 +119,7 @@ calibrations of the config zone are applied once per chip, on first use.
 Steami.print_info()     # the board line, then one line per chip of the release
 Steami.set_logger(fn)   # messages go to fn(line); None silences them
 Steami.last_error()     # the last message, even when it was not printed
-Steami.end()            # forget everything (release, drivers, messages)
+Steami.end()            # forget everything (release, drivers, messages, logger)
 ```
 
 ## Function classes
@@ -123,7 +127,9 @@ Steami.end()            # forget everything (release, drivers, messages)
 Every class has the same form. `begin()` is idempotent and returns `True` or
 `False`; then `is_available()`, `status()`, `error()` and `chip()`. A read
 before `begin()` calls `begin()`. Creating an instance touches no hardware. A
-failed function is not retried until `Steami.end()` or a reset.
+failed function is not retried until a reset. `Steami.end()` does not reset
+function objects that already exist (as in Arduino): after `Steami.end()`,
+create the function objects again.
 
 | Class | Reads | Value when the function is missing |
 |---|---|---|
@@ -193,6 +199,9 @@ Problems are reported with the same short coded lines as Arduino, each
 | E11 | The release (forced or from the config) is contradicted by a chip that does not answer |
 | E20 | The function is not on this release |
 
+Board-level messages are signed `SteamiBoard`; function messages are signed
+with the Python class name (`Light`, `Temperature`...).
+
 There is no E03 (no `#define`) and no E30 or E31 (they belong to the screen).
 `Steami.set_logger(fn)` redirects the lines, `Steami.set_logger(None)`
 silences them, and `Steami.last_error()` returns the last one.
@@ -216,6 +225,9 @@ silences them, and `Steami.last_error()` returns the last one.
 * Debounce is the Arduino 20 ms lock-out: a change is taken at once, then the
   bounces of the next 20 ms are ignored. Buttons are polled, with no
   interrupts: call a method on every loop turn.
+* `Steami.end()` also resets the logger to `print`; Arduino keeps it.
+* `Steami.begin()` returns the release text (truthy when the release is
+  known) where Arduino returns a bool.
 * Statuses are class constants (`Status.OK`, ...).
 * There is no screen yet. It needs the GC9A01 driver (issue #368), then screen
   routing in `steami_screen`.

@@ -1,6 +1,6 @@
 # Board detection and function classes for MicroPython — design
 
-Status: waiting for approval.
+Status: approved on 2026-11-26.
 
 ## Intent
 
