@@ -4,20 +4,13 @@ Displays APDS9960 ambient light with a scrolling line graph.
 
 from time import sleep_ms
 
-import ssd1327
 from apds9960 import uAPDS9960 as APDS9960
-from machine import I2C, SPI, Pin
-from steami_screen import Screen, SSD1327Display
+from machine import I2C
+from steami import Screen
 
 # --- Display setup ---
-spi = SPI(1)
-dc = Pin("DATA_COMMAND_DISPLAY")
-res = Pin("RST_DISPLAY")
-cs = Pin("CS_DISPLAY")
-
-raw_display = ssd1327.WS_OLED_128X128_SPI(spi, dc, res, cs)
-display = SSD1327Display(raw_display)
-screen = Screen(display)
+screen = Screen()
+screen.begin()  # allocate the frame buffer early in the program
 
 # --- Sensor setup ---
 i2c = I2C(1)

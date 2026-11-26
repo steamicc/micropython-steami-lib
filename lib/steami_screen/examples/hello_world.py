@@ -10,19 +10,11 @@ Basic steami_screen example:
 
 from time import sleep_ms
 
-import ssd1327
-from machine import SPI, Pin
-from steami_screen import Screen, SSD1327Display
+from steami import Screen
 
 # --- Display setup ---
-spi = SPI(1)
-dc = Pin("DATA_COMMAND_DISPLAY")
-res = Pin("RST_DISPLAY")
-cs = Pin("CS_DISPLAY")
-
-raw_display = ssd1327.WS_OLED_128X128_SPI(spi, dc, res, cs)
-display = SSD1327Display(raw_display)
-screen = Screen(display)
+screen = Screen()
+screen.begin()  # allocate the frame buffer early in the program
 
 # --- Demo loop ---
 counter = 0

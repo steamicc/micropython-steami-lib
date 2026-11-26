@@ -4,20 +4,14 @@ Shows temperature with a bar graph indicating how close it is to 40°C.
 
 from time import sleep_ms
 
-import ssd1327
 from hts221 import HTS221
-from machine import I2C, SPI, Pin
-from steami_screen import GREEN, Screen, SSD1327Display
+from machine import I2C
+from steami import Screen
+from steami_screen import GREEN
 
 # --- Screen setup ---
-spi = SPI(1)
-dc = Pin("DATA_COMMAND_DISPLAY")
-res = Pin("RST_DISPLAY")
-cs = Pin("CS_DISPLAY")
-
-raw_display = ssd1327.WS_OLED_128X128_SPI(spi, dc, res, cs)
-display = SSD1327Display(raw_display)
-screen = Screen(display)
+screen = Screen()
+screen.begin()  # allocate the frame buffer early in the program
 
 # --- Sensor setup ---
 i2c = I2C(1)

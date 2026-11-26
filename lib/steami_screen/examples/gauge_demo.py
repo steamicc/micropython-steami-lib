@@ -1,6 +1,7 @@
-"""Gauge demo example using VL53L1X distance sensor and SSD1327 OLED.
+"""Gauge demo example using VL53L1X distance sensor and the STeaMi screen.
 
 Displays time-of-flight distance as an arc gauge on the round screen.
+Runs on every release (128 px grey SSD1327, 240 px colour GC9A01).
 The gauge color and arc width change dynamically based on the measured
 distance, providing a clear visual proximity indicator.
 
@@ -29,18 +30,14 @@ Reactivity:
 
 from time import sleep_ms
 
-import ssd1327
-from machine import I2C, SPI, Pin
-from steami_screen import BLACK, LIGHT, WHITE, YELLOW, Screen, SSD1327Display
+from machine import I2C
+from steami import Screen
+from steami_screen import BLACK, LIGHT, WHITE, YELLOW
 from vl53l1x import VL53L1X
 
 # === Display setup ===
-spi = SPI(1)
-dc = Pin("DATA_COMMAND_DISPLAY")
-res = Pin("RST_DISPLAY")
-cs = Pin("CS_DISPLAY")
-display = SSD1327Display(ssd1327.WS_OLED_128X128_SPI(spi, dc, res, cs))
-screen = Screen(display)
+screen = Screen()
+screen.begin()  # allocate the frame buffer early in the program
 
 # === Sensor setup ===
 i2c = I2C(1)
@@ -51,8 +48,9 @@ MAX_DIST = 500
 REDRAW_THRESHOLD = 10  # mm — minimum change to trigger a redraw
 
 # === Center text area (erased before each text update) ===
-_TEXT_W = 56
-_TEXT_H = 10
+# Sizes are in 128 px units; u() maps them to real pixels (x2 on 240 px).
+_TEXT_W = screen.u(56)
+_TEXT_H = screen.u(10)
 _TEXT_X = screen.center[0] - _TEXT_W // 2
 _TEXT_Y = screen.center[1] - _TEXT_H // 2
 
@@ -70,7 +68,7 @@ def dist_to_color(dist):
 def dist_to_arc_width(dist):
     """Return arc width based on distance — thicker when closer."""
     ratio = 1.0 - max(0.0, min(1.0, dist / MAX_DIST))
-    return int(5 + ratio * 12)
+    return screen.u(5 + ratio * 12)  # arc_width is in real pixels
 
 
 def redraw_gauge(dist, color, arc_w):

@@ -18,24 +18,56 @@ Provides a device-agnostic abstraction layer on top of display drivers (SSD1327,
 
 ## Basic Usage
 
+On a STeaMi board, use the board-level `steami.Screen`. It picks the right display for the release (128 px grey SSD1327 on V1a/V1b, 240 px round colour GC9A01 on V1c) and offers the whole API below.
+
 ```python
-import ssd1327
-from machine import SPI, Pin
-from steami_screen import Screen, SSD1327Display
+from steami import Screen
 
-spi = SPI(1)
-dc = Pin("DATA_COMMAND_DISPLAY")
-res = Pin("RST_DISPLAY")
-cs = Pin("CS_DISPLAY")
-
-raw = ssd1327.WS_OLED_128X128_SPI(spi, dc, res, cs)
-display = SSD1327Display(raw)
-screen = Screen(display)
+screen = Screen()
+screen.begin()  # allocate the frame buffer early in the program
 
 screen.clear()
 screen.title("STeaMi")
 screen.value(42, label="Temp", unit="C")
 screen.show()
+```
+
+To drive a display directly (any FrameBuffer-based backend):
+
+```python
+import ssd1327
+from machine import SPI, Pin
+from steami_screen import Screen, SSD1327Display
+
+raw = ssd1327.WS_OLED_128X128_SPI(
+    SPI(1), Pin("DATA_COMMAND_DISPLAY"), Pin("RST_DISPLAY"), Pin("CS_DISPLAY")
+)
+screen = Screen(SSD1327Display(raw))
+```
+
+---
+
+## Units and Scale
+
+The layout is designed on a 128 px screen and scaled to the real width.
+
+| Property | 128 px (V1a/V1b) | 240 px (V1c) |
+|----------|------------------|--------------|
+| `screen.k` (glyph and stroke factor) | 1 | 2 |
+| `screen.width`, `height` | 128 | 240 |
+| `screen.center`, `radius` | (64, 64), 64 | (120, 120), 120 |
+
+Units of the public API:
+
+* real pixels: `pixel`, `line`, `rect`, `circle`, `text(text, at=(x, y))` (the `scale` is used as given), `arc_width`, and the properties `width`, `height`, `center`, `radius`;
+* scaled by `k`: widget text and text at a cardinal position (`at="N"`, `"CENTER"`, ...);
+* 128 px units: `y_offset` (for example in `bar()`).
+
+`screen.u(v)` converts a length given in 128 px units to real pixels (`int(v * width / 128)`). Use it so that hard-coded geometry looks the same on both sizes:
+
+```python
+box_w = screen.u(56)  # 56 on 128 px, 112 on 240 px
+screen.rect(screen.center[0] - box_w // 2, 10, box_w, screen.u(10), BLACK, fill=True)
 ```
 
 ---

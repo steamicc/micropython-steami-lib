@@ -5,18 +5,12 @@ Displays an analog clock face using the built-in RTC.
 
 import time
 
-import ssd1327
-from machine import RTC, SPI, Pin
-from steami_screen import Screen, SSD1327Display
+from machine import RTC
+from steami import Screen
 
 # --- Screen setup ---
-spi = SPI(1)
-dc = Pin("DATA_COMMAND_DISPLAY")
-res = Pin("RST_DISPLAY")
-cs = Pin("CS_DISPLAY")
-
-display = SSD1327Display(ssd1327.WS_OLED_128X128_SPI(spi, dc, res, cs))
-screen = Screen(display)
+screen = Screen()
+screen.begin()  # allocate the frame buffer early in the program
 
 # --- RTC setup ---
 rtc = RTC()
