@@ -118,18 +118,26 @@ class _Board(object):
     def begin(self, release=None):
         """Detect the release once and return it.
 
-        With "V1a", "V1b" or "V1c", skip detection (no I2C traffic). A release
-        already found is kept.
+        With "V1a", "V1b" or "V1c", skip detection (no I2C traffic); this
+        overrides a release already found. Without it, detection runs once.
         """
+        if release == Release.UNKNOWN:
+            release = None
         if release is not None and release not in _FORCEABLE:
             raise ValueError("release must be V1a, V1b or V1c")
+        if release is not None:
+            changed = not self._detected or self._release != release
+            changed = changed or self._origin != Origin.FORCED
+            self._detected = True
+            self._release = release
+            self._origin = Origin.FORCED
+            if changed:
+                self._log_banner()
+            return self._release
         if self._detected:
             return self._release
         self._detected = True
-        if release is not None:
-            self._release = release
-            self._origin = Origin.FORCED
-        elif not self._detect_from_config() and not self._detect_by_probe():
+        if not self._detect_from_config() and not self._detect_by_probe():
             self._release = Release.UNKNOWN
             self._origin = Origin.NONE
             self.report(_WHO, E_UNKNOWN_BOARD, _UNKNOWN_BOARD)

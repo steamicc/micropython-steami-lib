@@ -239,13 +239,37 @@ def test_mock_unknown_message(board_module):
     )
 
 
-def test_mock_begin_once(board_module):
+def test_mock_begin_detects_once(board_module):
     s = Setup(board_module)
     assert s.steami.begin() == "V1c"
-    assert s.steami.begin("V1a") == "V1c"
-    assert s.steami.release() == "V1c"
+    reads = len(s.reads)
+    assert s.steami.begin() == "V1c"
+    assert len(s.reads) == reads
     assert s.steami.origin() == s.const.Origin.PROBE
     assert len(banner(s)) == 1
+
+
+def test_mock_begin_forced_overrides_detected(board_module):
+    s = Setup(board_module)
+    assert s.steami.begin() == "V1c"
+    assert s.steami.begin("V1a") == "V1a"
+    assert s.steami.release() == "V1a"
+    assert s.steami.origin() == s.const.Origin.FORCED
+    assert banner(s)[-1] == "[STeaMi] Board V1a (forced by Steami.begin())"
+    assert len(banner(s)) == 2
+
+
+def test_mock_begin_forced_twice_logs_once(board_module):
+    s = Setup(board_module)
+    s.steami.begin("V1c")
+    s.steami.begin("V1c")
+    assert len(banner(s)) == 1
+
+
+def test_mock_begin_empty_release_detects(board_module):
+    s = Setup(board_module)
+    assert s.steami.begin("") == "V1c"
+    assert s.steami.origin() == s.const.Origin.PROBE
 
 
 def test_mock_release_detects_on_first_use(board_module):
