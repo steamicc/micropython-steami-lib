@@ -19,9 +19,9 @@ _ERRORS = {
     Status.NOT_RESPONDING: "no answer",
 }
 
-# Where the release comes from, for E11. A release found by probing is not
-# trusted: the chip that answered decided it.
-_TRUSTED_ORIGINS = {
+# Where the release comes from, for E11. A release found by probing gets no
+# E11: the chip that answered decided it.
+_E11_ORIGINS = {
     Origin.FORCED: "forced by Steami.begin()",
     Origin.CONFIG: "read from the board config",
 }
@@ -162,7 +162,7 @@ class Handle(object):
         # E11 only when the release decides which chip serves the function: a
         # chip that is on every release (distance, battery) never contradicts it.
         depends = _first(Release.V1C, self._function) != _first(Release.V1AB, self._function)
-        origin = _TRUSTED_ORIGINS.get(Steami.origin()) if depends else None
+        origin = _E11_ORIGINS.get(Steami.origin()) if depends else None
         if origin is not None:
             self._report(
                 E_RELEASE_CONTRADICTED,
