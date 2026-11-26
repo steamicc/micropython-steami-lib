@@ -240,7 +240,9 @@ from steami_screen import RED, GREEN, BLUE, YELLOW
 
 Colors are RGB tuples. On SSD1327 they degrade to greyscale automatically.
 
-On the GC9A01 round screen the frame holds 16 colours: each pixel is a palette index (0-15), not an RGB565 value. `GC9A01Display` maps any RGB tuple to the nearest entry of the driver palette (smallest squared RGB distance) with `steami_screen.gc9a01.rgb_to_index(color)`. A legacy int is a grey4 level: it becomes the grey `level * 17`, then the nearest palette entry.
+On the GC9A01 round screen the frame holds 16 colours: each pixel is a palette index (0-15), not an RGB565 value. `GC9A01Display` maps any RGB tuple to the nearest entry of the driver palette (smallest squared RGB distance) with `steami_screen.gc9a01.rgb_to_index(color)`. A legacy int is a grey4 level: it becomes the grey `level * 17`, then the nearest palette entry, but a non-zero level never becomes black (level 1 gives the darkest grey, as it is visible on the SSD1327).
+
+An arbitrary RGB tuple therefore shows as the nearest of the 16 palette colours (listed in the `gc9a01` README), which can surprise: `(0, 255, 0)` is nearer to the palette's dark green `(0, 128, 0)` than to `GREEN` `(119, 255, 119)`, so it shows dark green. Use the named constants, which are exact palette entries, for exact colours.
 
 ---
 

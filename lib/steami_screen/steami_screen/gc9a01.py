@@ -41,11 +41,13 @@ def rgb_to_index(color):
 
     The nearest entry is the one with the smallest squared RGB distance.
     A legacy int is a grey4 level (as in colors.py): it is clamped to 0-15,
-    expanded to the grey level * 17 (R = G = B), then mapped the same way.
+    expanded to the grey level * 17 (R = G = B), then mapped the same way,
+    except that a non-zero level, visible on the SSD1327, is never BLACK.
     """
+    level = 0
     if isinstance(color, int):
-        grey = max(0, min(15, color)) * 17
-        color = (grey, grey, grey)
+        level = max(0, min(15, color))
+        color = (level * 17,) * 3
     else:
         color = tuple(color)
     index = _cache.get(color)
@@ -61,6 +63,8 @@ def rgb_to_index(color):
         if len(_cache) >= _CACHE_MAX:
             _cache.clear()
         index = _cache[color] = best
+    if level and not index:
+        index = 1  # GRID_DARK
     return index
 
 

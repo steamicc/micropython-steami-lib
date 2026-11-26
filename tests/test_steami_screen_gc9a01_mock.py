@@ -139,16 +139,27 @@ def test_nearest_matches_brute_force_on_a_colour_grid(adapter_mod):
 
 def test_legacy_int_is_a_grey4_level_mapped_to_the_nearest_grey(adapter_mod):
     # colors.py gives an int the meaning grey4: level n is the grey n * 17
-    # (R = G = B). The adapter maps it to the palette entry nearest to it.
+    # (R = G = B). The adapter maps it to the palette entry nearest to it,
+    # except that a non-zero level is never BLACK (see the next test).
     assert adapter_mod.rgb_to_index(15) == 5  # 255 -> WHITE
     assert adapter_mod.rgb_to_index(0) == 0  # 0 -> BLACK
-    for level in range(16):
+    for level in range(2, 16):
         grey = level * 17
         assert adapter_mod.rgb_to_index(level) == nearest((grey, grey, grey))
     # The values the old constants rely on.
     assert adapter_mod.rgb_to_index(6) == 2  # 102 -> DARK
     assert adapter_mod.rgb_to_index(9) == 3  # 153 -> GRAY
     assert adapter_mod.rgb_to_index(11) == 4  # 187 -> LIGHT
+
+
+def test_non_zero_grey4_level_is_never_black(adapter_mod):
+    # Level 1 (grey 17) is nearest to BLACK, but it is visible on the SSD1327:
+    # it becomes GRID_DARK, the darkest visible entry. The RGB tuple keeps the
+    # plain nearest rule, even after the int has been looked up.
+    assert adapter_mod.rgb_to_index(1) == 1
+    assert adapter_mod.rgb_to_index((17, 17, 17)) == 0
+    assert adapter_mod.rgb_to_index(1) == 1
+    assert all(adapter_mod.rgb_to_index(level) != 0 for level in range(1, 16))
 
 
 def test_legacy_int_is_clamped_to_the_grey4_range(adapter_mod):
