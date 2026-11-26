@@ -540,3 +540,75 @@ def test_mock_claim_expander_missing(board_module):
     assert s.steami.mcp23009e() is None
     s = Setup(board_module)
     assert s.steami.claim(s.const.Chip.MCP23009E) == s.const.Status.OK
+
+
+FUNCTION_MODULES = (
+    "temperature",
+    "humidity",
+    "pressure",
+    "distance",
+    "battery",
+    "accelerometer",
+    "gyroscope",
+    "magnetometer",
+    "compass",
+    "light",
+    "color",
+    "gesture",
+    "buttons",
+)
+
+
+def _loaded_submodules():
+    return {m for m in sys.modules if m.startswith("steami.")}
+
+
+def test_mock_lazy_import(board_module):
+    for mod in list(sys.modules):
+        if mod == "steami" or mod.startswith("steami."):
+            del sys.modules[mod]
+    import steami
+
+    assert not _loaded_submodules() & {f"steami.{name}" for name in FUNCTION_MODULES}
+    from steami import Temperature
+
+    assert Temperature.__module__ == "steami.temperature"
+    assert _loaded_submodules() == {
+        "steami.temperature",
+        "steami.handle",
+        "steami.board",
+        "steami.const",
+    }
+    # The attribute is cached in the module globals.
+    assert steami.__dict__["Temperature"] is Temperature
+    with pytest.raises(AttributeError):
+        steami.Nothing  # noqa: B018
+
+
+def test_mock_lazy_public_names(board_module):
+    import steami
+
+    # Steami is the shared instance, not a class.
+    assert steami.Steami is sys.modules["steami.board"].Steami
+    for name in (
+        "Release",
+        "Chip",
+        "Function",
+        "Status",
+        "Origin",
+        "Vector",
+        "Temperature",
+        "Humidity",
+        "Pressure",
+        "Distance",
+        "Battery",
+        "Accelerometer",
+        "Gyroscope",
+        "Magnetometer",
+        "Compass",
+        "Light",
+        "Color",
+        "Gesture",
+        "Buttons",
+    ):
+        assert getattr(steami, name).__name__ == name
