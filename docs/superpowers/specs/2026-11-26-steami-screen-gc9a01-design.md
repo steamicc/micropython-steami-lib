@@ -135,5 +135,5 @@ A plain ×15/8 of today's `device.py` constants is not enough: it would give, fo
 - The strip height and the exact SPI speed (measure the `show()` time and report it).
 - How `steami.Screen` exposes the `steami_screen` API.
 - The exact file split inside `gc9a01`.
-- Whether `draw_arc` is worth an adapter method on GC9A01.
+- Whether `draw_arc` is worth an adapter method on GC9A01. (Decided: no. `Screen._draw_arc` draws the ring sector row by row as horizontal spans, as the Arduino `arc()`, on both panels; the adapter hook stays.)
 - The order of work and the number of PRs (driver; adapter and scaling; `steami.Screen`; firmware freeze).

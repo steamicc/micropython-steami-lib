@@ -47,6 +47,12 @@ from steami_screen.const import (
 )
 
 
+def _ray(deg):
+    """(cos, sin) of an angle in degrees, in Q14 fixed point."""
+    a = math.radians(deg)
+    return round(16384 * math.cos(a)), round(16384 * math.sin(a))
+
+
 class Screen:
     """High-level wrapper around a raw display backend."""
 
@@ -767,35 +773,65 @@ class Screen:
             self._d.text(text, x, y, color)
 
     def _draw_arc(self, cx, cy, r, start_deg, sweep_deg, color, width=3):
-        """Draw a thick arc."""
+        """Draw a thick arc: the ring r - width // 2 .. r + width // 2.
+
+        Angles are in degrees, 0 at 3 o'clock, growing clockwise on the
+        screen (y down); sweep <= 0 draws nothing, sweep >= 360 a full ring.
+        As the Arduino arc(), each row of the ring is clipped to the sector
+        with two integer cross products, then drawn as horizontal spans:
+        every pixel is decided once, so the ring has no holes.
+        """
         if hasattr(self._d, "draw_arc"):
             self._d.draw_arc(cx, cy, r, start_deg, sweep_deg, color, width)
             return
-
-        arc_len = abs(math.radians(sweep_deg) * r)
-        steps = max(int(arc_len * 1.5), 1)
-        half_w = width // 2
-
-        prev_points = None
-
-        for i in range(steps + 1):
-            angle = math.radians(start_deg + i * sweep_deg / steps)
-
-            curr_points = []
-            for dr in range(-half_w, half_w + 1):
-                rr = r + dr
-                x = round(cx + rr * math.cos(angle))
-                y = round(cy + rr * math.sin(angle))
-                curr_points.append((x, y))
-
-                if prev_points is None and 0 <= x < self.width and 0 <= y < self.height:
-                    self._d.pixel(x, y, color)
-
-            if prev_points is not None:
-                for (x0, y0), (x1, y1) in zip(prev_points, curr_points):
-                    self._line(x0, y0, x1, y1, color)
-
-            prev_points = curr_points
+        if sweep_deg <= 0:
+            return
+        half = width // 2
+        ro, ri = r + half, max(0, r - half)
+        # Sectors of at most 180 deg: (start ray, end ray), Q14 cos and sin.
+        secs = ()
+        if sweep_deg < 360:
+            m = start_deg + min(sweep_deg, 180)
+            secs = (_ray(start_deg) + _ray(m),)
+            if sweep_deg > 180:
+                secs += (_ray(m) + _ray(start_deg + sweep_deg),)
+        o2, i2 = (2 * ro + 1) ** 2, (2 * ri - 1) ** 2
+        fr = self._fill_rect
+        for dy in range(max(-ro, -cy), min(ro, self.height - 1 - cy) + 1):
+            d4 = 4 * dy * dy
+            xo = int(math.sqrt((o2 - d4) // 4))
+            xi = 0
+            q = (i2 - d4 + 3) // 4
+            if ri and q > 0:
+                xi = int(math.sqrt(q))
+                xi += xi * xi < q
+            if xi > xo:
+                continue
+            y = cy + dy
+            for lo, hi in ((-xo, -xi), (xi, xo)) if xi else ((-xo, xo),):
+                if not secs:
+                    fr(cx + lo, y, hi - lo + 1, 1, color)
+                    continue
+                # On row dy each half-plane cross(S, p) >= 0, cross(p, E) >= 0
+                # is a half-line in dx: clip the span to both.
+                for sx, sy, ex, ey in secs:
+                    a, b = lo, hi
+                    c = sx * dy
+                    if sy > 0:
+                        b = min(b, c // sy)
+                    elif sy < 0:
+                        a = max(a, -(c // -sy))
+                    elif c < 0:
+                        continue
+                    c = ex * dy
+                    if ey > 0:
+                        a = max(a, -(-c // ey))
+                    elif ey < 0:
+                        b = min(b, c // ey)
+                    elif c > 0:
+                        continue
+                    if a <= b:
+                        fr(cx + a, y, b - a + 1, 1, color)
 
     def _draw_circle(self, cx, cy, r, color):
         """Bresenham circle."""

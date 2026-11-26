@@ -4,9 +4,14 @@ The calls are recorded at the raw driver level: a recording raw display is
 wrapped in the real SSD1327Display, inside a Screen. The recorded colours are
 the grey4 ints the panel receives, and the scaled text goes through
 SSD1327Display.draw_scaled_text. The reference JSON was recorded before the
-GC9A01 scaling rule; it proves the 128 px output stays identical.
+GC9A01 scaling rule. The SSD1327 output may change only to improve the
+drawing, and every change to the 128 px golden is justified: the gauge entry
+was re-recorded when the arc became a scanline ring sector (solid rings, about
+60 edge pixels per call changed).
 
 Regenerate (only on purpose): STEAMI_GOLDEN_WRITE=1 python3 -m pytest <this file>
+The writer rewrites every entry the same way, so `git diff` must show only the
+entries meant to change.
 """
 
 import json

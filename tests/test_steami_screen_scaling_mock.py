@@ -435,6 +435,102 @@ def test_mock_gauge_arc_width_is_in_real_pixels(panel):
     assert [y for y in range(40) if px.get((120, y)) == DARK] == list(range(7, 14))
 
 
+def arc_errors(raw, r, width, start, sweep, margin=1.0):
+    """(holes, strays) of an arc drawn on a black frame around the panel centre.
+
+    The ring is the Arduino one: 4 d^2 between (2 ri - 1)^2 and (2 ro + 1)^2,
+    ro = r + width // 2, ri = r - width // 2; the sector is start .. start +
+    sweep, clockwise. Pixels within `margin` px of a sector edge are not
+    judged. holes: unlit ring pixels inside the sector; strays: lit pixels
+    outside the ring or the sector.
+    """
+    c = raw.width // 2
+    half = width // 2
+    o2, i2 = (2 * (r + half) + 1) ** 2, (2 * max(0, r - half) - 1) ** 2
+    px = lit(raw)
+    holes, strays = [], []
+    for y in range(raw.height):
+        for x in range(raw.width):
+            dx, dy = x - c, y - c
+            on = (x, y) in px
+            if not i2 <= 4 * (dx * dx + dy * dy) <= o2:
+                if on:
+                    strays.append((x, y))
+                continue
+            rel = (math.degrees(math.atan2(dy, dx)) - start) % 360
+            inside = sweep >= 360 or rel <= sweep
+            edge = 0 if sweep >= 360 else min(rel, abs(rel - sweep), 360 - rel)
+            if math.hypot(dx, dy) * math.radians(edge) < margin:
+                continue
+            if inside and not on:
+                holes.append((x, y))
+            elif on and not inside:
+                strays.append((x, y))
+    return holes, strays
+
+
+@pytest.mark.parametrize("size", (128, 240))
+@pytest.mark.parametrize("sweep", (1, 90, 135, 180, 181, 200, 270, 359, 360))
+def test_mock_arc_is_a_solid_ring_sector(panel, size, sweep):
+    # Arduino 5.6 arc(): every ring pixel inside the sector is lit (no pinholes),
+    # none outside it; the end stops at start + sweep, clockwise from 135.
+    for r, width in ((size // 2 - 8, 7), (size // 2 - 20, 31)):
+        s, raw = panel(size)
+        s._draw_arc(size // 2, size // 2, r, 135, sweep, (255, 255, 255), width)
+        holes, strays = arc_errors(raw, r, width, 135, sweep)
+        assert not holes, (r, width, holes[:5])
+        assert not strays, (r, width, strays[:5])
+        assert set(lit(raw).values()) == {WHITE}
+
+
+@pytest.mark.parametrize("size", (128, 240))
+def test_mock_arc_end_angles(panel, size):
+    # A pixel on the ring just past either end (2 degrees) is unset, one just
+    # inside is set: start 135 (lower left), sweeps < 180 and > 180.
+    c = size // 2
+    r = c - 10
+    for sweep in (90, 200, 270):
+        s, raw = panel(size)
+        s._draw_arc(c, c, r, 135, sweep, (255, 255, 255), 5)
+        px = lit(raw)
+        for deg, on in ((133, False), (137, True), (135 + sweep - 2, True), (137 + sweep, False)):
+            a = math.radians(deg)
+            p = (round(c + r * math.cos(a)), round(c + r * math.sin(a)))
+            assert (p in px) is on, (sweep, deg)
+
+
+@pytest.mark.parametrize("size", (128, 240))
+def test_mock_arc_sweep_0_draws_nothing(panel, size):
+    s, raw = panel(size)
+    s._draw_arc(size // 2, size // 2, size // 3, 135, 0, (255, 255, 255), 9)
+    assert not lit(raw)
+
+
+@pytest.mark.parametrize("size", (128, 240))
+def test_mock_gauge_arcs_are_solid(panel, size):
+    # The full gauge: track and fill are solid rings (the old point-by-point
+    # arc left single-pixel holes in thick arcs).
+    s, raw = panel(size)
+    w = s.u(17)
+    s.gauge(100, arc_width=w, color=(255, 255, 255))
+    r = s.radius - w // 2 - (1 if s.k == 1 else s.u(4))
+    holes, _ = arc_errors(raw, r, w + 2, 135, 270)
+    assert not holes, holes[:5]
+
+
+def test_mock_arc_uses_the_adapter_draw_arc(panel):
+    s, raw = panel()
+    calls = []
+    s._d.draw_arc = lambda *a: calls.append(a)
+    s.gauge(50)
+    assert calls == [
+        (120, 120, 107, 135, 270, (102, 102, 102), 13),
+        (120, 120, 107, 135, 135, (187, 187, 187), 15),
+    ]
+    assert count(raw, DARK) == 0
+    assert count(raw, LIGHT) == 0
+
+
 # ----- face, watch, compass -----
 
 
