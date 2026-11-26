@@ -432,16 +432,21 @@ class Screen:
                 return str(int(v // 1000)) + "k"
             return str(int(v))
 
-        mid_val = (min_val + max_val) / 2
-        for val, yp in [(max_val, gy), (mid_val, gy + gh // 2), (min_val, gy + gh)]:
-            label = _fmt(val)
-            cw = int(self.CHAR_W * 0.85)
-            # Left of the axis on 128 px; when k > 1 inside the box, where the
-            # circle leaves room for them.
-            lx = gx - len(label) * cw - 1 if k == 1 else gx + k + u(2)
-            self._txt(label, lx, yp - 4 * k, DARK, k, "draw_small_text")
-
         mid_y = gy + gh // 2
+        mid_val = (min_val + max_val) / 2
+        for val, yp in ((max_val, gy), (mid_val, mid_y), (min_val, gy + gh)):
+            label = _fmt(val)
+            if k == 1:
+                # Left of the axis, centred on its line.
+                cw = int(self.CHAR_W * 0.85)
+                self._txt(label, gx - len(label) * cw - 1, yp - 4, DARK, 1, "draw_small_text")
+                continue
+            # Inside the box, where the circle leaves room (Arduino 5.9): the
+            # max label's top u(2) below the top, the others' last inked row
+            # (digits ink rows 0-6) k + u(2) above their line.
+            y = yp + u(2) if yp == gy else yp - u(2) - 8 * k + 1
+            self._txt(label, gx + k + u(2), y, DARK, k)
+
         dash, gap = u(STEAMI_GRAPH_DASH), u(STEAMI_GRAPH_GAP)
         x = gx + k
         while x < gx + gw:

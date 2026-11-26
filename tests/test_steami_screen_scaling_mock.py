@@ -661,6 +661,26 @@ def test_mock_graph_value_and_labels_at_240(panel):
     assert not outside(raw, slack=0)
 
 
+@pytest.mark.parametrize("max_val,labels", ((100, 3), (2000, 3)))
+def test_mock_graph_labels_clear_the_axes_at_240(panel, max_val, labels):
+    # Arduino 5.9: the labels sit inside the box, clear of its lines. Box rows
+    # u(38) = 71 .. 71 + u(52) = 168; bottom axis rows 168-169 (k = 2), dashed
+    # mid line row 71 + 48 = 119. Max label top 71 + u(2) = 74; the mid and min
+    # labels' last inked row k + u(2) = 5 above their line: 114 and 163.
+    s, raw = panel()
+    s.graph([], min_val=0, max_val=max_val)
+    rows = sorted({y for (x, y), c in lit(raw).items() if c == DARK and x >= 44 and y < 168})
+    bands = [(74, 87), (101, 114), (150, 163)]
+    assert all(any(a <= y <= b for a, b in bands) for y in rows), rows
+    assert [any(a <= y <= b for y in rows) for a, b in bands] == [True] * labels
+    assert not {119, 168, 169} & set(rows)
+    px = lit(raw)
+    # The dashes and the axis cross no label: rows 119 and 168 keep their own
+    # colour only, and no label pixel touches the row next to them.
+    assert {px[(x, 119)] for x in range(41, 76) if (x, 119) in px} == {GRID_DARK}
+    assert not [y for y in rows if y in (118, 120, 167)]
+
+
 # ----- everything stays inside at default arguments -----
 
 
