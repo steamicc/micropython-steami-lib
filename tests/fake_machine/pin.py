@@ -20,6 +20,8 @@ class FakePin:
             return self._value
         self._value = val
 
-    def init(self, mode=IN, pull=None):
+    def init(self, mode=IN, pull=None, *, value=None):
         self._mode = mode
         self._pull = pull
+        if value is not None:
+            self._value = value
