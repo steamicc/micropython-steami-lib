@@ -78,6 +78,21 @@ class RecordingRaw:
     def show(self):
         self.calls.append(("show",))
 
+    def blit(self, fb, x, y, key=-1, palette=None):
+        self.calls.append(
+            (
+                "blit",
+                bytes(fb[0]),
+                fb[1],
+                fb[2],
+                fb[3],
+                x,
+                y,
+                key,
+                (palette.pixel(0, 0), palette.pixel(1, 0)),
+            )
+        )
+
 
 @pytest.fixture
 def mods():
@@ -323,3 +338,125 @@ def test_scaled_text_goes_through_fill_rect_blocks(recorded):
     for call in raw.calls:
         assert call[0] == "fill_rect"
         assert call[3:] == (2, 2, 5)
+
+
+# ----- draw_glyphs -----
+
+
+@pytest.fixture
+def sp(mods):
+    """The steami_screen.spleen module, imported on CPython."""
+    return importlib.import_module("steami_screen.spleen")
+
+
+def glyph_bits(fc, o):
+    """Set (col, row) bits of the glyph at offset o, MSB = column 0."""
+    w, h, data = fc[0], fc[1], fc[4]
+    bpr = (w + 7) // 8
+    bits = set()
+    for r in range(h):
+        for col in range(w):
+            if data[o + r * bpr + col // 8] >> (7 - col % 8) & 1:
+                bits.add((col, r))
+    return bits
+
+
+def test_draw_glyphs_blits_native_faces_with_one_colour_lookup(
+    recorded, adapter_mod, sp, monkeypatch
+):
+    display, raw = recorded
+    lookups = []
+    original = adapter_mod.rgb_to_index
+
+    def counting(color):
+        lookups.append(color)
+        return original(color)
+
+    monkeypatch.setattr(adapter_mod, "rgb_to_index", counting)
+    data = bytes(sp.F8X16[4])
+    # Offset 528 is "A", 1168 is "i".
+    display.draw_glyphs(sp.F8X16, [(528, 10, 20), (1168, 18, 20)], 1, 0, (255, 255, 255))
+    assert raw.calls == [
+        ("blit", data[528:544], 8, 16, 3, 10, 20, 0, (0, 5)),
+        ("blit", data[1168:1184], 8, 16, 3, 18, 20, 0, (0, 5)),
+    ]
+    assert len(lookups) == 1
+
+
+def test_draw_glyphs_bold_is_a_second_blit_one_pixel_right(recorded, sp):
+    display, raw = recorded
+    o = sp.VALUE_KEY.find("8") * 32 * 2
+    display.draw_glyphs(sp.F16X32, [(o, 50, 60)], 1, 1, (255, 255, 255))
+    data = bytes(sp.F16X32[4])[o : o + 64]
+    assert raw.calls == [
+        ("blit", data, 16, 32, 3, 50, 60, 0, (0, 5)),
+        ("blit", data, 16, 32, 3, 51, 60, 0, (0, 5)),
+    ]
+
+
+def test_draw_glyphs_black_uses_key_1(recorded, sp):
+    display, raw = recorded
+    display.draw_glyphs(sp.F8X16, [(528, 0, 0)], 1, 0, (0, 0, 0))
+    assert len(raw.calls) == 1
+    call = raw.calls[0]
+    assert call[0] == "blit"
+    assert call[7] == 1
+    assert call[8] == (1, 0)
+
+
+def test_draw_glyphs_fills_runs_for_replicated_faces(recorded, sp):
+    display, raw = recorded
+    o = 528 + 7 * 16  # "H"
+    display.draw_glyphs(sp.F8X16, [(o, 10, 20)], 2, 0, (255, 255, 255))
+    assert {call[0] for call in raw.calls} == {"fill_rect"}
+    assert len(raw.calls) == 19
+    assert all(call[4] == 2 and call[5] == 5 for call in raw.calls)
+    assert raw.calls[:2] == [
+        ("fill_rect", 10, 24, 4, 2, 5),
+        ("fill_rect", 20, 24, 4, 2, 5),
+    ]
+    assert ("fill_rect", 10, 32, 14, 2, 5) in raw.calls
+
+    raw.calls.clear()
+    display.draw_glyphs(sp.F8X16, [(o, 10, 20)], 2, 1, (255, 255, 255))
+    assert raw.calls[:2] == [
+        ("fill_rect", 10, 24, 6, 2, 5),
+        ("fill_rect", 20, 24, 6, 2, 5),
+    ]
+
+
+def test_draw_glyphs_keeps_the_background(real, sp):
+    # Review Focus 1: only the glyph's set bits change, whatever the colour.
+    display, raw = real
+    fb = raw.framebuf
+    bits = glyph_bits(sp.F8X16, 528)  # "A"
+    assert len(bits) == 44
+
+    def cell(x0, y0, n):
+        """{(x, y): value} of the n-replicated 8x16 cell at x0, y0."""
+        return {
+            (x0 + x, y0 + y): fb.pixel(x0 + x, y0 + y) for y in range(16 * n) for x in range(8 * n)
+        }
+
+    def expected(x0, y0, n, ink, bg):
+        return {
+            (x0 + x, y0 + y): ink if (x // n, y // n) in bits else bg
+            for y in range(16 * n)
+            for x in range(8 * n)
+        }
+
+    display.fill((102, 102, 102))  # DARK, index 2
+    display.draw_glyphs(sp.F8X16, [(528, 10, 20)], 1, 0, (255, 255, 255))
+    got = cell(10, 20, 1)
+    assert got == expected(10, 20, 1, 5, 2)
+    assert sum(1 for v in got.values() if v == 2) == 84
+
+    display.fill((255, 255, 255))
+    display.draw_glyphs(sp.F8X16, [(528, 10, 20)], 1, 0, (0, 0, 0))
+    assert cell(10, 20, 1) == expected(10, 20, 1, 0, 5)
+
+    display.fill((255, 255, 255))
+    display.draw_glyphs(sp.F8X16, [(528, 10, 20)], 2, 0, (0, 0, 0))
+    assert cell(10, 20, 2) == expected(10, 20, 2, 0, 5)
+    # Nothing around the cell is painted.
+    assert fb.pixel(9, 20) == fb.pixel(26, 20) == fb.pixel(10, 52) == 5

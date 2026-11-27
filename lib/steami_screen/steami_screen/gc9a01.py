@@ -11,6 +11,8 @@ Usage on the STeaMi board:
     display = GC9A01Display(raw)
 """
 
+from steami_screen import fonts
+
 # Same entries and order as gc9a01.const.PALETTE (index: RGB).
 _PALETTE = (
     (0, 0, 0),  # 0 BLACK
@@ -80,6 +82,8 @@ class GC9A01Display:
             self._fill_rect_raw = raw.fill_rect
         else:
             self._fill_rect_raw = raw.framebuf.fill_rect
+        # 2x1 GS4_HMSB palette of draw_glyphs, made on its first native blit.
+        self._pal = None
 
     def fill(self, color):
         self._raw.fill(rgb_to_index(color))
@@ -131,3 +135,36 @@ class GC9A01Display:
                     if fb.pixel(px, py):
                         blit(cx + px * scale, y + py * scale, scale, scale, index)
             cx += 8 * scale
+
+    def draw_glyphs(self, fc, glyphs, n, bold, color):
+        """Draw Spleen glyphs of face fc, each (offset, x, y), at replication n.
+
+        Only the glyph's set bits are painted, whatever the colour (BLACK
+        included). At n = 1 each glyph is blitted through a 2x1 palette
+        (set bit -> c, clear bit -> b != c) with key b; bold blits it again
+        one pixel right. At n >= 2 each run of set bits is one fill_rect.
+        The colour is looked up once per call.
+        """
+        c = rgb_to_index(color)
+        if n > 1:
+            fonts.draw_runs(self._fill_rect_raw, fc, glyphs, n, bold, c)
+            return
+        import framebuf
+
+        b = 1 if c == 0 else 0
+        pal = self._pal
+        if pal is None:
+            self._pal_buf = bytearray(1)
+            pal = self._pal = framebuf.FrameBuffer(self._pal_buf, 2, 1, framebuf.GS4_HMSB)
+        self._pal_buf[0] = (b << 4) | c
+        raw = self._raw
+        blit = raw.blit if hasattr(raw, "blit") else raw.framebuf.blit
+        mono = framebuf.MONO_HLSB
+        w, h = fc[0], fc[1]
+        size = h * ((w + 7) // 8)
+        mv = memoryview(fc[4])
+        for o, x, y in glyphs:
+            src = (mv[o : o + size], w, h, mono)
+            blit(src, x, y, b, pal)
+            if bold:
+                blit(src, x + 1, y, b, pal)
