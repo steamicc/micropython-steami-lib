@@ -394,6 +394,20 @@ def test_draw_glyphs_bold_is_a_second_blit_one_pixel_right(recorded, sp):
     ]
 
 
+def test_draw_glyphs_resolves_its_setup_once(real, sp, monkeypatch):
+    # The C FrameBuffer.blit of the driver, one memoryview per face.
+    display, raw = real
+    display.draw_glyphs(sp.F8X16, [(528, 10, 20)], 1, 0, (255, 255, 255))
+    assert display._blit == raw.framebuf.blit
+    views = dict(display._mvs)
+    assert list(views) == [id(sp.F8X16[4])]
+    monkeypatch.setattr(display._raw, "framebuf", None)
+    display.draw_glyphs(sp.F8X16, [(1168, 18, 20)], 1, 1, (0, 0, 0))
+    display.draw_glyphs(sp.F16X32, [(0, 30, 20)], 1, 0, (0, 0, 0))
+    assert display._mvs[id(sp.F8X16[4])][1] is views[id(sp.F8X16[4])][1]
+    assert len(display._mvs) == 2
+
+
 def test_draw_glyphs_black_uses_key_1(recorded, sp):
     display, raw = recorded
     display.draw_glyphs(sp.F8X16, [(528, 0, 0)], 1, 0, (0, 0, 0))

@@ -82,8 +82,13 @@ class GC9A01Display:
             self._fill_rect_raw = raw.fill_rect
         else:
             self._fill_rect_raw = raw.framebuf.fill_rect
-        # 2x1 GS4_HMSB palette of draw_glyphs, made on its first native blit.
+        # draw_glyphs state, made on its first native blit: the 2x1 GS4_HMSB
+        # palette, the framebuf module, the blit (the C FrameBuffer.blit when
+        # the driver has a framebuf) and the glyph data memoryviews.
         self._pal = None
+        self._fbm = None
+        self._blit = None
+        self._mvs = {}
 
     def fill(self, color):
         self._raw.fill(rgb_to_index(color))
@@ -143,26 +148,35 @@ class GC9A01Display:
         included). At n = 1 each glyph is blitted through a 2x1 palette
         (set bit -> c, clear bit -> b != c) with key b; bold blits it again
         one pixel right. At n >= 2 each run of set bits is one fill_rect.
-        The colour is looked up once per call.
+        The colour is looked up once per call; the framebuf module, the blit
+        and each face's memoryview are resolved once per display.
         """
         c = rgb_to_index(color)
         if n > 1:
             fonts.draw_runs(self._fill_rect_raw, fc, glyphs, n, bold, c)
             return
-        import framebuf
+        fbm = self._fbm
+        if fbm is None:
+            import framebuf
 
+            fbm = self._fbm = framebuf
+            self._pal_buf = bytearray(1)
+            self._pal = framebuf.FrameBuffer(self._pal_buf, 2, 1, framebuf.GS4_HMSB)
+            raw = self._raw
+            self._blit = raw.framebuf.blit if hasattr(raw, "framebuf") else raw.blit
         b = 1 if c == 0 else 0
         pal = self._pal
-        if pal is None:
-            self._pal_buf = bytearray(1)
-            pal = self._pal = framebuf.FrameBuffer(self._pal_buf, 2, 1, framebuf.GS4_HMSB)
         self._pal_buf[0] = (b << 4) | c
-        raw = self._raw
-        blit = raw.blit if hasattr(raw, "blit") else raw.framebuf.blit
-        mono = framebuf.MONO_HLSB
+        blit = self._blit
+        mono = fbm.MONO_HLSB
         w, h = fc[0], fc[1]
         size = h * ((w + 7) // 8)
-        mv = memoryview(fc[4])
+        data = fc[4]
+        mvs = self._mvs
+        entry = mvs.get(id(data))
+        if entry is None or entry[0] is not data:
+            entry = mvs[id(data)] = (data, memoryview(data))
+        mv = entry[1]
         for o, x, y in glyphs:
             src = (mv[o : o + size], w, h, mono)
             blit(src, x, y, b, pal)

@@ -274,12 +274,13 @@ def on_panel(pixels, size=240):
 
 
 def counting(screen, raw):
-    """Count raw.blit and fill_rect calls of screen's GC9A01 adapter.
+    """Count raw.framebuf.blit and fill_rect calls of screen's GC9A01 adapter.
 
     Apply before the first draw on that screen. Returns the live counts.
     """
     n = {"blit": 0, "fill_rect": 0}
-    blit, fill_rect = raw.blit, screen._d._fill_rect_raw
+    # draw_glyphs blits through the driver's FrameBuffer.blit.
+    blit, fill_rect = raw.framebuf.blit, screen._d._fill_rect_raw
 
     def counted_blit(*args):
         n["blit"] += 1
@@ -289,7 +290,7 @@ def counting(screen, raw):
         n["fill_rect"] += 1
         return fill_rect(*args)
 
-    raw.blit = counted_blit
+    raw.framebuf.blit = counted_blit
     screen._d._fill_rect_raw = counted_fill_rect
     return n
 
