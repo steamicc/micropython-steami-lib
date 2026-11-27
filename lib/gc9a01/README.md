@@ -100,9 +100,9 @@ The conversion is a `@micropython.viper` function that looks up the RGB565 word 
 | SPI write at 16 MHz (before)      | 3.9 ms |
 | SPI write at 32 MHz               | 2.0 ms |
 
-A whole `show()` took 167 ms with the blit at 16 MHz; with the viper conversion at 32 MHz it should take about 15 x (3.6 + 2.0) = 85 ms.
+A whole `show()` took 167 ms with the blit at 16 MHz and takes 74 ms with the viper conversion at 32 MHz, measured on the V1c (15 strips of 3.6 + 2.0 ms add up to 84 ms; the board measured less).
 
-The SPI clock is `BAUDRATE` in `gc9a01/const.py`: 32 MHz, the SPI1 maximum on the STeaMi (64 MHz PCLK2 / 2). If the panel shows errors at that speed, set it back to 16 MHz (`16_000_000`), the speed used before.
+The SPI clock is `BAUDRATE` in `gc9a01/const.py`: 32 MHz, the SPI1 maximum on the STeaMi (64 MHz PCLK2 / 2), checked on a V1c (identical pixels under a webcam, all V1c hardware tests pass). If a panel shows errors at that speed, set it back to 16 MHz (`16_000_000`), the speed used before.
 
 ## API Reference
 
