@@ -100,6 +100,20 @@ def test_mock_k_and_u_at_128_and_240(panel):
     assert (s240.width, s240.height, s240.center, s240.radius) == (240, 240, (120, 120), 120)
 
 
+def test_mock_layout_lengths_are_named_constants(mods):
+    # The u(2) and u(4) lengths of the widgets are named in const.py (#456).
+    const = sys.modules["steami_screen.const"]
+    assert const.STEAMI_VALUE_LABEL_GAP == 4
+    assert const.STEAMI_GAUGE_RING_INSET == 4
+    assert const.STEAMI_GRAPH_LABEL_PAD == 2
+    assert const.STEAMI_MENU_BAR_PAD == 2
+    assert (const.STEAMI_WATCH_HOUR_HALF_W, const.STEAMI_WATCH_MINUTE_HALF_W) == (3, 2)
+    source = sys.modules["steami_screen.device"].__file__
+    with open(source, encoding="utf-8") as f:
+        code = [line.split("#")[0] for line in f]
+    assert not [line for line in code if "u(2)" in line or "u(4)" in line]
+
+
 def test_mock_resolve_every_anchor_at_240(panel):
     s, _ = panel()
     # Arduino test_resolve_every_anchor: resolve(at, tw 32, f 2).

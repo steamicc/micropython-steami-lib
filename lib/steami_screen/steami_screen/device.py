@@ -39,17 +39,23 @@ from steami_screen.const import (
     STEAMI_CHAR_W,
     STEAMI_DEFAULT_HEIGHT,
     STEAMI_DEFAULT_WIDTH,
+    STEAMI_GAUGE_RING_INSET,
     STEAMI_GRAPH_DASH,
     STEAMI_GRAPH_GAP,
     STEAMI_GRAPH_HEIGHT,
+    STEAMI_GRAPH_LABEL_PAD,
     STEAMI_GRAPH_MARGIN,
     STEAMI_GRAPH_VALUE_Y,
     STEAMI_GRAPH_X_OFFSET,
     STEAMI_GRAPH_Y,
+    STEAMI_MENU_BAR_PAD,
     STEAMI_MENU_ROW_CELLS,
     STEAMI_TITLE_CAP_CELLS,
     STEAMI_VALUE_FIT_MARGIN,
+    STEAMI_VALUE_LABEL_GAP,
     STEAMI_VALUE_SIDE_GAP,
+    STEAMI_WATCH_HOUR_HALF_W,
+    STEAMI_WATCH_MINUTE_HALF_W,
     WHITE,
 )
 from steami_screen.fonts import LABEL, TEXT, VALUE
@@ -374,8 +380,9 @@ class Screen:
         sh = k if side or corner else 0
         align = 3 if side else 1
         if label:
-            # Label 6x12 at top - u(4) - 12 (its cell height is 12 on 240).
-            ly, fit = self._label_fit(label, y - self.u(4) - 12, y, lo, hi, sh)
+            # Label 6x12 at top - u(LABEL_GAP) - 12 (its cell is 12 px tall on 240).
+            ly0 = y - self.u(STEAMI_VALUE_LABEL_GAP) - 12
+            ly, fit = self._label_fit(label, ly0, y, lo, hi, sh)
             self._place(label, ax, ly, GRAY, LABEL, k, align, fit)
         if unit:
             self._put(unit, ax, y + 8 * f, LIGHT, TEXT, k, align, lo, hi, sh)
@@ -496,8 +503,8 @@ class Screen:
         k = self.k
         cx, cy = self.center
         arc_w = arc_width if arc_width is not None else max(5, self.radius // 9)
-        # Centre line of the ring; when k > 1 its outer edge is radius - u(4).
-        r = self.radius - arc_w // 2 - (1 if k == 1 else self.u(4))
+        # Centre line of the ring; when k > 1 its outer edge is radius - u(RING_INSET).
+        r = self.radius - arc_w // 2 - (1 if k == 1 else self.u(STEAMI_GAUGE_RING_INSET))
         start_angle = 135
         sweep = 270
         ratio = (val - min_val) / (max_val - min_val) if max_val != min_val else 0
@@ -562,6 +569,7 @@ class Screen:
 
         mid_y = gy + gh // 2
         mid_val = (min_val + max_val) / 2
+        pad = u(STEAMI_GRAPH_LABEL_PAD)
         for val, yp in ((max_val, gy), (mid_val, mid_y), (min_val, gy + gh)):
             label = _fmt(val)
             if k == 1:
@@ -570,15 +578,15 @@ class Screen:
                 self._txt(label, gx - len(label) * cw - 1, yp - 4, DARK, 1, "draw_small_text")
                 continue
             # Inside the box, where the circle leaves room (Arduino 5.9), in
-            # the 6x12 LABEL face: the max label's first ink row u(2) below
-            # the top, the others' last ink row k + u(2) above their line.
-            # Left edge gx + k + u(2), cut to the chord at its ink rows less
+            # the 6x12 LABEL face: the max label's first ink row pad below
+            # the top, the others' last ink row k + pad above their line.
+            # Left edge gx + k + pad, cut to the chord at its ink rows less
             # k (Arduino drawGraphLabel(), rule 7).
             # Kept MicroPython difference: three labels, with "k" formatting.
             fc = fonts.face(label, LABEL, k)[0]
             a, b = fonts.ink_rows(fonts.masks(fc, label)[-1])
-            y = gy + u(2) - a if yp == gy else yp - k - u(2) - b
-            lx = gx + k + u(2)
+            y = gy + pad - a if yp == gy else yp - k - pad - b
+            lx = gx + k + pad
             self._put(label, lx, y, DARK, LABEL, k, 0, lx, None, k)
 
         dash, gap = u(STEAMI_GRAPH_DASH), u(STEAMI_GRAPH_GAP)
@@ -635,7 +643,8 @@ class Screen:
         for i in range(start, min(start + visible, len(items))):
             iy = u(35 + 14 * (i - start))
             if i == selected:
-                self._fill_rect(u(15), iy - u(2), self.width - u(30), item_h, DARK)
+                by = iy - u(STEAMI_MENU_BAR_PAD)
+                self._fill_rect(u(15), by, self.width - u(30), item_h, DARK)
                 text, c = "> " + items[i], color
             else:
                 text, c = "  " + items[i], GRAY
@@ -725,8 +734,8 @@ class Screen:
 
         # Hands: (angle in degrees, length, half width), then the second hand.
         for deg, length, half in (
-            ((hours % 12 + minutes / 60) * 30, int(r * 0.50), u(3)),
-            ((minutes + seconds / 60) * 6, int(r * 0.75), u(2)),
+            ((hours % 12 + minutes / 60) * 30, int(r * 0.50), u(STEAMI_WATCH_HOUR_HALF_W)),
+            ((minutes + seconds / 60) * 6, int(r * 0.75), u(STEAMI_WATCH_MINUTE_HALF_W)),
         ):
             rad = math.radians(deg)
             hx = cx + q(length * math.sin(rad))
