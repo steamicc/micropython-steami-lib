@@ -142,6 +142,21 @@ pins the copy to the module, so the 128 path never imports `spleen`.
 
 The palette and the blit target are created lazily, on the first call.
 
+**Measured on the board (deviation).** On the V1c (STM32WB55 at 64 MHz, MicroPython 1.29) the C palette blit
+costs 1.2 ms per 16x32 glyph (2.2 ms bold, two blits), so widget text took 10 to 25 ms, not 10 ms. Native
+glyphs, and replicated ones too, are now written by a viper function instead of palette blits:
+- `_write_glyph` (`@micropython.viper`, module level in `gc9a01.py`) writes a glyph's set bits straight into
+  the driver's `GS4_HMSB` frame (`raw.buffer`), one call per glyph at any n; bold ORs each row with itself
+  one column right in the same pass;
+- every write is clipped to the frame, since viper has no bounds checks;
+- `draw_glyphs` resolves the frame and its size once per display; a raw without a whole `GS4_HMSB` frame
+  keeps the blit and `fonts.draw_runs`.
+
+The pixels are identical: the mock tests compare the frame byte for byte with the blits (n = 1) and the
+`fill_rect` runs (n ≥ 2), clipped edges included. The board prototype took 0.47 to 0.50 ms per 16x32 glyph,
+bold included, against 1.2 ms for the blit. Program 04's text is 28 writer calls (the bold value is one call
+per glyph, not two blits).
+
 **`Screen` (device.py).** When k > 1:
 - `_fit` and `_put` take an ink. The face is judged once from the whole text, and `_fit` returns it with
   the fit, so a cut prefix is drawn in the face of the whole text. The prefix masks, the replication and

@@ -274,13 +274,21 @@ def on_panel(pixels, size=240):
 
 
 def counting(screen, raw):
-    """Count raw.framebuf.blit and fill_rect calls of screen's GC9A01 adapter.
+    """Count the glyph writes, blits and fill_rect calls of screen's GC9A01 adapter.
 
-    Apply before the first draw on that screen. Returns the live counts.
+    On the real driver draw_glyphs writes each glyph into the GS4 frame with
+    one call of the module-level viper writer, at any n and bold; a blit or a
+    fill_rect from it would be a regression. Apply before the first draw on
+    that screen. Returns the live counts.
     """
-    n = {"blit": 0, "fill_rect": 0}
-    # draw_glyphs blits through the driver's FrameBuffer.blit.
-    blit, fill_rect = raw.framebuf.blit, screen._d._fill_rect_raw
+    n = {"glyph": 0, "blit": 0, "fill_rect": 0}
+    adapter = sys.modules["steami_screen.gc9a01"]
+    # The module (and this patch) is dropped by the mods fixture's cleanup.
+    write, blit, fill_rect = adapter._write_glyph, raw.framebuf.blit, screen._d._fill_rect_raw
+
+    def counted_write(*args):
+        n["glyph"] += 1
+        return write(*args)
 
     def counted_blit(*args):
         n["blit"] += 1
@@ -290,6 +298,7 @@ def counting(screen, raw):
         n["fill_rect"] += 1
         return fill_rect(*args)
 
+    adapter._write_glyph = counted_write
     raw.framebuf.blit = counted_blit
     screen._d._fill_rect_raw = counted_fill_rect
     return n
@@ -358,12 +367,13 @@ def test_mock_pixel_text_call_counts(panel):  # noqa: F811
     s, raw = panel(240)
     n = counting(s, raw)
     s.text("Hi", at=(0, 0))
-    assert n == {"blit": 2, "fill_rect": 0}
+    assert n == {"glyph": 2, "blit": 0, "fill_rect": 0}
     s, raw = panel(240)
     n = counting(s, raw)
     s.text("Hi", at=(0, 0), scale=2)
-    # One fill_rect per run: 19 for 'H' and 9 for 'i', fewer than 252 // 4.
-    assert n == {"blit": 0, "fill_rect": 28}
+    # Replicated (8x16 x 2) glyphs too are one write each, not one fill_rect
+    # per run (28 for "Hi", see test_mock_draw_without_draw_glyphs_fills_runs).
+    assert n == {"glyph": 2, "blit": 0, "fill_rect": 0}
 
 
 def test_mock_draw_value_ink_is_narrow_and_bold(mods, psp):  # noqa: F811
@@ -435,19 +445,20 @@ def test_mock_cut_value_text_keeps_the_face_of_the_whole_text(mods, psp):  # noq
     ]
 
 
-def test_mock_native_widget_text_is_one_blit_per_glyph(panel):  # noqa: F811
+def test_mock_native_widget_text_is_one_write_per_glyph(panel):  # noqa: F811
     s, raw = panel(240)
     n = counting(s, raw)
     s.title("Distance")
-    assert n == {"blit": 8, "fill_rect": 0}
+    assert n == {"glyph": 8, "blit": 0, "fill_rect": 0}
     s, raw = panel(240)
     n = counting(s, raw)
     s.subtitle("VL53L1X ToF")
-    assert n["blit"] == 11
+    assert n["glyph"] == 11
     s, raw = panel(240)
     n = counting(s, raw)
     s.gauge(342, 0, 500)
-    assert n["blit"] == 4
+    assert n["glyph"] == 4
+    assert n["blit"] == 0
 
 
 def test_mock_value_label_draws_accents_in_6x12(panel, psp):  # noqa: F811
@@ -463,16 +474,19 @@ def test_mock_value_label_draws_accents_in_6x12(panel, psp):  # noqa: F811
     assert box(raw, GRAY) == (114, 85, 124, 93)
 
 
-def test_mock_program_04_text_is_31_blits(panel):  # noqa: F811
-    # Program 04: gauge labels 1 + 3, title 8, value 3 x 2 (bold), unit 2,
-    # subtitle 11. The text adds no fill_rect to the gauge's own.
+def test_mock_program_04_text_is_28_glyph_writes(panel):  # noqa: F811
+    # Program 04: gauge labels 1 + 3, title 8, value 3, unit 2, subtitle 11.
+    # The bold 16x32 value "342" was two blits per glyph (31 in all); the
+    # writer ORs the bold column in the same call, so it is 3 writes, not 6.
+    # The text adds no blit, and no fill_rect to the gauge's own.
     s, raw = panel(240)
     n = counting(s, raw)
     s.gauge(342, 0, 500)
     s.title("Distance")
     s.value(342, "mm")
     s.subtitle("VL53L1X ToF")
-    assert n["blit"] == 31
+    assert n["glyph"] == 28
+    assert n["blit"] == 0
     s, raw = panel(240)
     gauge = counting(s, raw)
     s.gauge(342, 0, 500)
@@ -500,7 +514,7 @@ def test_mock_128_never_touches_spleen(panel):  # noqa: F811
             s.text("Hi", at=at, scale=scale)
     assert lit(raw)
     assert "steami_screen.spleen" not in sys.modules
-    assert n["blit"] == 0
+    assert n["glyph"] == n["blit"] == 0
 
 
 # ----- 128 px: accents folded, Arduino's 8x8 degree sign -----

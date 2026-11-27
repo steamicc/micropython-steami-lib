@@ -307,8 +307,8 @@ screen = Screen(GC9A01Display(raw))
 
 It also has `draw_glyphs(fc, glyphs, n, bold, color)`, which `Screen` uses to draw the Spleen faces (see Fonts). Only the set bits of each glyph are painted, so black text and text over a coloured background (the selected menu bar, a gauge ring) keep their background. The colour is looked up once per string.
 
-* A native face (n = 1) is blitted from the font bytes with the driver's `blit()`, through a 2x1 palette and a key. Bold blits each glyph a second time, 1 px to the right.
-* A replicated face (n >= 2) is drawn with one `fill_rect()` per run of set bits.
+* On the gc9a01 driver, each glyph is written straight into the driver's `GS4_HMSB` frame (`raw.buffer`) by a `@micropython.viper` function, one call per glyph at any replication n, bold included (each run one column wider). Every write is clipped to the frame, so text partly off the screen draws its visible part. On the board its prototype took about 0.5 ms per 16x32 glyph, bold included, against 1.2 ms for a palette blit (2.2 ms bold).
+* With another raw driver, a native face (n = 1) is blitted from the font bytes with the driver's `blit()`, through a 2x1 palette and a key, and bold blits each glyph a second time, 1 px to the right. A replicated face (n >= 2) is drawn with one `fill_rect()` per run of set bits. Both give the same pixels as the frame writer.
 
 The font tables (`steami_screen.spleen`) are frozen in the firmware with the `steami_screen` package, so they stay in flash. They are imported on 240 px only: the 128 px path never loads them.
 
