@@ -5,6 +5,11 @@ drivers use: the pixel layout of GS4_HMSB, MONO_HLSB and RGB565 (native
 little-endian words, as on the STM32), and the clipping of pixel, fill_rect,
 rect, line, text, blit (with key and palette) and scroll. text() draws the
 real 8x8 petme128 font, so tests can compare pixels.
+
+Like the C module, the constructor needs a writable buffer (bytes or a
+memoryview of bytes raise TypeError), while a blit source or palette given
+as a (buffer, w, h, fmt[, stride]) tuple may be read-only. Every method takes
+positional arguments only, so a keyword call fails here as on the board.
 """
 
 from tests.fake_machine.font_petme128 import FONT_PETME128_8X8
@@ -19,33 +24,8 @@ _UINT32 = 0xFFFFFFFF
 class FrameBuffer:
     """FrameBuffer stub with the semantics of the MicroPython C module."""
 
-    def __init__(self, buffer, width, height, fmt, stride=None):
-        if stride is None:
-            stride = width
-        if width < 1 or height < 1 or stride < width:
-            raise ValueError
-        width_required = width
-        if fmt == MONO_HLSB:
-            stride = (stride + 7) & ~7
-            width_required = (width + 7) & ~7
-            bpp = 1
-        elif fmt == GS4_HMSB:
-            stride = (stride + 1) & ~1
-            width_required = (width + 1) & ~1
-            bpp = 4
-        elif fmt == RGB565:
-            bpp = 16
-        else:
-            raise ValueError("invalid format")
-        strides_required = height - 1
-        needed = (strides_required * stride + width_required) * bpp // 8
-        if needed > len(buffer):
-            raise ValueError
-        self.buffer = buffer
-        self.width = width
-        self.height = height
-        self.stride = stride
-        self.format = fmt
+    def __init__(self, buffer, width, height, fmt, stride=None, /):
+        _make(self, buffer, width, height, fmt, stride, True)
 
     # ----- per-format pixel access (coordinates already in range) -----
 
@@ -82,12 +62,12 @@ class FrameBuffer:
 
     # ----- FrameBuffer methods -----
 
-    def fill(self, col):
+    def fill(self, col, /):
         for y in range(self.height):
             for x in range(self.width):
                 self._set(x, y, col)
 
-    def fill_rect(self, x, y, w, h, col):
+    def fill_rect(self, x, y, w, h, col, /):
         if h < 1 or w < 1 or x + w <= 0 or y + h <= 0 or y >= self.height or x >= self.width:
             return
         xend = min(self.width, x + w)
@@ -98,7 +78,7 @@ class FrameBuffer:
             for xx in range(x, xend):
                 self._set(xx, yy, col)
 
-    def pixel(self, x, y, col=None):
+    def pixel(self, x, y, col=None, /):
         if not self._inside(x, y):
             return None
         if col is None:
@@ -106,13 +86,13 @@ class FrameBuffer:
         self._set(x, y, col)
         return None
 
-    def hline(self, x, y, w, col):
+    def hline(self, x, y, w, col, /):
         self.fill_rect(x, y, w, 1, col)
 
-    def vline(self, x, y, h, col):
+    def vline(self, x, y, h, col, /):
         self.fill_rect(x, y, 1, h, col)
 
-    def rect(self, x, y, w, h, col, fill=False):
+    def rect(self, x, y, w, h, col, fill=False, /):
         if fill:
             self.fill_rect(x, y, w, h, col)
             return
@@ -121,7 +101,7 @@ class FrameBuffer:
         self.fill_rect(x, y, 1, h, col)
         self.fill_rect(x + w - 1, y, 1, h, col)
 
-    def line(self, x1, y1, x2, y2, col):
+    def line(self, x1, y1, x2, y2, col, /):
         dx = x2 - x1
         if dx > 0:
             sx = 1
@@ -152,7 +132,7 @@ class FrameBuffer:
         if self._inside(x2, y2):
             self._set(x2, y2, col)
 
-    def blit(self, fbuf, x, y, key=-1, palette=None):
+    def blit(self, fbuf, x, y, key=-1, palette=None, /):
         source = _as_framebuffer(fbuf)
         pal = None if palette is None else _as_framebuffer(palette)
         if x >= self.width or y >= self.height or -x >= source.width or -y >= source.height:
@@ -176,7 +156,7 @@ class FrameBuffer:
             y0 += 1
             y1 += 1
 
-    def scroll(self, xstep, ystep):
+    def scroll(self, xstep, ystep, /):
         if xstep < 0:
             if -xstep >= self.width:
                 return
@@ -200,7 +180,7 @@ class FrameBuffer:
                 x += dx
             y += dy
 
-    def text(self, string, x, y, col=1):
+    def text(self, string, x, y, col=1, /):
         x0 = x
         for chr_code in string.encode("utf-8"):
             code = chr_code if 32 <= chr_code <= 127 else 127
@@ -217,10 +197,46 @@ class FrameBuffer:
                 x0 += 1
 
 
+def _make(fb, buffer, width, height, fmt, stride, writable):
+    """Fill fb in the order of framebuf_make_new_helper() in modframebuf.c."""
+    if stride is None:
+        stride = width
+    if width < 1 or height < 1 or stride < width:
+        raise ValueError
+    width_required = width
+    if fmt == MONO_HLSB:
+        stride = (stride + 7) & ~7
+        width_required = (width + 7) & ~7
+        bpp = 1
+    elif fmt == GS4_HMSB:
+        stride = (stride + 1) & ~1
+        width_required = (width + 1) & ~1
+        bpp = 4
+    elif fmt == RGB565:
+        bpp = 16
+    else:
+        raise ValueError("invalid format")
+    view = memoryview(buffer)  # a non-buffer object raises TypeError here
+    if writable and view.readonly:
+        raise TypeError("object with buffer protocol required")
+    strides_required = height - 1
+    needed = (strides_required * stride + width_required) * bpp // 8
+    if needed > view.nbytes:
+        raise ValueError
+    fb.buffer = buffer
+    fb.width = width
+    fb.height = height
+    fb.stride = stride
+    fb.format = fmt
+
+
 def _as_framebuffer(obj):
     """Return obj, or a read-only FrameBuffer from (buffer, w, h, fmt[, stride])."""
     if isinstance(obj, FrameBuffer):
         return obj
     if not 4 <= len(obj) <= 5:
         raise ValueError
-    return FrameBuffer(*obj)
+    fb = FrameBuffer.__new__(FrameBuffer)
+    stride = obj[4] if len(obj) == 5 else None
+    _make(fb, obj[0], obj[1], obj[2], obj[3], stride, False)
+    return fb
