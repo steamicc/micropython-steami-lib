@@ -180,6 +180,17 @@ def test_mock_masks_glyph_cache(sp, fonts):
     assert fonts.masks(blank, "8") == first != [0]
 
 
+def test_mock_glyph_cache_is_bounded(sp, fonts):
+    # Characters outside ASCII and EXTRA all draw '?': they must not each get
+    # a cache entry, or arbitrary decoded text (UART, BLE) fills the heap.
+    s = "".join(chr(c) for c in range(0x400, 0x400 + 3000))
+    before = len(fonts._glyphs)
+    m = fonts.masks(sp.F8X16, s)
+    assert len(fonts._glyphs) - before <= 1
+    assert m[-1] == fonts.masks(sp.F8X16, "?")[-1]
+    assert fonts.glyph(sp.F8X16, "Ж") == fonts.glyph(sp.F8X16, "?")
+
+
 def test_mock_draw_runs_one_call_per_run(fonts):
     c = 7
     rec = []

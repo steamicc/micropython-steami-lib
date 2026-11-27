@@ -25,7 +25,8 @@ FOLD8 = "\x7fAAACEEEEIIOOUUUaaaceeeeiioouuuyY"
 DEGREE8 = (8, 8, 0, None, b"\x30\x48\x48\x30\x00\x00\x00\x00")
 
 _sp = None  # steami_screen.spleen, imported by the first face() call
-_glyphs = {}  # (offset, row mask) of a glyph, keyed by (face height << 16) | ord(ch)
+_glyphs = {}  # (offset, row mask) of a glyph, keyed by (face height << 16) | ord(ch);
+# characters outside ASCII and EXTRA are not keys (see glyph()), so it stays bounded
 
 
 def code(ch):
@@ -140,11 +141,15 @@ def glyph(fc, ch):
     """(offset, row mask) of ch's glyph in face fc, cached per face height.
 
     Bit r of the mask is set when the glyph inks row r. Faces have distinct
-    heights, so the height tells them apart in the cache.
+    heights, so the height tells them apart in the cache. A character past
+    ASCII and outside EXTRA draws '?' and is not cached under its own code
+    point: there is no end to those, and the cache must stay bounded.
     """
     k = (fc[1] << 16) | ord(ch)
     e = _glyphs.get(k)
     if e is None:
+        if fc[3] is None and ord(ch) > 126 and code(ch) == 63:
+            return glyph(fc, "?")
         h, data = fc[1], fc[4]
         bpr = (fc[0] + 7) // 8
         o = offset(fc, ch)
