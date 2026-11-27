@@ -238,11 +238,20 @@ class Screen:
         adv = fonts.advance(ink, f)
         bold = 1 if ink == VALUE and fc[0] >= 12 else 0
         shift = (fc[0] // 4) * n
+        value = ink == VALUE
+        hk = fc[1] << 16
+        cache = fonts._glyphs
         entries = []
         for ch in s:
-            narrow = ink == VALUE and ch in ".:"
-            entries.append((fonts.offset(fc, ch), x - shift if narrow else x, y))
-            x += adv // 2 if narrow else adv
+            e = cache.get(hk | ord(ch))
+            if e is None:
+                e = fonts.glyph(fc, ch)
+            if value and ch in ".:":
+                entries.append((e[0], x - shift, y))
+                x += adv // 2
+            else:
+                entries.append((e[0], x, y))
+                x += adv
         draw = getattr(self._d, "draw_glyphs", None)
         if draw:
             draw(fc, entries, n, bold, color)

@@ -25,7 +25,7 @@ FOLD8 = "\x7fAAACEEEEIIOOUUUaaaceeeeiioouuuyY"
 DEGREE8 = (8, 8, 0, None, b"\x30\x48\x48\x30\x00\x00\x00\x00")
 
 _sp = None  # steami_screen.spleen, imported by the first face() call
-_rows = {}  # glyph row masks, keyed by (face height << 16) | offset
+_glyphs = {}  # (offset, row mask) of a glyph, keyed by (face height << 16) | ord(ch)
 
 
 def code(ch):
@@ -136,29 +136,41 @@ def width(s, n, ink, f):
     return x
 
 
+def glyph(fc, ch):
+    """(offset, row mask) of ch's glyph in face fc, cached per face height.
+
+    Bit r of the mask is set when the glyph inks row r. Faces have distinct
+    heights, so the height tells them apart in the cache.
+    """
+    k = (fc[1] << 16) | ord(ch)
+    e = _glyphs.get(k)
+    if e is None:
+        h, data = fc[1], fc[4]
+        bpr = (fc[0] + 7) // 8
+        o = offset(fc, ch)
+        g = 0
+        i = o
+        for r in range(h):
+            for j in range(bpr):
+                if data[i + j]:
+                    g |= 1 << r
+                    break
+            i += bpr
+        e = _glyphs[k] = (o, g)
+    return e
+
+
 def masks(fc, s):
     """Prefix ink masks of s in face fc: bit r is set when a glyph inks row r."""
-    h, data = fc[1], fc[4]
-    bpr = (fc[0] + 7) // 8
-    hk = h << 16
-    rows = _rows
+    hk = fc[1] << 16
+    cache = _glyphs
     m = 0
     out = []
     for ch in s:
-        o = offset(fc, ch)
-        k = hk | o
-        g = rows.get(k)
-        if g is None:
-            g = 0
-            i = o
-            for r in range(h):
-                for j in range(bpr):
-                    if data[i + j]:
-                        g |= 1 << r
-                        break
-                i += bpr
-            rows[k] = g
-        m |= g
+        e = cache.get(hk | ord(ch))
+        if e is None:
+            e = glyph(fc, ch)
+        m |= e[1]
         out.append(m)
     return out
 

@@ -172,9 +172,9 @@ def test_mock_masks_and_ink_rows(sp, fonts):
     assert fonts.masks(sp.F8X16, "") == []
 
 
-def test_mock_masks_row_cache(sp, fonts):
+def test_mock_masks_glyph_cache(sp, fonts):
     first = fonts.masks(sp.F16X32, "8")
-    assert ((32 << 16) | fonts.offset(sp.F16X32, "8")) in fonts._rows
+    assert fonts._glyphs[(32 << 16) | ord("8")] == (fonts.offset(sp.F16X32, "8"), first[0])
     # Same height, so same cache key, but no ink: a rescan would give 0.
     blank = (16, 32, 26, sp.VALUE_KEY, bytes(len(sp.F16X32[4])))
     assert fonts.masks(blank, "8") == first != [0]
