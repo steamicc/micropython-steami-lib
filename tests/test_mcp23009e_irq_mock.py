@@ -2,9 +2,11 @@
 
 A small register model of the MCP23009 stands for the chip on the I2C bus.
 It keeps the interrupt logic that matters here: the first change on an
-enabled pin sets INTF and copies the port into INTCAP, later changes are
-ignored until the interrupt is cleared, and reading GPIO (or INTCAP when
-IOCON.INTCC is set) clears it.
+enabled pin sets INTF and copies the port into INTCAP, later changes (on
+any pin) are ignored until the interrupt is cleared, and reading GPIO (or
+INTCAP when IOCON.INTCC is set) clears it and makes the current port the
+new compare reference, so a change ignored while INTF was set never
+raises an interrupt.
 
 The tests call interrupt_event() where the scheduled soft IRQ would run on
 the board, so they can delay it after a press, as a long blocking call
@@ -168,8 +170,8 @@ def test_handler_sees_press_released_before_it_runs(drv, dev, chip):
     chip.press(UP)
     chip.release(UP)  # released before the soft IRQ runs
     dev.interrupt_event()
-    # Captured level: pressed. Current level: released.
-    assert events == [("UP", 0, 1)]
+    # The press, with the captured level, then the release read from GPIO.
+    assert events == [("UP", 0, 1), ("UP", 1, 1)]
 
 
 def test_press_then_release_each_reported(drv, dev, chip):
@@ -203,7 +205,7 @@ def test_change_callback_gets_level_from_intcap(drv, dev, chip):
     chip.press(RIGHT)
     chip.release(RIGHT)
     dev.interrupt_event()
-    assert levels == [0]
+    assert levels == [0, 1]
 
 
 def test_intcc_set_clears_on_intcap_read(drv, dev, chip):
@@ -216,10 +218,10 @@ def test_intcc_set_clears_on_intcap_read(drv, dev, chip):
     chip.log.clear()
     dev.interrupt_event()
     assert chip.log[:3] == [("r", INTF), ("r", INTCAP), ("r", GPIO)]
-    assert events == [("UP", 0, 1)]
+    assert events == [("UP", 0, 1), ("UP", 1, 1)]
     assert chip.regs[INTF] == 0
     dev.interrupt_event()
-    assert events == [("UP", 0, 1)]
+    assert events == [("UP", 0, 1), ("UP", 1, 1)]
 
 
 def test_active_low_pin_inverts_captured_level(drv, dev, chip):
@@ -232,7 +234,7 @@ def test_active_low_pin_inverts_captured_level(drv, dev, chip):
     chip.release(UP)
     dev.interrupt_event()
     # Logical level: pressed is 1 on an active-low pin.
-    assert events == [("UP", 1, 0)]
+    assert events == [("UP", 1, 0), ("UP", 0, 0)]
 
 
 # ----- Edge filters -----
@@ -440,8 +442,9 @@ def test_soft_irq_after_registration_read_reports_event_once(drv, dev, chip):
 
 def test_interrupt_read_and_clear_have_no_scheduler_point():
     """MicroPython runs scheduled soft IRQs at jumps (if, loops, and, or).
-    None may sit between the INTF read and the read that clears the
-    interrupt, or a soft IRQ could report the same event a second time."""
+    None may sit between the INTF read, the read that clears the interrupt
+    and the update of the last known levels, or a soft IRQ could report the
+    same event a second time, or compare with stale levels."""
     import ast
     from pathlib import Path
 
@@ -456,12 +459,21 @@ def test_interrupt_read_and_clear_have_no_scheduler_point():
     def reads(node, name):
         return any(isinstance(sub, ast.Name) and sub.id == name for sub in ast.walk(node))
 
+    def writes_levels(node):
+        return any(
+            isinstance(sub, ast.Attribute)
+            and sub.attr == "_levels"
+            and isinstance(sub.ctx, ast.Store)
+            for sub in ast.walk(node)
+        )
+
     body = func.body
     start = next(i for i, st in enumerate(body) if reads(st, "MCP23009_INTF"))
-    end = next(i for i, st in enumerate(body) if reads(st, "MCP23009_GPIO"))
-    assert start < end
+    gpio = next(i for i, st in enumerate(body) if reads(st, "MCP23009_GPIO"))
+    end = next(i for i, st in enumerate(body) if writes_levels(st))
+    assert start < gpio < end
     for statement in body[start : end + 1]:
-        assert isinstance(statement, (ast.Assign, ast.Expr))
+        assert isinstance(statement, (ast.Assign, ast.AugAssign, ast.Expr))
         for sub in ast.walk(statement):
             assert not isinstance(sub, (ast.If, ast.IfExp, ast.BoolOp, ast.For, ast.While))
 
@@ -505,3 +517,276 @@ def test_disable_interrupt_stops_callbacks(drv, dev, chip):
     chip.press(UP)
     dev.interrupt_event()
     assert events == []
+
+
+# ----- Changes the chip misses while an interrupt is pending -----
+
+
+def register_dpad(drv, dev, events):
+    pins = {}
+    for name, gp in (("UP", UP), ("DOWN", DOWN), ("LEFT", LEFT), ("RIGHT", RIGHT)):
+        pins[name] = dpad_pin(drv, dev, gp)
+        pins[name].irq(recorder(events, name), BOTH)
+    return pins
+
+
+def test_v1c_lost_release_during_pending_press(drv, dev, chip):
+    """V1c measurement (a): LEFT pressed, then UP pressed; LEFT released
+    while the UP interrupt is pending. The chip never signals the LEFT
+    release: the driver reports it from GPIO, after the UP press."""
+    events = []
+    register_dpad(drv, dev, events)
+    chip.press(LEFT)
+    dev.interrupt_event()
+    chip.press(UP)
+    chip.release(LEFT)  # INTF is set (UP): no interrupt for LEFT
+    dev.interrupt_event()
+    chip.release(UP)
+    dev.interrupt_event()
+    chip.press(LEFT)
+    dev.interrupt_event()
+    assert events == [
+        ("LEFT", 0, 0),
+        ("UP", 0, 0),
+        ("LEFT", 1, 1),
+        ("UP", 1, 1),
+        ("LEFT", 0, 0),
+    ]
+
+
+def test_v1c_lost_press_during_pending_press(drv, dev, chip):
+    """V1c measurement (b): RIGHT released, UP pressed, RIGHT pressed while
+    the UP interrupt is pending, then RIGHT released. Without the GPIO
+    comparison, the release came with no press before it."""
+    events = []
+    register_dpad(drv, dev, events)
+    chip.press(RIGHT)
+    dev.interrupt_event()
+    chip.release(RIGHT)
+    dev.interrupt_event()
+    chip.press(UP)
+    chip.press(RIGHT)  # INTF is set (UP): no interrupt for RIGHT
+    dev.interrupt_event()
+    chip.release(RIGHT)
+    dev.interrupt_event()
+    chip.release(UP)
+    dev.interrupt_event()
+    assert events == [
+        ("RIGHT", 0, 0),
+        ("RIGHT", 1, 1),
+        ("UP", 0, 0),
+        ("RIGHT", 0, 0),
+        ("RIGHT", 1, 1),
+        ("UP", 1, 1),
+    ]
+
+
+def test_short_tap_gives_press_then_release(drv, dev, chip):
+    levels = []
+    btn = dpad_pin(drv, dev, DOWN)
+
+    def handler(pin):
+        levels.append(pin.irq_level())
+
+    btn.irq(handler, BOTH)
+    chip.press(DOWN)
+    chip.release(DOWN)
+    dev.interrupt_event()
+    assert levels == [0, 1]
+    dev.interrupt_event()
+    assert levels == [0, 1]
+
+
+def test_captured_level_equal_to_last_known_is_not_reported_twice(drv, dev, chip):
+    """With IOCON.INTCC, reading INTCAP clears the interrupt: a press just
+    after it raises a new interrupt and is also read in GPIO. The press is
+    reported once, from GPIO; the next interrupt captures the same level."""
+    dev.set_iocon(0x01)
+    events = []
+    register_dpad(drv, dev, events)
+    chip.press(DOWN)
+
+    def on_read(reg):
+        if reg == INTCAP and chip.pins & (1 << UP):  # UP still released
+            chip.press(UP)
+
+    chip.on_read = on_read
+    dev.interrupt_event()
+    chip.on_read = None
+    assert chip.regs[INTF] == 1 << UP
+    assert events == [("DOWN", 0, 0), ("UP", 0, 0)]
+    dev.interrupt_event()
+    assert events == [("DOWN", 0, 0), ("UP", 0, 0)]
+    chip.release(UP)
+    dev.interrupt_event()
+    assert events == [("DOWN", 0, 0), ("UP", 0, 0), ("UP", 1, 1)]
+
+
+def test_falling_only_filters_changes_found_in_gpio(drv, dev, chip):
+    events = []
+    up = dpad_pin(drv, dev, UP)
+    down = dpad_pin(drv, dev, DOWN)
+    up.irq(recorder(events, "UP"), BOTH)
+    down.irq(recorder(events, "DOWN"), down.IRQ_FALLING)
+    chip.press(UP)
+    chip.press(DOWN)  # missed by the chip, found in GPIO
+    dev.interrupt_event()
+    chip.release(UP)
+    chip.release(DOWN)  # missed by the chip, found in GPIO
+    dev.interrupt_event()
+    assert events == [("UP", 0, 0), ("DOWN", 0, 0), ("UP", 1, 1)]
+
+
+def test_rising_only_filters_changes_found_in_gpio(drv, dev, chip):
+    events = []
+    up = dpad_pin(drv, dev, UP)
+    down = dpad_pin(drv, dev, DOWN)
+    up.irq(recorder(events, "UP"), BOTH)
+    down.irq(recorder(events, "DOWN"), down.IRQ_RISING)
+    chip.press(UP)
+    chip.press(DOWN)  # missed by the chip, found in GPIO
+    dev.interrupt_event()
+    chip.release(UP)
+    chip.release(DOWN)  # missed by the chip, found in GPIO
+    dev.interrupt_event()
+    assert events == [("UP", 0, 0), ("UP", 1, 1), ("DOWN", 1, 1)]
+
+
+def test_device_callbacks_get_changes_found_in_gpio(drv, dev, chip):
+    calls = []
+    dpad_pin(drv, dev, UP)
+    dpad_pin(drv, dev, LEFT)
+    dev.interrupt_on_change(UP, lambda level: calls.append(("UP", level)))
+    dev.interrupt_on_falling(LEFT, lambda: calls.append("fall"))
+    dev.interrupt_on_raising(LEFT, lambda: calls.append("rise"))
+    chip.press(UP)
+    chip.press(LEFT)
+    chip.release(LEFT)
+    chip.press(LEFT)  # pressed at the service, after a missed tap
+    dev.interrupt_event()
+    assert calls == [("UP", 0), "fall"]
+
+
+def test_registration_takes_held_level_without_event(drv, dev, chip):
+    events = []
+    btn = dpad_pin(drv, dev, LEFT)
+    chip.press(LEFT)  # held before the registration
+    btn.irq(recorder(events, "LEFT"), BOTH)
+    other = dpad_pin(drv, dev, UP)
+    other.irq(recorder(events, "UP"), BOTH)
+    chip.press(UP)
+    dev.interrupt_event()
+    assert events == [("UP", 0, 0)]
+    chip.release(LEFT)
+    dev.interrupt_event()
+    assert events == [("UP", 0, 0), ("LEFT", 1, 1)]
+
+
+def test_registration_takes_released_level_without_event(drv, dev, chip):
+    events = []
+    register_dpad(drv, dev, events)
+    chip.press(DOWN)
+    dev.interrupt_event()
+    assert events == [("DOWN", 0, 0)]
+
+
+def test_registration_during_pending_interrupt_takes_level(drv, dev, chip):
+    """UP is registered while a DOWN press is pending and UP is held: the
+    DOWN press is reported, UP gets its level and no event."""
+    events = []
+    down = dpad_pin(drv, dev, DOWN)
+    up = dpad_pin(drv, dev, UP)
+    down.irq(recorder(events, "DOWN"), BOTH)
+    chip.press(DOWN)
+    chip.press(UP)
+    up.irq(recorder(events, "UP"), BOTH)
+    dev.interrupt_event()
+    assert events == [("DOWN", 0, 0)]
+    chip.release(UP)
+    dev.interrupt_event()
+    assert events == [("DOWN", 0, 0), ("UP", 1, 1)]
+
+
+def test_disable_interrupt_stops_changes_found_in_gpio(drv, dev, chip):
+    events = []
+    up = dpad_pin(drv, dev, UP)
+    down = dpad_pin(drv, dev, DOWN)
+    up.irq(recorder(events, "UP"), BOTH)
+    down.irq(recorder(events, "DOWN"), BOTH)
+    dev.disable_interrupt(UP)
+    # A callback put back by hand does not make UP enabled again.
+    dev.events_change[UP] = lambda level: events.append(("UP", level))
+    chip.press(DOWN)
+    chip.press(UP)
+    dev.interrupt_event()
+    chip.release(UP)
+    chip.release(DOWN)
+    dev.interrupt_event()
+    assert events == [("DOWN", 0, 0), ("DOWN", 1, 1)]
+
+
+def test_disable_with_pending_interrupt_reports_nothing(drv, dev, chip):
+    events = []
+    btn = dpad_pin(drv, dev, UP)
+    btn.irq(recorder(events, "UP"), BOTH)
+    chip.press(UP)  # pending
+    dev.disable_interrupt(UP)
+    dev.interrupt_event()
+    assert events == []
+
+
+def test_pin_not_interrupt_enabled_is_never_reported(drv, dev, chip):
+    events = []
+    down = dpad_pin(drv, dev, DOWN)
+    dpad_pin(drv, dev, LEFT)
+    down.irq(recorder(events, "DOWN"), BOTH)
+    # A callback stored without enabling the interrupt of LEFT.
+    dev.events_change[LEFT] = lambda level: events.append(("LEFT", level))
+    chip.press(DOWN)
+    chip.press(LEFT)
+    dev.interrupt_event()
+    chip.release(LEFT)
+    chip.release(DOWN)
+    dev.interrupt_event()
+    assert events == [("DOWN", 0, 0), ("DOWN", 1, 1)]
+
+
+def test_reenabled_pin_takes_its_level_again(drv, dev, chip):
+    events = []
+    btn = dpad_pin(drv, dev, UP)
+    btn.irq(recorder(events, "UP"), BOTH)
+    dev.disable_interrupt(UP)
+    chip.press(UP)  # not reported: disabled
+    btn.irq(recorder(events, "UP"), BOTH)
+    dev.interrupt_event()
+    assert events == []
+    chip.release(UP)
+    dev.interrupt_event()
+    assert events == [("UP", 1, 1)]
+
+
+def test_soft_irq_during_dispatch_reports_each_change_once(drv, dev, chip):
+    """A soft IRQ that runs while the handlers of an earlier service are
+    called (registration from main code) compares with the levels already
+    updated: no event twice, none lost."""
+    events = []
+    down = dpad_pin(drv, dev, DOWN)
+    up = dpad_pin(drv, dev, UP)
+    left = dpad_pin(drv, dev, LEFT)
+    nested = []
+
+    def on_down(pin):
+        events.append(("DOWN", pin.irq_level()))
+        if not nested:
+            nested.append(1)
+            chip.release(DOWN)
+            dev.interrupt_event()  # soft IRQ at a jump of the dispatch
+
+    down.irq(on_down, BOTH)
+    up.irq(recorder(events, "UP"), BOTH)
+    chip.press(DOWN)
+    chip.press(UP)  # missed by the chip, found in GPIO
+    left.irq(recorder(events, "LEFT"), BOTH)  # services the DOWN press
+    dev.interrupt_event()
+    assert sorted(events) == sorted([("DOWN", 0), ("UP", 0, 0), ("DOWN", 1)])
+    assert len(events) == 3

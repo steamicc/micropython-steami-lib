@@ -138,10 +138,14 @@ class MCP23009Pin:
 
         Le handler reçoit la pin, comme avec machine.Pin. Il s'exécute après
         coup (soft IRQ) : la broche a pu changer depuis l'interruption.
-        Dans le handler, pin.irq_level() donne le niveau capturé au moment
-        de l'interruption, et pin.value() le niveau actuel.
+        Dans le handler, pin.irq_level() donne le niveau de l'événement
+        (capturé au moment de l'interruption, ou lu dans GPIO pour un
+        changement que le MCP23009 n'a pas signalé), et pin.value() le
+        niveau actuel. Un appui bref donne deux événements : l'appui, puis
+        le relâchement.
 
-        L'enregistrement efface l'interruption en attente : un changement
+        L'enregistrement efface l'interruption en attente et prend le
+        niveau actuel de la pin comme dernier niveau connu : un changement
         antérieur à l'appel de irq() n'appelle pas le handler.
 
         Args:
@@ -160,7 +164,7 @@ class MCP23009Pin:
         self._irq_handler = handler
         self._irq_trigger = trigger
 
-        # Créer un wrapper qui note le niveau capturé, puis appelle le
+        # Créer un wrapper qui note le niveau de l'événement, puis appelle le
         # handler avec self en paramètre
         def wrapper(level):
             self._irq_level = level
@@ -183,12 +187,14 @@ class MCP23009Pin:
 
     def irq_level(self):
         """
-        Niveau de la pin capturé lors de la dernière interruption
+        Niveau de la pin pour l'événement en cours de traitement
 
-        À lire dans le handler de irq() : c'est le niveau au moment de
-        l'interruption (registre INTCAP), même si la broche a changé avant
-        que le handler ne s'exécute. pin.value(), lui, relit le niveau
-        actuel.
+        À lire dans le handler de irq() : c'est le niveau capturé au moment
+        de l'interruption (registre INTCAP), même si la broche a changé
+        avant que le handler ne s'exécute, ou le niveau lu dans GPIO pour
+        un changement que le MCP23009 n'a pas signalé (survenu pendant
+        qu'une autre interruption était en attente). pin.value(), lui,
+        relit le niveau actuel.
 
         Returns:
             0 ou 1, ou None si aucune interruption n'a encore été reçue

@@ -96,15 +96,35 @@ The handler receives the pin, like with `machine.Pin`. It runs as a soft
 IRQ, so it can run some time after the interrupt, for example after a
 long `show()` call. By then the button may already be released:
 
-* `pin.irq_level()` gives the level captured at the interrupt (INTCAP
-  register). Use it to tell a press from a release.
+* `pin.irq_level()` gives the level of the event being handled: the level
+  captured at the interrupt (INTCAP register), or the level read in GPIO
+  for a change the chip did not signal (see below). Use it to tell a press
+  from a release.
 * `pin.value()` reads the current level again over I2C.
 
-The MCP23009 captures only the first change until the interrupt is read.
-If a press and its release both happen before the driver reads it, they
-can be reported as a single event, the press. A change that happens while
-the driver reads and clears the interrupt (three I2C reads) can also be
-missed.
+The MCP23009 latches one INTCAP snapshot per interrupt. While an interrupt
+is pending, a change on any pin raises no new interrupt, and the read that
+clears the interrupt makes the new level the compare reference, so the chip
+never signals that change. The driver therefore keeps the last known level
+of every interrupt-enabled pin. When it handles an interrupt, it reads
+INTF, INTCAP and GPIO, then, for each enabled pin:
+
+1. if the pin is in INTF and its captured level differs from the last
+   known level, it reports the captured level;
+2. if the current level (GPIO) still differs from the last known level, it
+   reports the current level.
+
+So a short tap, released before the driver reads the interrupt, gives a
+press then a release, and a button pressed or released while another
+button's interrupt was pending is reported too. A captured level equal to
+the last known level (a change already reported) is not reported twice.
+With a falling-only or rising-only trigger, each reported level is filtered
+the same way. Registering a handler takes the current level of the pin as
+its last known level, without an event.
+
+Remaining limit: a press and its release that both happen while an
+interrupt is pending (between the capture and the read) cancel out and
+are not seen.
 
 Registering a handler (`irq()`, or `interrupt_on_change()`,
 `interrupt_on_falling()` and `interrupt_on_raising()`) stores the callback,
@@ -128,7 +148,7 @@ MCP23009E(i2c, address, reset_pin, interrupt_pin=None)
 * `setup(gpx, direction, pullup, polarity)` - Configure a GPIO
 * `set_level(gpx, level)` - Set output level
 * `get_level(gpx)` - Read input level
-* `interrupt_on_change(gpx, callback)` - Register change callback; `callback(level)` gets the level captured at the interrupt
+* `interrupt_on_change(gpx, callback)` - Register change callback; `callback(level)` gets the level of the event (captured in INTCAP, or read in GPIO for a missed change)
 * `interrupt_on_falling(gpx, callback)` - Register falling edge callback
 * `interrupt_on_raising(gpx, callback)` - Register rising edge callback
 * `disable_interrupt(gpx)` - Disable interrupts on a GPIO
@@ -149,7 +169,7 @@ MCP23009Pin(mcp, pin_number, mode=-1, pull=-1, value=None)
 * `off()` - Set pin low
 * `toggle()` - Toggle pin state
 * `irq(handler, trigger)` - Configure interrupt; the handler receives the pin
-* `irq_level()` - Level captured at the last interrupt (0 or 1, `None` before the first one); read it in the handler
+* `irq_level()` - Level of the event being handled (0 or 1, `None` before the first one); read it in the handler
 * `mode(mode=None)` - Get or set mode
 * `pull(pull=None)` - Get or set pull configuration
 

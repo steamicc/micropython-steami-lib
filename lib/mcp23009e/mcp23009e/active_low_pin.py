@@ -162,10 +162,11 @@ class MCP23009ActiveLowPin:
 
     def irq_level(self):
         """
-        Niveau logique capturé lors de la dernière interruption (inversé)
+        Niveau logique de l'événement en cours de traitement (inversé)
 
         À lire dans le handler de irq() : 1 si le GPIO était à l'état bas
-        au moment de l'interruption, même s'il a changé depuis.
+        pour cet événement (au moment de l'interruption, ou à la lecture de
+        GPIO pour un changement non signalé), même s'il a changé depuis.
         pin.value() donne le niveau logique actuel.
 
         Returns:
