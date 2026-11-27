@@ -51,7 +51,7 @@ from steami_screen.const import (
     STEAMI_VALUE_SIDE_GAP,
     WHITE,
 )
-from steami_screen.fonts import TEXT, VALUE
+from steami_screen.fonts import LABEL, TEXT, VALUE
 
 
 def _ray(deg):
@@ -113,14 +113,16 @@ class Screen:
 
         The N/S row moves down until the text fits the circle, from a floor of
         2 cells + 4 (in 128 px units). When k > 1 it stops at the cap, the row
-        of a 13-cell text (wider text is cut there).
+        of a 13-cell text (wider text is cut there): 13 advances of 8 px, so
+        on 240 px the cap row (14) is above the floor (37), where every title
+        sits.
         """
         k = self.k
         cx, cy = self.center
         r = self.radius
         h = tw // 2
         if k > 1:
-            h = min(h, STEAMI_TITLE_CAP_CELLS * 4 * k)
+            h = min(h, STEAMI_TITLE_CAP_CELLS * fonts.advance(TEXT, k) // 2)
         if k == 1 and h >= r:
             m = r
         else:
@@ -154,7 +156,68 @@ class Screen:
             h = min(h, int(math.sqrt(r * r - d * d)))
         return cx - h, cx + h
 
-    def _ink(self, s):
+    def _band(self, m, y, n):
+        """Chord at the rows that mask m inks (face replication n, cell top y).
+
+        Font row r covers the panel rows y + r * n .. y + r * n + n - 1. The
+        whole panel width when m has no ink.
+        """
+        if not m:
+            return 0, self.width - 1
+        a, b = fonts.ink_rows(m)
+        return self._chord(y + a * n, y + b * n + n - 1)
+
+    def _fit(self, s, y, ink, f, lo=0, hi=None, shrink=0, pad=0):
+        """Longest prefix of s that fits [lo, hi] and the chord at its ink rows.
+
+        The face is judged once on the whole s, and every prefix is measured
+        in it. The chord is shrunk by `shrink` at each end. Returns (n, lo,
+        hi, fn): the characters kept, the room they fit in and the (face,
+        replication) pair, None when s has no face at f.
+        """
+        if hi is None:
+            hi = self.width - 1
+        fn = fonts.face(s, ink, f)
+        if not fn:
+            return 0, lo, hi, None
+        pre = fonts.masks(fn[0], s)
+        wid = fonts.widths(s, ink, f)
+        rep = fn[1]
+        n = len(s)
+        while n:
+            m = pre[n - 1]
+            c = self._band(m, y, rep)
+            if c:
+                left, right = max(c[0] + shrink, lo), min(c[1] - shrink, hi)
+                if not m or wid[n - 1] + pad <= right - left + 1:
+                    return n, left, right, fn
+            n -= 1
+        return 0, lo, hi, fn
+
+    def _place(self, s, ax, y, color, ink, f, align, fit):
+        """Draw the prefix of s that `fit` (a _fit result) keeps, in its room.
+
+        align: 0 left edge at ax, 1 centred on ax, 2 right edge before ax,
+        3 centred in the room. x is clamped into the room. The prefix is drawn
+        in the face judged on the whole s. Returns (x, width).
+        """
+        n, lo, hi, fn = fit
+        w = fonts.width(s, n, ink, f)
+        if align == 3:
+            ax, align = (lo + hi + 1) // 2, 1
+        x = max(lo, min(ax - (0, w // 2, w)[align], hi - w + 1))
+        if n:
+            self._draw(s[:n], x, y, color, ink, f, fn)
+        return x, w
+
+    def _put(self, s, ax, y, color, ink, f, align=1, lo=0, hi=None, shrink=0):
+        """Draw the longest prefix of s that fits (see _fit and _place)."""
+        return self._place(s, ax, y, color, ink, f, align, self._fit(s, y, ink, f, lo, hi, shrink))
+
+    # Temporary 8x8 fitting, used by _value only until it moves to the Spleen
+    # value faces.
+
+    def _ink8(self, s):
         """Row masks of the prefixes of s: bit i is set when a glyph inks row i."""
         import framebuf
 
@@ -171,7 +234,7 @@ class Screen:
             out.append(m)
         return out
 
-    def _band(self, m, y, f):
+    def _band8(self, m, y, f):
         """Chord at the rows that mask m inks (glyph factor f, top y); the panel if none."""
         if not m:
             return 0, self.width - 1
@@ -183,7 +246,7 @@ class Screen:
             b -= 1
         return self._chord(y + a * f, y + b * f + f - 1)
 
-    def _fit(self, s, y, f, lo=0, hi=None, shrink=0, pad=0):
+    def _fit8(self, s, y, f, lo=0, hi=None, shrink=0, pad=0):
         """Longest prefix of s that fits [lo, hi] and the chord at its inked rows.
 
         The chord is shrunk by `shrink` at each end. Returns (n, lo, hi): the
@@ -191,11 +254,11 @@ class Screen:
         """
         if hi is None:
             hi = self.width - 1
-        pre = self._ink(s)
+        pre = self._ink8(s)
         n = len(s)
         while n:
             m = pre[n - 1]
-            c = self._band(m, y, f)
+            c = self._band8(m, y, f)
             if c:
                 left, right = max(c[0] + shrink, lo), min(c[1] - shrink, hi)
                 if not m or n * 8 * f + pad <= right - left + 1:
@@ -203,13 +266,13 @@ class Screen:
             n -= 1
         return 0, lo, hi
 
-    def _put(self, s, ax, y, color, f, align=1, lo=0, hi=None, shrink=0, pad=0):
-        """Draw the longest prefix of s that fits (see _fit), at glyph factor f.
+    def _put8(self, s, ax, y, color, f, align=1, lo=0, hi=None, shrink=0, pad=0):
+        """Draw the longest prefix of s that fits (see _fit8), at glyph factor f.
 
         align: 0 left edge at ax, 1 centred on ax, 2 right edge before ax,
         3 centred in the room. x is clamped into the room. Returns (x, width).
         """
-        n, lo, hi = self._fit(s, y, f, lo, hi, shrink, pad)
+        n, lo, hi = self._fit8(s, y, f, lo, hi, shrink, pad)
         w = n * 8 * f
         if align == 3:
             ax, align = (lo + hi + 1) // 2, 1
@@ -332,7 +395,7 @@ class Screen:
                 # B6: "88.8" sets the factor of every narrower value at W/E.
                 fits = max(vw, 32 * f) <= hi - lo + 1 if side else lo <= x <= hi - vw + 1
             else:
-                fits = self._fit(text, y, f, lo, hi, 0, pad)[0] == len(text)
+                fits = self._fit8(text, y, f, lo, hi, 0, pad)[0] == len(text)
             if fits or f == 1:
                 break
             f -= 1
@@ -344,7 +407,7 @@ class Screen:
                 ax, align = x + vw, 2
         else:
             ax, align = cx, 1
-        vx, vw = self._put(text, ax, y, color, f, align, lo, hi, 0, pad)
+        vx, vw = self._put8(text, ax, y, color, f, align, lo, hi, 0, pad)
         # Label and unit: the chord at their own rows, within the value's half
         # at W and E (centred there), shrunk by k at the sides and corners.
         ax = vx + vw // 2 if corner else cx
@@ -357,25 +420,25 @@ class Screen:
         align = 3 if side else 1
         if label:
             ly = y - self.u(4) - 8 * k
-            if not self._fit(label, ly, k, lo, hi, sh)[0]:
+            if not self._fit8(label, ly, k, lo, hi, sh)[0]:
                 # Near the top its rows can leave the circle: lower it, at
                 # most down to the value, to the row that keeps the most.
                 best = 0
                 for t in range(ly + 1, y - 8 * k + 1):
-                    n = self._fit(label, t, k, lo, hi, sh)[0]
+                    n = self._fit8(label, t, k, lo, hi, sh)[0]
                     if n > best:
                         best, ly = n, t
-            self._put(label, ax, ly, GRAY, k, align, lo, hi, sh)
+            self._put8(label, ax, ly, GRAY, k, align, lo, hi, sh)
         if unit:
-            self._put(unit, ax, y + 8 * f, LIGHT, k, align, lo, hi, sh)
+            self._put8(unit, ax, y + 8 * f, LIGHT, k, align, lo, hi, sh)
 
     def subtitle(self, *lines, color=DARK):
         """Draw subtitle text at the bottom (S). Accepts multiple lines."""
         if not lines:
             return
         k = self.k
-        max_len = max(len(line) for line in lines)
-        _, base_y = self._at("S", max_len * 8 * k, k)
+        tws = [self._tw(line, TEXT, k) for line in lines]
+        _, base_y = self._at("S", max(tws), k)
         line_h = self.u(self.CHAR_H + 3)
         n = len(lines)
 
@@ -387,13 +450,17 @@ class Screen:
 
         if k > 1:
             # The block rises a row at a time until every line fits the
-            # circle, never above its last line's top on the S row.
-            masks = [self._ink(line)[-1] if line else 0 for line in lines]
+            # circle at its ink rows (8x16 cells), never above its last
+            # line's top on the S row.
+            masks = [
+                fonts.masks(fonts.face(line, TEXT, k)[0], line)[-1] if line else 0
+                for line in lines
+            ]
 
             def fits(y):
-                for i, line in enumerate(lines):
-                    c = self._band(masks[i], y + i * line_h, k)
-                    if masks[i] and not (c and len(line) * 8 * k <= c[1] - c[0] + 1):
+                for i in range(n):
+                    c = self._band(masks[i], y + i * line_h, 1)
+                    if masks[i] and not (c and tws[i] <= c[1] - c[0] + 1):
                         return False
                 return True
 
@@ -404,7 +471,7 @@ class Screen:
         for i, line in enumerate(lines):
             y = start_y + i * line_h
             if k > 1:
-                self._put(line, cx, y, color, k)
+                self._put(line, cx, y, color, TEXT, k)
             else:
                 self._txt(line, cx - len(line) * 4, y, color, 1, "draw_small_text")
 
@@ -452,7 +519,7 @@ class Screen:
             self._draw_arc(cx, cy, r, start_angle, int(sweep * ratio), color, arc_w + 2)
 
         # Min/max labels, their top row on the point; when k > 1 at distance
-        # outer - arc_w - u(10), kept inside the circle.
+        # outer - arc_w - u(10), in the 6x12 LABEL face, kept inside the circle.
         r_label = r - arc_w - self.u(10) + (0 if k == 1 else arc_w // 2)
         q = int if k == 1 else round
         for t, deg in (
@@ -463,7 +530,7 @@ class Screen:
             px = q(cx + r_label * math.cos(a))
             py = q(cy + r_label * math.sin(a))
             if k > 1:
-                self._put(t, px, py, GRAY, k, 1, 0, None, k)
+                self._put(t, px, py, GRAY, LABEL, k, 1, 0, None, k)
             else:
                 self._txt(t, px - len(t) * 4, py, GRAY, 1, "draw_small_text")
 
@@ -480,8 +547,10 @@ class Screen:
 
         if data:
             text = str(int(data[-1]))
-            tw = len(text) * 8 * k
-            self._txt(text, cx - tw // 2, u(STEAMI_GRAPH_VALUE_Y), WHITE, k, "draw_medium_text")
+            tw = self._tw(text, TEXT, k)
+            self._txt(
+                text, cx - tw // 2, u(STEAMI_GRAPH_VALUE_Y), WHITE, k, "draw_medium_text", ink=TEXT
+            )
 
         def _fmt(v):
             if v >= 1000 and v % 1000 == 0:
@@ -497,11 +566,14 @@ class Screen:
                 cw = int(self.CHAR_W * 0.85)
                 self._txt(label, gx - len(label) * cw - 1, yp - 4, DARK, 1, "draw_small_text")
                 continue
-            # Inside the box, where the circle leaves room (Arduino 5.9): the
-            # max label's top u(2) below the top, the others' last inked row
-            # (digits ink rows 0-6) k + u(2) above their line.
-            y = yp + u(2) if yp == gy else yp - u(2) - 8 * k + 1
-            self._txt(label, gx + k + u(2), y, DARK, k)
+            # Inside the box, where the circle leaves room (Arduino 5.9), in
+            # the 6x12 LABEL face: the max label's first ink row u(2) below
+            # the top, the others' last ink row k + u(2) above their line.
+            # Kept MicroPython difference: three labels, with "k" formatting.
+            fc = fonts.face(label, LABEL, k)[0]
+            a, b = fonts.ink_rows(fonts.masks(fc, label)[-1])
+            y = gy + u(2) - a if yp == gy else yp - k - u(2) - b
+            self._txt(label, gx + k + u(2), y, DARK, k, ink=LABEL)
 
         dash, gap = u(STEAMI_GRAPH_DASH), u(STEAMI_GRAPH_GAP)
         x = gx + k
@@ -539,6 +611,8 @@ class Screen:
         visible = min(len(items), (self.height - 40) // item_h)
         if k > 1:
             # Rows u(35 + 14 j) whose chord holds the marker and 10 cells.
+            # Kept MicroPython difference: Arduino shows 6 rows with a bar
+            # clipped per scanline; here 5 rows (192 px chords) on 240 px.
             visible = 0
             while visible < len(items):
                 y = u(35 + 14 * visible)
@@ -557,7 +631,7 @@ class Screen:
             else:
                 text, c = "  " + items[i], GRAY
             if k > 1:
-                self._put(text, x, iy, c, k, 0, x, None, k)
+                self._put(text, x, iy, c, TEXT, k, 0, x, None, k)
             else:
                 self._d.text(text, x, iy, c)
 
@@ -576,7 +650,10 @@ class Screen:
             lx = cx + q((r + u(5)) * math.sin(math.radians(angle)))
             ly = cy - q((r + u(5)) * math.cos(math.radians(angle)))
             c = WHITE if label == "N" else GRAY
-            self._txt(label, lx - 4 * k, ly - 4 * k, c, k)
+            # The letter's cell centred on the point (8x16 on 240 px).
+            self._txt(
+                label, lx - self._tw(label, TEXT, k) // 2, ly - self.text_height() // 2, c, k
+            )
 
         for angle in range(0, 360, 45):
             inner = r - u(6)
@@ -634,8 +711,8 @@ class Screen:
             rad = math.radians(angle)
             lx = cx + q((r - u(15)) * math.sin(rad))
             ly = cy - q((r - u(15)) * math.cos(rad))
-            tw = len(text) * 8 * k
-            self._txt(text, lx - tw // 2, ly - 4 * k, WHITE, k)
+            tw = self._tw(text, TEXT, k)
+            self._txt(text, lx - tw // 2, ly - self.text_height() // 2, WHITE, k)
 
         # Hands: (angle in degrees, length, half width), then the second hand.
         for deg, length, half in (
@@ -686,9 +763,10 @@ class Screen:
     def text(self, text, at="CENTER", color=WHITE, scale=1):
         """Draw text at a cardinal position or explicit (x,y).
 
-        At a cardinal position the glyphs are scaled by k and, when k > 1,
-        the text is kept inside the circle (moved, then cut). An explicit
-        (x, y) is in real pixels, the top left of the first cell: the 8x8
+        At a cardinal position the glyphs are scaled by k (Spleen 8x16 x scale
+        on 240 px) and, when k > 1, the text is kept inside the circle (moved,
+        then cut at the chord of its ink rows). An explicit (x, y) is in real
+        pixels, the top left of the first cell: the 8x8
         font x scale on 128 px, Spleen 8x16 x scale on 240 px (accents
         included, any other character drawn as '?'). A scale below 1
         counts as 1.
@@ -697,20 +775,19 @@ class Screen:
         if isinstance(at, str):
             k = self.k
             f = scale * k
-            x, y = self._at(at, len(text) * 8 * f, f)
+            x, y = self._at(at, self._tw(text, TEXT, f), f)
             if k > 1:
                 # W runs from its margin to the chord's right edge - k, E is its
                 # mirror image, a corner takes the chord shrunk by k.
                 w = self.width
                 me = self._margin_ew(f)
                 if at in ("NW", "W", "SW"):
-                    self._put(text, me, y, color, f, 0, me if at == "W" else 0, None, k)
+                    self._put(text, me, y, color, TEXT, f, 0, me if at == "W" else 0, None, k)
                 elif at in ("NE", "E", "SE"):
-                    self._put(
-                        text, w - me, y, color, f, 2, 0, w - me - 1 if at == "E" else None, k
-                    )
+                    hi = w - me - 1 if at == "E" else None
+                    self._put(text, w - me, y, color, TEXT, f, 2, 0, hi, k)
                 else:
-                    self._put(text, w // 2, y, color, f)
+                    self._put(text, w // 2, y, color, TEXT, f)
                 return
             scale = f
         else:
@@ -785,9 +862,15 @@ class Screen:
                 self._line(cx - xo, y, cx - xi, y, c)
                 self._line(cx + xi, y, cx + xo, y, c)
 
-    def _txt(self, s, x, y, c, f=1, alt="text"):
-        """Text at glyph factor f; at 1 through the backend's `alt` method if any."""
-        if f > 1:
+    def _txt(self, s, x, y, c, f=1, alt="text", ink=TEXT):
+        """Text at glyph factor f, (x, y) the top left of its first cell.
+
+        When k > 1, the Spleen face of `ink` at f. When k == 1, the 8x8 font:
+        at f 1 through the backend's `alt` method if any.
+        """
+        if self.k > 1:
+            self._draw(s, x, y, c, ink, f)
+        elif f > 1:
             self._draw_scaled_text(s, x, y, c, f)
         else:
             getattr(self._d, alt, self._d.text)(s, x, y, c)

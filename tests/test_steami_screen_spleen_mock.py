@@ -402,6 +402,45 @@ def test_mock_draw_without_draw_glyphs_fills_runs(mods, psp):  # noqa: F811
     assert pixels == spleen_pixels(psp.F8X16, "Hi", 0, 0, 1)
 
 
+def test_mock_cut_value_text_keeps_the_face_of_the_whole_text(mods, psp):  # noqa: F811
+    # Design 5.1: the face is judged on the whole text. "12:30 PM" at f 4 is
+    # 8x16 x 2 (TEXT ladder, not bold); its cut prefix "12:3" (16 + 16 + 8 + 16
+    # = 56 px) keeps that face, never 16x32 judged from the digits. The room
+    # is [2, 60]: the chord at the ink rows 104..123 starts at x 2, so "12:30"
+    # (72 px) is cut and the narrow ':' sits 4 px left of its pen.
+    steami_screen, _ = mods
+    fonts = sys.modules["steami_screen.fonts"]
+    d = RecordingDisplay()
+    s = steami_screen.Screen(d)
+    s._put("12:30 PM", 0, 100, RGB_WHITE, fonts.VALUE, 4, 0, 0, 60)
+    o = {ch: fonts.offset(psp.F8X16, ch) for ch in "123:"}
+    assert d.calls == [
+        (
+            "glyphs",
+            8,
+            16,
+            [(o["1"], 2, 100), (o["2"], 18, 100), (o[":"], 30, 100), (o["3"], 42, 100)],
+            2,
+            0,
+        )
+    ]
+
+
+def test_mock_native_widget_text_is_one_blit_per_glyph(panel):  # noqa: F811
+    s, raw = panel(240)
+    n = counting(s, raw)
+    s.title("Distance")
+    assert n == {"blit": 8, "fill_rect": 0}
+    s, raw = panel(240)
+    n = counting(s, raw)
+    s.subtitle("VL53L1X ToF")
+    assert n["blit"] == 11
+    s, raw = panel(240)
+    n = counting(s, raw)
+    s.gauge(342, 0, 500)
+    assert n["blit"] == 4
+
+
 def test_mock_128_never_touches_spleen(panel):  # noqa: F811
     s, raw = panel(128)
     n = counting(s, raw)
