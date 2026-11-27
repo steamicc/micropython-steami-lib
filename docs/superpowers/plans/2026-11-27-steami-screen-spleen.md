@@ -824,7 +824,8 @@ ASSERT(ORIGIN(FLASH_FS) + LENGTH(FLASH_FS) <= _steami_radio_stack_start, "FLASH_
   - the Task 12 sizes;
   - the reformat warning;
   - the mboot note;
-  - a link to the lib PR, as a full GitHub URL.
+  - a link to the lib PR, as a full GitHub URL;
+  - the issue as `steamicc/micropython-steami-lib#461` with its full URL (https://github.com/steamicc/micropython-steami-lib/issues/461): a bare `micropython-steami-lib#461` does not link from the fork.
 - [ ] **Step 3: Lib PR.** Push `feat/steami-screen-spleen`, then `gh pr create --repo steamicc/micropython-steami-lib --base main`. Title: `feat(steami_screen): Draw the V1c text with the Spleen fonts.` The body holds:
   - "Closes #461";
   - what changes on 240 px and on 128 px;
@@ -833,6 +834,13 @@ ASSERT(ORIGIN(FLASH_FS) + LENGTH(FLASH_FS) <= _steami_radio_stack_start, "FLASH_
   - `text_height()` and `max_chars` 30;
   - the firmware sizes and the before/after timing table;
   - the photos;
+  - the reformat warning: "This firmware moves the MicroPython filesystem: the first boot reformats it and every file stored on the board is lost. Copy your files off the board before updating.";
   - "Merge after <fork PR URL>: the release build overflows the flash without it".
 
   Do not merge before the fork PR is merged.
+- [ ] **Step 4: Release notes** (controller, right after `release.yml` publishes the first lib release built on the new layout, vX.Y.0). The notes come from `@semantic-release/release-notes-generator`, which keeps only commit subjects, so they never carry the warning on their own:
+  - `gh release view vX.Y.0 --repo steamicc/micropython-steami-lib --json body -q .body > notes.md`;
+  - put the reformat warning above, in bold, at the top of `notes.md`;
+  - `gh release edit vX.Y.0 --repo steamicc/micropython-steami-lib --notes-file notes.md` (immutable releases lock the tag and the assets, not the notes).
+
+  Do not use a `BREAKING CHANGE` footer for this: it would force a major version.
