@@ -41,6 +41,10 @@ MicroPython program look alike on a V1c. The 128 px panel (V1a/V1b) keeps its 8x
   output is the accent fold and the degree sign, pinned by one new golden entry.
 - Touching `spleen`, `GS4_HMSB` or `blit` on the 128 path (the 128 golden's `RawDisplay` has neither).
 - A widget text slower than today's, or a native-face widget text over 10 ms on the board.
+  The maintainer accepted the measured times (2026-11-27): with viper glyph writing, widget text takes 8 to
+  12 ms (17 to 19 ms for a side value with its label), 3 to 10 times faster than v0.30. `@micropython.native`
+  on the hot Python helpers gained only 10 to 20 % for 2.2 to 5.6 KB of flash, so it is not used. The V1c
+  scenario bounds each entry at about twice its measured time.
 - Hand edits to `spleen.py`.
 
 ## Rulings (binding)

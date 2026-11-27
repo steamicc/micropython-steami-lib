@@ -241,10 +241,23 @@ tests:
   - name: "Widget text timing"
     action: hardware_script
     script: |
-      # Design 8.1: the widget text of programs 01 and 04 (and mockup 03)
-      # must draw in under 10 ms each. The whole gauge (arc-bound) and the
-      # pixel text are only reported, to compare with the old firmware: this
-      # script also runs there (Task 13), hence the _put signature check.
+      # Design 8.1 aimed at 10 ms per widget text; the maintainer accepted
+      # the measured times instead (2026-11-27). Each bound is about 2x the
+      # Spleen time measured on a V1c and well under the v0.30 time (8x8
+      # font doubled), so a slower widget text fails:
+      #   entry          v0.30   Spleen   bound (us)
+      #   04_title       37 696   8 229    16 000
+      #   04_value       31 151  10 835    20 000
+      #   04_subtitle    59 440  11 821    24 000
+      #   04_label_0      7 464   3 098     6 000
+      #   04_label_500   17 958   3 858     8 000
+      #   01_title       51 096  10 543    20 000
+      #   01_value       34 059  11 113    22 000
+      #   01_subtitle    37 126   9 748    20 000
+      #   03_value       57 722  18 876    36 000
+      # The whole gauge (arc-bound) and the pixel text are only reported, to
+      # compare with the old firmware: this script also runs there, hence
+      # the _put signature check.
       import gc
       import time
       from steami import Screen
@@ -276,25 +289,25 @@ tests:
                   low = dt
           return low
       widgets = (
-          ("04_title", lambda: screen.title("Distance")),
-          ("04_value", lambda: screen.value(342, "mm")),
-          ("04_subtitle", lambda: screen.subtitle("VL53L1X ToF")),
-          ("04_label_0", lambda: label("0", 55)),
-          ("04_label_500", lambda: label("500", 185)),
-          ("01_title", lambda: screen.title("Temperature")),
-          ("01_value", lambda: screen.value(23.5, "°C")),
-          ("01_subtitle", lambda: screen.subtitle("BME280")),
-          ("03_value", lambda: screen.value(23.5, "°C", "W", "TEMP")),
+          ("04_title", 16000, lambda: screen.title("Distance")),
+          ("04_value", 20000, lambda: screen.value(342, "mm")),
+          ("04_subtitle", 24000, lambda: screen.subtitle("VL53L1X ToF")),
+          ("04_label_0", 6000, lambda: label("0", 55)),
+          ("04_label_500", 8000, lambda: label("500", 185)),
+          ("01_title", 20000, lambda: screen.title("Temperature")),
+          ("01_value", 22000, lambda: screen.value(23.5, "°C")),
+          ("01_subtitle", 20000, lambda: screen.subtitle("BME280")),
+          ("03_value", 36000, lambda: screen.value(23.5, "°C", "W", "TEMP")),
       )
       reported = (
           ("04_gauge", lambda: screen.gauge(342, 0, 500)),
           ("text_x2", lambda: screen.text("ABCDEFGHIJKLMNO", (0, 100), WHITE, 2)),
       )
       ok = True
-      for name, call in widgets:
+      for name, bound, call in widgets:
           dt = best(call)
-          print(name, dt, "us")
-          ok = ok and dt < 10000
+          print(name, dt, "us, bound", bound)
+          ok = ok and dt < bound
       for name, call in reported:
           print(name, best(call), "us")
       result = ok and screen.error() == ""
