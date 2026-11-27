@@ -481,6 +481,10 @@ class Screen:
         The arc is drawn close to the screen border. Call gauge() before
         title() so that text layers on top of the arc.
 
+        The fill sweeps int(270 * ratio) degrees, ratio = (val - min_val) /
+        (max_val - min_val) clamped to 0..1, so a value with 0 < ratio <
+        1/270 shows an empty gauge, as the Arduino gauge does.
+
         Args:
             val: Current value to display.
             min_val: Minimum value (empty gauge).
@@ -971,6 +975,11 @@ class Screen:
         As the Arduino arc(), each row of the ring is clipped to the sector
         with two integer cross products, then drawn as horizontal spans:
         every pixel is decided once, so the ring has no holes.
+
+        The rows allocate nothing: the colour is converted once and each span
+        goes straight to the driver's fill_rect (native_fill() of the
+        adapter), and the square roots are integers, moved one step at a
+        time from the previous row.
         """
         if hasattr(self._d, "draw_arc"):
             self._d.draw_arc(cx, cy, r, start_deg, sweep_deg, color, width)
@@ -987,22 +996,36 @@ class Screen:
             if sweep_deg > 180:
                 secs += (_ray(m) + _ray(start_deg + sweep_deg),)
         o2, i2 = (2 * ro + 1) ** 2, (2 * ri - 1) ** 2
-        fr = self._fill_rect
+        if hasattr(self._d, "native_fill"):
+            fr, color = self._d.native_fill(color)
+        else:
+            fr = self._fill_rect
+        xo = si = 0
         for dy in range(max(-ro, -cy), min(ro, self.height - 1 - cy) + 1):
             d4 = 4 * dy * dy
-            xo = int(math.sqrt((o2 - d4) // 4))
+            # xo = floor(sqrt(n)) and xi = ceil(sqrt(q)), q > 0: the outer
+            # and inner edges of the ring on this row.
+            n = (o2 - d4) // 4
+            while xo * xo > n:
+                xo -= 1
+            while (xo + 1) * (xo + 1) <= n:
+                xo += 1
             xi = 0
             q = (i2 - d4 + 3) // 4
             if ri and q > 0:
-                xi = int(math.sqrt(q))
-                xi += xi * xi < q
+                while si * si > q:
+                    si -= 1
+                while (si + 1) * (si + 1) <= q:
+                    si += 1
+                xi = si + (si * si < q)
             if xi > xo:
                 continue
             y = cy + dy
-            for lo, hi in ((-xo, -xi), (xi, xo)) if xi else ((-xo, xo),):
+            # One span -xo..xo, or two: -xo..-xi, then xi..xo.
+            lo, hi = -xo, -xi if xi else xo
+            while True:
                 if not secs:
                     fr(cx + lo, y, hi - lo + 1, 1, color)
-                    continue
                 # On row dy each half-plane cross(S, p) >= 0, cross(p, E) >= 0
                 # is a half-line in dx: clip the span to both.
                 for sx, sy, ex, ey in secs:
@@ -1023,6 +1046,9 @@ class Screen:
                         continue
                     if a <= b:
                         fr(cx + a, y, b - a + 1, 1, color)
+                if lo > 0 or not xi:
+                    break
+                lo, hi = xi, xo
 
     def _draw_circle(self, cx, cy, r, color):
         """Bresenham circle."""

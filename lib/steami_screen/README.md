@@ -201,6 +201,10 @@ screen.gauge(60, min_val=0, max_val=100)
 
 Draws a 270-degree arc gauge near the screen border.
 
+The fill covers `int(270 * ratio)` degrees, where `ratio = (val - min_val) / (max_val - min_val)` is clamped to 0..1. A value with `0 < ratio < 1/270` (less than one degree) therefore shows an empty gauge, as on Arduino: `gauge(0.3)` draws no fill, `gauge(0.4)` a 1-degree one.
+
+The arc is drawn row by row with integer arithmetic and its colour converted once: a gauge allocates only a few small objects per call, most of them for its two labels.
+
 ---
 
 #### Graph
@@ -310,6 +314,8 @@ screen = Screen(GC9A01Display(raw))
 ```
 
 `GC9A01Display` is 240 x 240 and has the same methods as `SSD1327Display`, including `draw_scaled_text()` for true pixel-scale 8x8 text.
+
+`native_fill(color)` returns the driver's `fill_rect` and the colour's palette index, for many rects of one colour (`Screen` draws the gauge arcs with it). `SSD1327Display` has it too, with the grey4 level.
 
 It also has `draw_glyphs(fc, glyphs, n, bold, color)`, which `Screen` uses to draw the Spleen faces (see Fonts). Only the set bits of each glyph are painted, so black text and text over a coloured background (the selected menu bar, a gauge ring) keep their background. The colour is looked up once per string.
 

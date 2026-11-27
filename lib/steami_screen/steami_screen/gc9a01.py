@@ -201,6 +201,14 @@ class GC9A01Display:
     def fill_rect(self, x, y, w, h, color):
         self._fill_rect_raw(x, y, w, h, rgb_to_index(color))
 
+    def native_fill(self, color):
+        """(fill_rect, value): the raw driver's fill_rect and the palette index of color.
+
+        For many rects of one colour (the gauge arc spans): fill_rect(x, y,
+        w, h, value) draws on the driver with no conversion per call.
+        """
+        return self._fill_rect_raw, rgb_to_index(color)
+
     def rect(self, x, y, w, h, color):
         index = rgb_to_index(color)
         if hasattr(self._raw, "rect"):
