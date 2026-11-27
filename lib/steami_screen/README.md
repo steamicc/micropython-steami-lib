@@ -18,25 +18,61 @@ Provides a device-agnostic abstraction layer on top of display drivers (SSD1327,
 
 ## Basic Usage
 
+On a STeaMi board, use the board-level `steami.Screen`. It picks the right display for the release (128 px grey SSD1327 on V1a/V1b, 240 px round colour GC9A01 on V1c) and offers the whole API below.
+
 ```python
-import ssd1327
-from machine import SPI, Pin
-from steami_screen import Screen, SSD1327Display
+from steami import Screen
 
-spi = SPI(1)
-dc = Pin("DATA_COMMAND_DISPLAY")
-res = Pin("RST_DISPLAY")
-cs = Pin("CS_DISPLAY")
-
-raw = ssd1327.WS_OLED_128X128_SPI(spi, dc, res, cs)
-display = SSD1327Display(raw)
-screen = Screen(display)
+screen = Screen()
+screen.begin()  # allocate the frame buffer early in the program
 
 screen.clear()
 screen.title("STeaMi")
 screen.value(42, label="Temp", unit="C")
 screen.show()
 ```
+
+To drive a display directly (any FrameBuffer-based backend):
+
+```python
+import ssd1327
+from machine import SPI, Pin
+from steami_screen import Screen, SSD1327Display
+
+raw = ssd1327.WS_OLED_128X128_SPI(
+    SPI(1), Pin("DATA_COMMAND_DISPLAY"), Pin("RST_DISPLAY"), Pin("CS_DISPLAY")
+)
+screen = Screen(SSD1327Display(raw))
+```
+
+---
+
+## Units and Scale
+
+The layout is designed on a 128 px screen and scaled to the real width.
+
+| Property | 128 px (V1a/V1b) | 240 px (V1c) |
+|----------|------------------|--------------|
+| `screen.k` (glyph and stroke factor) | 1 | 2 |
+| `screen.width`, `height` | 128 | 240 |
+| `screen.center`, `radius` | (64, 64), 64 | (120, 120), 120 |
+
+Units of the public API:
+
+* real pixels: `pixel`, `line`, `rect`, `circle`, `text(text, at=(x, y))` (the `scale` is used as given), `arc_width`, and the properties `width`, `height`, `center`, `radius`;
+* scaled by `k`: widget text and text at a cardinal position (`at="N"`, `"CENTER"`, ...);
+* 128 px units: `y_offset` (for example in `bar()`).
+
+`screen.u(v)` converts a length given in 128 px units to real pixels (`int(v * width / 128)`, so x15/8 on 240 px, not x2). Use it so that hard-coded geometry looks the same on both sizes:
+
+```python
+from steami_screen import BLACK
+
+box_w = screen.u(56)  # 56 on 128 px, 105 on 240 px
+screen.rect(screen.center[0] - box_w // 2, 10, box_w, screen.u(10), BLACK, fill=True)
+```
+
+Text grows by `k` (x2 on 240 px), not by `u()`: size a box that must hold text from the glyphs, `len(text) * 8 * screen.k` wide and `8 * screen.k` high.
 
 ---
 
@@ -204,6 +240,31 @@ from steami_screen import RED, GREEN, BLUE, YELLOW
 
 Colors are RGB tuples. On SSD1327 they degrade to greyscale automatically.
 
+On the GC9A01 round screen the frame holds 16 colours: each pixel is a palette index (0-15), not an RGB565 value. `GC9A01Display` maps any RGB tuple to the nearest entry of the driver palette (smallest squared RGB distance) with `steami_screen.gc9a01.rgb_to_index(color)`. A legacy int is a grey4 level: it becomes the grey `level * 17`, then the nearest palette entry, but a non-zero level never becomes black (level 1 gives the darkest grey, as it is visible on the SSD1327).
+
+An arbitrary RGB tuple therefore shows as the nearest of the 16 palette colours (listed in the `gc9a01` README), which can surprise: `(0, 255, 0)` is nearer to the palette's dark green `(0, 128, 0)` than to `GREEN` `(119, 255, 119)`, so it shows dark green. Use the named constants, which are exact palette entries, for exact colours.
+
+---
+
+## GC9A01 (round colour screen)
+
+```python
+import gc9a01
+from machine import SPI, Pin
+from steami_screen import Screen, GC9A01Display
+
+raw = gc9a01.GC9A01(
+    SPI(1),
+    Pin("DATA_COMMAND_DISPLAY"),
+    Pin("CS_DISPLAY"),
+    Pin("RST_DISPLAY"),
+)
+raw.init()
+screen = Screen(GC9A01Display(raw))
+```
+
+`GC9A01Display` is 240 x 240 and has the same methods as `SSD1327Display`, including `draw_scaled_text()` for true pixel-scale text.
+
 ---
 
 ## Color Utilities
@@ -215,7 +276,7 @@ from steami_screen import rgb_to_gray4, rgb_to_rgb565, rgb_to_rgb8
 | Function | Output |
 |----------|--------|
 | `rgb_to_gray4(color)` | 4-bit greyscale (0-15) for SSD1327 |
-| `rgb_to_rgb565(color)` | 16-bit RGB565 for GC9A01 |
+| `rgb_to_rgb565(color)` | 16-bit RGB565 (a plain helper: the gc9a01 driver takes palette indexes, see `steami_screen.gc9a01.rgb_to_index`) |
 | `rgb_to_rgb8(color)` | RGB tuple pass-through |
 
 All accept int values for backward compatibility.

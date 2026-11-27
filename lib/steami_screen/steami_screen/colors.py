@@ -4,7 +4,7 @@ Color conversion utilities for STeaMi display backends.
 Colors are represented as RGB tuples (r, g, b) with values 0-255.
 Each backend converts to its native format:
   - SSD1327 : grayscale 4-bit (0-15)
-  - GC9A01  : RGB565 (16-bit)
+  - GC9A01  : 16-colour palette index (steami_screen.gc9a01.rgb_to_index)
   - Simulator: RGB tuple (pass-through)
 
 All functions accept legacy int values for backward compatibility.

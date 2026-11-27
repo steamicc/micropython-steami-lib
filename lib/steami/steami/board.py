@@ -50,6 +50,8 @@ class _Board(object):
         self._revision = None
         self._probed_chip = None
         self._drivers = {}  # chip -> driver, or None when it did not answer
+        self._display = None
+        self._display_chip = None
         self._calibration_tried = []
         self._calibration_applied = []
         self._banner_delivered = False
@@ -187,6 +189,49 @@ class _Board(object):
 
     def mcp23009e(self):
         return self._driver(Chip.MCP23009E)
+
+    def display(self):
+        """Return the shared screen adapter of steami_screen, or None.
+
+        Built on first call: SSD1327 on V1a/V1b, GC9A01 on V1c. None on an
+        unknown release, or when the frame does not fit in RAM (tried again
+        on the next call). Once built, it is kept until end().
+        """
+        if self._display is None:
+            self._display = self._build_display()
+        return self._display
+
+    def _build_display(self):
+        chips = route(self.release(), Function.SCREEN)
+        chip = self._display_chip = chips[0] if chips else None
+        if chip is None:
+            return None
+        from machine import SPI, Pin
+
+        spi = SPI(1)
+        dc = Pin("DATA_COMMAND_DISPLAY")
+        cs = Pin("CS_DISPLAY")
+        rst = Pin("RST_DISPLAY")
+        if chip == Chip.GC9A01:
+            from gc9a01 import GC9A01 as cls
+            from steami_screen import GC9A01Display as adapter
+
+            args = (spi, dc, cs, rst)
+        else:
+            from ssd1327 import WS_OLED_128X128_SPI as cls
+            from steami_screen import SSD1327Display as adapter
+
+            args = (spi, dc, rst, cs)
+        # The constructor allocates the frame in one block (the SSD1327 also
+        # starts its panel). Only this MemoryError is caught: the Screen
+        # reports E31 and draws nothing. Any other one propagates.
+        try:
+            raw = cls(*args)
+        except MemoryError:
+            return None
+        if chip == Chip.GC9A01:
+            raw.init()
+        return adapter(raw)
 
     def has(self, function):
         """Return True when this release has a chip for the function."""

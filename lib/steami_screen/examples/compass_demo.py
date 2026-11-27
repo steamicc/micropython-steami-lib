@@ -4,20 +4,13 @@ Displays a compass with a rotating needle based on the LIS2MDL magnetometer.
 
 from time import sleep_ms
 
-import ssd1327
 from lis2mdl import LIS2MDL
-from machine import I2C, SPI, Pin
-from steami_screen import Screen, SSD1327Display
+from machine import I2C
+from steami import Screen
 
 # --- Screen setup ---
-spi = SPI(1)
-dc = Pin("DATA_COMMAND_DISPLAY")
-res = Pin("RST_DISPLAY")
-cs = Pin("CS_DISPLAY")
-
-raw_display = ssd1327.WS_OLED_128X128_SPI(spi, dc, res, cs)
-display = SSD1327Display(raw_display)
-screen = Screen(display)
+screen = Screen()
+screen.begin()  # allocate the frame buffer early in the program
 
 # --- Sensor setup ---
 i2c = I2C(1)

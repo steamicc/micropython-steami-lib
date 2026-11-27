@@ -46,11 +46,18 @@ def load_driver_mock(driver_name, fake_i2c, module_name=None):
     # Patch modules before importing driver
     import types
 
-    from tests.fake_machine import FakeI2C, FakePin, framebuf_stub, micropython_stub
+    from tests.fake_machine import (
+        FakeI2C,
+        FakePin,
+        FakeSPI,
+        framebuf_stub,
+        micropython_stub,
+    )
 
     fake_machine = types.ModuleType("machine")
     fake_machine.I2C = FakeI2C
     fake_machine.Pin = FakePin
+    fake_machine.SPI = FakeSPI
     fake_machine.lightsleep = lambda ms=0: None
 
     sys.modules["machine"] = fake_machine

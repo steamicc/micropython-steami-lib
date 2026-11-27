@@ -1,0 +1,158 @@
+type: board
+name: "steami_screen_v1c"
+
+# Hardware-only checks of the round GC9A01 screen of a STeaMi V1c, drawn
+# through steami.Screen (240 x 240, scaling factor k = 2).
+# Needs the release firmware, which freezes gc9a01, steami_screen and steami,
+# and no copy of these packages at the /flash root (it comes before .frozen
+# on sys.path). Each test starts from a fresh interpreter.
+# The tests only check that nothing raises; look at the screen (or film it)
+# to check the drawing itself.
+#
+# Run with a terminal (hardware_script tests are skipped without one):
+#   python -m pytest tests/ -v -k steami_screen_v1c --port /dev/ttyACM0 -s
+
+tests:
+  - name: "Screen begins on the GC9A01"
+    action: hardware_script
+    script: |
+      from steami import Screen, Chip
+      screen = Screen()
+      ok = screen.begin()
+      print("chip:", screen.chip(), "size:", screen.width, screen.height)
+      result = (
+          ok
+          and screen.chip() == Chip.GC9A01 == "GC9A01"
+          and screen.width == 240
+          and screen.height == 240
+          and screen.k == 2
+          and screen.error() == ""
+      )
+    expect_true: true
+    mode: [hardware]
+
+  - name: "title, value, subtitle and text draw and show"
+    action: hardware_script
+    script: |
+      from steami import Screen
+      from steami_screen import GREEN, YELLOW
+      screen = Screen()
+      screen.begin()
+      screen.clear()
+      screen.title("TITLE")
+      screen.value(42, unit="C", label="Temp", color=GREEN)
+      screen.subtitle("first line", "second line")
+      screen.text("N", at="N", color=YELLOW)
+      screen.text("S", at="S", scale=2)
+      screen.show()
+      result = screen.chip() == "GC9A01" and screen.width == 240 and screen.error() == ""
+    expect_true: true
+    mode: [hardware]
+
+  - name: "bar, graph and menu draw and show"
+    action: hardware_script
+    script: |
+      from steami import Screen
+      from steami_screen import GREEN
+      screen = Screen()
+      screen.begin()
+      screen.clear()
+      screen.title("BAR")
+      screen.bar(60, max_val=100, color=GREEN)
+      screen.show()
+      screen.clear()
+      screen.title("GRAPH")
+      screen.graph([10, 25, 40, 30, 55, 70, 60, 80, 75, 90], min_val=0, max_val=100)
+      screen.show()
+      screen.clear()
+      screen.menu(["One", "Two", "Three", "Four", "Five", "Six"], selected=2)
+      screen.show()
+      result = screen.chip() == "GC9A01" and screen.width == 240 and screen.error() == ""
+    expect_true: true
+    mode: [hardware]
+
+  - name: "gauge draws and shows"
+    action: hardware_script
+    script: |
+      # The 240 px arc is drawn in Python: about 5 to 11 s on the V1c.
+      from steami import Screen
+      from steami_screen import GREEN
+      screen = Screen()
+      screen.begin()
+      screen.clear()
+      screen.gauge(30, min_val=0, max_val=100, color=GREEN)
+      screen.title("GAUGE")
+      screen.value(30, unit="%")
+      screen.show()
+      result = screen.chip() == "GC9A01" and screen.width == 240 and screen.error() == ""
+    expect_true: true
+    mode: [hardware]
+
+  - name: "compass, watch and every face draw and show"
+    action: hardware_script
+    script: |
+      from steami import Screen
+      from steami_screen import FACES, YELLOW
+      screen = Screen()
+      screen.begin()
+      screen.clear()
+      screen.compass(45)
+      screen.show()
+      screen.clear()
+      screen.watch(10, 8, 30)
+      screen.show()
+      for name in FACES:
+          screen.clear()
+          screen.face(name, color=YELLOW)
+          screen.face(name, compact=True)
+          screen.show()
+      result = screen.chip() == "GC9A01" and screen.width == 240 and screen.error() == ""
+    expect_true: true
+    mode: [hardware]
+
+  - name: "Primitives draw in colour and show"
+    action: hardware_script
+    script: |
+      from steami import Screen
+      from steami_screen import BLUE, GREEN, RED, WHITE, YELLOW
+      screen = Screen()
+      screen.begin()
+      screen.clear()
+      cx, cy = screen.center
+      screen.circle(cx, cy, screen.radius - 1, WHITE)
+      screen.circle(cx, cy, 20, (255, 165, 0), fill=True)
+      screen.line(0, cy, screen.width - 1, cy, WHITE)
+      screen.rect(40, 150, 30, 20, GREEN, fill=True)
+      screen.rect(80, 150, 30, 20, RED, fill=True)
+      screen.rect(120, 150, 30, 20, BLUE, fill=True)
+      screen.rect(160, 150, 30, 20, YELLOW)
+      screen.pixel(cx, 30, WHITE)
+      screen.text("xy", at=(100, 60))
+      screen.show()
+      result = (
+          screen.radius == 120
+          and screen.center == (120, 120)
+          and screen.error() == ""
+      )
+    expect_true: true
+    mode: [hardware]
+
+  - name: "show() sends a frame in under 500 ms"
+    action: hardware_script
+    script: |
+      import time
+      from steami import Screen
+      screen = Screen()
+      screen.begin()
+      screen.clear()
+      screen.title("SHOW")
+      screen.show()
+      times = []
+      for _ in range(5):
+          t0 = time.ticks_ms()
+          screen.show()
+          times.append(time.ticks_diff(time.ticks_ms(), t0))
+      print("show() ms:", times)
+      result = max(times) < 500
+    expect_true: true
+    mode: [hardware]

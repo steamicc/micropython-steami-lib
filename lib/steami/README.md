@@ -4,9 +4,11 @@ Board detection and function classes for the STeaMi board.
 
 The STeaMi exists in three hardware releases (V1a, V1b, V1c) whose environment
 sensors differ: WSEN-HIDS, WSEN-PADS and APDS-9960 on V1a and V1b, BME280 on
-V1c. This package recognises the release and gives thirteen function classes
-(`Temperature`, `Compass`, ...), each of which picks the right chip. A program
-written with it runs unchanged on every release.
+V1c. Their screens differ too: a 128×128 grey SSD1327 on V1a and V1b, a
+240×240 colour round GC9A01 on V1c. This package recognises the release and
+gives thirteen function classes (`Temperature`, `Compass`, ...) and a `Screen`,
+each of which picks the right chip. A program written with it runs unchanged
+on every release.
 
 It is the MicroPython counterpart of the Arduino library `steami_board`
 (`SteamiTemperature`, `SteamiCompass`, ...), with the same names in snake_case
@@ -25,6 +27,7 @@ packages as when used alone:
 * `daplink_bridge`, `steami_config` — board revision and calibrations
 * `bme280`, `wsen-hids`, `wsen-pads`, `apds9960`, `vl53l1x`, `ism330dl`,
   `lis2mdl`, `bq27441`, `mcp23009e` — the chips
+* `steami_screen`, `ssd1327`, `gc9a01` — the screen
 
 The firmware freezes all of them, so `manifest.py` declares no `require()`.
 
@@ -64,7 +67,7 @@ loading is lazy, so `from steami import *` imports nothing.
 Public names: `Steami`, `Release`, `Chip`, `Function`, `Status`, `Origin`,
 `Vector` and the classes `Temperature`, `Humidity`, `Pressure`, `Distance`,
 `Battery`, `Accelerometer`, `Gyroscope`, `Magnetometer`, `Compass`, `Light`,
-`Color`, `Gesture` and `Buttons`.
+`Color`, `Gesture`, `Buttons` and `Screen`.
 
 ## Steami
 
@@ -111,10 +114,18 @@ Steami.bme280()         # the shared driver, or None when it does not answer
 # lis2mdl(), bq27441() and mcp23009e()
 Steami.calibrate(Chip.LIS2MDL)
 Steami.calibrated(Chip.LIS2MDL)
+Steami.display()        # the shared screen adapter of steami_screen, or None
 ```
 
 Each driver is created once and shared by the classes that need it. The
 calibrations of the config zone are applied once per chip, on first use.
+
+`Steami.display()` builds the screen of the release on first call, on `SPI(1)`
+with the pins `CS_DISPLAY`, `DATA_COMMAND_DISPLAY` and `RST_DISPLAY`: an
+`SSD1327Display` on V1a/V1b, a `GC9A01Display` on V1c. It returns `None` on an
+unknown release, or when the frame does not fit in RAM; that case is tried
+again on the next call. Once built, the adapter is kept until `Steami.end()`,
+even if another release is forced.
 
 ### Diagnostics
 
@@ -153,9 +164,41 @@ create the function objects again.
 When a vector is missing, `read()` returns `Vector(nan, nan, nan)`.
 
 Statuses are `Status.OK`, `Status.NOT_STARTED`, `Status.NOT_RESPONDING`,
-`Status.NOT_ON_THIS_BOARD` and `Status.UNKNOWN_BOARD`. `error()` gives `""`
-when OK, then `"not started"`, `"no answer"`, `"not on this board"` or
-`"unknown board"`.
+`Status.NOT_ON_THIS_BOARD`, `Status.UNKNOWN_BOARD` and, for the screen only,
+`Status.NO_MEMORY`. `error()` gives `""` when OK, then `"not started"`,
+`"no answer"`, `"not on this board"`, `"unknown board"` or `"no memory"`.
+
+### Screen
+
+```python
+from steami import Screen
+
+screen = Screen()       # touches no hardware
+screen.clear()
+screen.title("STeaMi")
+screen.value(21.5, unit="C")
+screen.show()
+```
+
+`Screen` draws on the screen of the board, whatever the release. It has the
+common form (`begin()`, `is_available()`, `status()`, `error()`, `chip()`) and
+the whole drawing API of `steami_screen.Screen`: `title`, `value`, `subtitle`,
+`bar`, `gauge`, `graph`, `menu`, `compass`, `watch`, `face`, `text`, `line`,
+`circle`, `rect`, `pixel`, `clear`, `show`, and `width`, `height`, `center`,
+`radius`, `k`, `u()`. See the `steami_screen` README for the widgets and for
+the scaling from 128 to 240 pixels.
+
+`begin()`, or the first drawing call or size read, starts the shared display
+(`Steami.display()`); every `Screen` draws on the same one. Without a screen,
+the drawing calls do nothing and `show()` returns quietly:
+
+* on an unknown release, the status is `Status.UNKNOWN_BOARD` (E30), and
+  `width` and `height` are 128, the default size of `steami_screen`;
+* when the frame does not fit in RAM (28 800 bytes in one block on V1c, 8 192
+  on V1a/V1b), the status is `Status.NO_MEMORY` (E31), `chip()` still names
+  the panel, and `width` and `height` are its size. Call `begin()` on the `Screen` first
+  in the program, before the heap is fragmented: creating it allocates
+  nothing, `begin()` (or the first drawing call) allocates the frame.
 
 ### Routing
 
@@ -173,6 +216,7 @@ routed identically.
 | Magnetometer, Compass | LIS2MDL | LIS2MDL | LIS2MDL |
 | Battery | BQ27441 | BQ27441 | BQ27441 |
 | Buttons | A, B, MENU on the MCU; D-pad on MCP23009E | same | same |
+| Screen | SSD1327 | GC9A01 | none (E30) |
 
 ### Calibration
 
@@ -201,11 +245,13 @@ Problems are reported with the same short coded lines as Arduino, each
 | E10 | A chip did not answer |
 | E11 | The release (forced or from the config) is contradicted by a chip that does not answer |
 | E20 | The function is not on this release |
+| E30 | Unknown board: the screen cannot be chosen |
+| E31 | Not enough RAM for the screen frame |
 
 Board-level messages are signed `SteamiBoard`; function messages are signed
 with the Python class name (`Light`, `Temperature`...).
 
-There is no E03 (no `#define`) and no E30 or E31 (they belong to the screen).
+There is no E03 (no `#define`).
 `Steami.set_logger(fn)` redirects the lines, `Steami.set_logger(None)`
 silences them, and `Steami.last_error()` returns the last one.
 
@@ -232,8 +278,15 @@ silences them, and `Steami.last_error()` returns the last one.
 * `Steami.begin()` returns the release text (truthy when the release is
   known) where Arduino returns a bool.
 * Statuses are class constants (`Status.OK`, ...).
-* There is no screen yet. It needs the GC9A01 driver (issue #368), then screen
-  routing in `steami_screen`.
+* `Screen` is `SteamiScreen`, with the `steami_screen` widgets. Its frame is
+  16 colours (28 800 bytes on V1c) instead of RGB565 (115 200 bytes), so E31
+  gives that size.
+* On an unknown release, `width` and `height` are 128 (the default size of
+  `steami_screen`), where Arduino gives 0: the widgets need a size to lay
+  out. When the frame does not fit in RAM, both give the panel's size.
+* A screen that did not fit in RAM is tried again by the next `begin()` of a
+  new `Screen` or by `Steami.display()`; Arduino keeps the failure until
+  `Steami.end()`.
 
 ---
 

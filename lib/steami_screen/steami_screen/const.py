@@ -37,6 +37,16 @@ STEAMI_CHAR_H = const(8)
 STEAMI_DEFAULT_WIDTH = const(128)
 STEAMI_DEFAULT_HEIGHT = const(128)
 
+# --- Round-screen fitting (k > 1), in 128 px cells or units ---
+# A title row is lowered for at most a 13-cell text: the N/S row cap.
+STEAMI_TITLE_CAP_CELLS = const(13)
+# value(): gap between a W/E half region and the centre; what CENTER, N and S
+# keep off the available width.
+STEAMI_VALUE_SIDE_GAP = const(3)
+STEAMI_VALUE_FIT_MARGIN = const(4)
+# menu(): a row is shown when the chord at its cells holds this many cells.
+STEAMI_MENU_ROW_CELLS = const(12)
+
 # --- Gauge widget ---
 STEAMI_GAUGE_START_ANGLE = const(135)
 STEAMI_GAUGE_SWEEP = const(270)
