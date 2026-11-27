@@ -84,10 +84,25 @@ mcp = MCP23009E(bus, address=MCP23009_I2C_ADDR, reset_pin=reset, interrupt_pin=i
 btn = MCP23009Pin(mcp, 7, MCP23009Pin.IN, MCP23009Pin.PULL_UP)
 
 def callback(pin):
-    print(f"Button state changed: {pin.value()}")
+    if pin.irq_level() == 0:
+        print("UP pressed")
+    else:
+        print("UP released")
 
 btn.irq(handler=callback, trigger=MCP23009Pin.IRQ_FALLING | MCP23009Pin.IRQ_RISING)
 ```
+
+The handler receives the pin, like with `machine.Pin`. It runs as a soft
+IRQ, so it can run some time after the interrupt, for example after a
+long `show()` call. By then the button may already be released:
+
+* `pin.irq_level()` gives the level captured at the interrupt (INTCAP
+  register). Use it to tell a press from a release.
+* `pin.value()` reads the current level again over I2C.
+
+The MCP23009 captures only the first change until the interrupt is read.
+If a press and its release both happen before the driver reads it, they
+can be reported as a single event, the press.
 
 ## API Reference
 
@@ -104,7 +119,7 @@ MCP23009E(i2c, address, reset_pin, interrupt_pin=None)
 * `setup(gpx, direction, pullup, polarity)` - Configure a GPIO
 * `set_level(gpx, level)` - Set output level
 * `get_level(gpx)` - Read input level
-* `interrupt_on_change(gpx, callback)` - Register change callback
+* `interrupt_on_change(gpx, callback)` - Register change callback; `callback(level)` gets the level captured at the interrupt
 * `interrupt_on_falling(gpx, callback)` - Register falling edge callback
 * `interrupt_on_raising(gpx, callback)` - Register rising edge callback
 * `disable_interrupt(gpx)` - Disable interrupts on a GPIO
@@ -124,7 +139,8 @@ MCP23009Pin(mcp, pin_number, mode=-1, pull=-1, value=None)
 * `on()` - Set pin high
 * `off()` - Set pin low
 * `toggle()` - Toggle pin state
-* `irq(handler, trigger)` - Configure interrupt
+* `irq(handler, trigger)` - Configure interrupt; the handler receives the pin
+* `irq_level()` - Level captured at the last interrupt (0 or 1, `None` before the first one); read it in the handler
 * `mode(mode=None)` - Get or set mode
 * `pull(pull=None)` - Get or set pull configuration
 

@@ -63,6 +63,7 @@ class MCP23009Pin:
         self._pull = -1
         self._irq_handler = None
         self._irq_trigger = None
+        self._irq_level = None
 
         # Configuration initiale si des paramètres sont fournis
         if mode != -1:
@@ -135,6 +136,11 @@ class MCP23009Pin:
         """
         Configure une interruption sur la pin
 
+        Le handler reçoit la pin, comme avec machine.Pin. Il s'exécute après
+        coup (soft IRQ) : la broche a pu changer depuis l'interruption.
+        Dans le handler, pin.irq_level() donne le niveau capturé au moment
+        de l'interruption, et pin.value() le niveau actuel.
+
         Args:
             handler: Fonction appelée lors de l'interruption (reçoit la pin en paramètre)
             trigger: Type de déclenchement (IRQ_FALLING, IRQ_RISING, ou les deux)
@@ -145,14 +151,16 @@ class MCP23009Pin:
 
         Exemple:
             >>> def callback(pin):
-            ...     print(f"Interruption sur pin {pin._pin_number}")
-            >>> pin.irq(handler=callback, trigger=MCP23009Pin.IRQ_FALLING)
+            ...     print("appuyé" if pin.irq_level() == 0 else "relâché")
+            >>> pin.irq(handler=callback, trigger=MCP23009Pin.IRQ_FALLING | MCP23009Pin.IRQ_RISING)
         """
         self._irq_handler = handler
         self._irq_trigger = trigger
 
-        # Créer un wrapper qui appelle le handler avec self en paramètre
+        # Créer un wrapper qui note le niveau capturé, puis appelle le
+        # handler avec self en paramètre
         def wrapper(level):
+            self._irq_level = level
             if self._irq_handler is not None:
                 self._irq_handler(self)
 
@@ -169,6 +177,20 @@ class MCP23009Pin:
             self._mcp.interrupt_on_raising(self._pin_number, lambda: wrapper(1))
 
         return self
+
+    def irq_level(self):
+        """
+        Niveau de la pin capturé lors de la dernière interruption
+
+        À lire dans le handler de irq() : c'est le niveau au moment de
+        l'interruption (registre INTCAP), même si la broche a changé avant
+        que le handler ne s'exécute. pin.value(), lui, relit le niveau
+        actuel.
+
+        Returns:
+            0 ou 1, ou None si aucune interruption n'a encore été reçue
+        """
+        return self._irq_level
 
     def mode(self, mode=None):
         """

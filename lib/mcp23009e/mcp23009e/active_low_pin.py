@@ -160,6 +160,22 @@ class MCP23009ActiveLowPin:
 
         return self
 
+    def irq_level(self):
+        """
+        Niveau logique capturé lors de la dernière interruption (inversé)
+
+        À lire dans le handler de irq() : 1 si le GPIO était à l'état bas
+        au moment de l'interruption, même s'il a changé depuis.
+        pin.value() donne le niveau logique actuel.
+
+        Returns:
+            0 ou 1, ou None si aucune interruption n'a encore été reçue
+        """
+        level = self._pin.irq_level()
+        if level is None:
+            return None
+        return 1 - level
+
     def mode(self, mode=None):
         """
         Obtient ou définit le mode de la pin

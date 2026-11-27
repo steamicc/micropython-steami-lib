@@ -15,6 +15,7 @@ from mcp23009e.const import (
     MCP23009_INTEN_ENABLE,
     MCP23009_INTF,
     MCP23009_IOCON,
+    MCP23009_IOCON_INTCC,
     MCP23009_IODIR,
     MCP23009_IPOL,
     MCP23009_LOGIC_HIGH,
@@ -316,7 +317,8 @@ class MCP23009E(object):
 
         Args:
             gpx: Numéro de GPIO (0 à 7)
-            callback: Fonction appelée lors d'un changement (reçoit le niveau logique en paramètre)
+            callback: Fonction appelée lors d'un changement (reçoit en paramètre
+                le niveau logique capturé au moment de l'interruption)
         """
         if gpx > 7:
             return
@@ -379,21 +381,27 @@ class MCP23009E(object):
     def interrupt_event(self):
         """
         Traite les événements d'interruption du MCP23009E
-        Cette méthode lit les flags d'interruption et appelle les callbacks appropriés
+
+        Lit INTF, puis INTCAP : le niveau de chaque GPIO au moment de
+        l'interruption. Si IOCON.INTCC n'est pas activé, lit ensuite GPIO
+        pour effacer l'interruption. Appelle les callbacks avec ce niveau
+        capturé, même si la broche a changé depuis (bouton déjà relâché).
+
+        Le MCP23009 ne capture que le premier changement : un appui et son
+        relâchement survenus tous deux avant cette lecture peuvent ne
+        donner qu'un seul événement, celui de l'appui.
         """
-        # Lire la configuration IOCON pour savoir comment effacer l'interruption
-        iocon = self.get_iocon()
+        intcc = self._read_reg(MCP23009_IOCON) & MCP23009_IOCON_INTCC
 
         # Lire les flags d'interruption
         intf = self._read_reg(MCP23009_INTF)
 
-        # Lire l'état des GPIO
-        if iocon.has_intcc():
-            # Si INTCC est activé, lire INTCAP efface l'interruption
-            state = self._read_reg(MCP23009_INTCAP)
-        else:
+        # Niveau des GPIO capturé au moment de l'interruption
+        # (si INTCC est activé, cette lecture efface l'interruption)
+        state = self._read_reg(MCP23009_INTCAP)
+        if not intcc:
             # Sinon, lire GPIO efface l'interruption
-            state = self._read_reg(MCP23009_GPIO)
+            self._read_reg(MCP23009_GPIO)
 
         # Traiter chaque GPIO ayant généré une interruption
         for i in range(8):
