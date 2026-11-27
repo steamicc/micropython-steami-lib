@@ -160,7 +160,7 @@ class MCP23009Pin:
         if trigger & self.IRQ_FALLING:
             if trigger & self.IRQ_RISING:
                 # Les deux fronts : utiliser interrupt_on_change
-                self._mcp.interrupt_on_change(self._pin_number, lambda level: wrapper(level))
+                self._mcp.interrupt_on_change(self._pin_number, wrapper)
             else:
                 # Seulement falling
                 self._mcp.interrupt_on_falling(self._pin_number, lambda: wrapper(0))

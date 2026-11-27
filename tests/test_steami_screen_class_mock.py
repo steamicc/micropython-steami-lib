@@ -143,7 +143,7 @@ def test_mock_screen_v1c_is_the_gc9a01(screen_env):
 
 @pytest.mark.parametrize("release", ["V1a", "V1b"])
 def test_mock_screen_v1ab_is_the_ssd1327(screen_env, release):
-    (_, const), screen_cls, _ = screen_env
+    (_, _const), screen_cls, _ = screen_env
     s = board_for(screen_env, release)
     screen = screen_cls()
     assert screen.begin() is True

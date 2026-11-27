@@ -21,12 +21,12 @@ def _get_board_info(port):
     try:
         result = subprocess.run(
             ["mpremote", "connect", port, "exec",
-             "import sys, os\n"
-             "print(sys.implementation.name)\n"
-             "print('.'.join(str(x) for x in sys.implementation.version[:3]))\n"
-             "print(sys.implementation._machine)\n"
-             "print(sys.implementation._build)\n"
-             "print(sys.platform)"],
+             ("import sys, os\n"
+              "print(sys.implementation.name)\n"
+              "print('.'.join(str(x) for x in sys.implementation.version[:3]))\n"
+              "print(sys.implementation._machine)\n"
+              "print(sys.implementation._build)\n"
+              "print(sys.platform)")],
             capture_output=True, text=True, timeout=15, check=False,
         )
         if result.returncode == 0:
