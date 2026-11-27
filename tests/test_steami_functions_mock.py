@@ -329,9 +329,11 @@ def test_mock_e11_forced(steami):
     assert temperature.status() == steami["const"].Status.NOT_RESPONDING
     assert temperature.error() == "no answer"
     assert s.messages() == [
-        "[STeaMi] Temperature: this STeaMi is set as a V1c (forced by Steami.begin()), but its "
-        "BME280 temperature sensor (I2C 0x76) did not answer. Check Steami.begin() or the board "
-        "config. (E11)"
+        (
+            "[STeaMi] Temperature: this STeaMi is set as a V1c (forced by Steami.begin()), but its "
+            "BME280 temperature sensor (I2C 0x76) did not answer. Check Steami.begin() or the board "
+            "config. (E11)"
+        )
     ]
 
 
@@ -340,9 +342,11 @@ def test_mock_e11_forced_names_the_first_candidate(steami):
     s.steami.begin("V1a")
     assert steami["Temperature"]().begin() is False
     assert s.messages() == [
-        "[STeaMi] Temperature: this STeaMi is set as a V1a (forced by Steami.begin()), but its "
-        "WSEN-HIDS temperature sensor (I2C 0x5F) did not answer. Check Steami.begin() or the "
-        "board config. (E11)"
+        (
+            "[STeaMi] Temperature: this STeaMi is set as a V1a (forced by Steami.begin()), but its "
+            "WSEN-HIDS temperature sensor (I2C 0x5F) did not answer. Check Steami.begin() or the "
+            "board config. (E11)"
+        )
     ]
 
 
@@ -350,9 +354,11 @@ def test_mock_e11_config(steami):
     s = board(steami, V1AB, config='{"rev": 131}', zone=True)
     assert steami["Humidity"]().begin() is False
     assert s.messages() == [
-        "[STeaMi] Humidity: this STeaMi is set as a V1c (read from the board config), but its "
-        "BME280 humidity sensor (I2C 0x76) did not answer. Check Steami.begin() or the board "
-        "config. (E11)"
+        (
+            "[STeaMi] Humidity: this STeaMi is set as a V1c (read from the board config), but its "
+            "BME280 humidity sensor (I2C 0x76) did not answer. Check Steami.begin() or the board "
+            "config. (E11)"
+        )
     ]
 
 
@@ -412,8 +418,10 @@ def test_mock_not_on_this_board_e20(steami):
     assert light.error() == "not on this board"
     assert light._driver() is None
     assert s.messages() == [
-        "[STeaMi] Light: this STeaMi is a V1c, it has no light sensor (APDS-9960 is on V1a/V1b "
-        "only). read() will return 0. (E20)"
+        (
+            "[STeaMi] Light: this STeaMi is a V1c, it has no light sensor (APDS-9960 is on V1a/V1b "
+            "only). read() will return 0. (E20)"
+        )
     ]
 
 
@@ -644,8 +652,10 @@ def test_mock_battery_absent(steami):
     assert battery.current() == 0
     assert battery.is_charging() is False
     assert s.messages() == [
-        "[STeaMi] Battery: the BQ27441 battery gauge (I2C 0x55) did not answer. "
-        "Plug in a battery, then reset the board. (E10)"
+        (
+            "[STeaMi] Battery: the BQ27441 battery gauge (I2C 0x55) did not answer. "
+            "Plug in a battery, then reset the board. (E10)"
+        )
     ]
 
 

@@ -747,7 +747,7 @@ def test_mock_default_widgets_stay_inside_the_circle(panel):
 
 
 def test_mock_radius_and_isqrt_never_fail(panel):
-    s, raw = panel()
+    s, _raw = panel()
     for y in (-500, -1, 0, 119, 120, 239, 240, 500):
         s._chord(y, y)
     assert s._chord(-1, 0) is None
