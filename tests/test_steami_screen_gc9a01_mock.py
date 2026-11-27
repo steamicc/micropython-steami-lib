@@ -340,6 +340,61 @@ def test_scaled_text_goes_through_fill_rect_blocks(recorded):
         assert call[3:] == (2, 2, 5)
 
 
+def scaled_text_frames(mods, width, height, bg):
+    """(display, raw, reference frame): a real driver whose frame is a
+    Guarded buffer of bg, and a plain FrameBuffer of bg of the same size."""
+    steami_screen, driver = mods
+    fbm = sys.modules["framebuf"]
+    size = (width + 1) // 2 * height
+    raw = driver.GC9A01(FakeSPI(1), FakePin("dc"), FakePin("cs"), width=width, height=height)
+    raw.buffer = Guarded(bytes([bg << 4 | bg]) * size)
+    raw.framebuf = fbm.FrameBuffer(raw.buffer, width, height, fbm.GS4_HMSB)
+    ref = fbm.FrameBuffer(bytearray([bg << 4 | bg]) * size, width, height, fbm.GS4_HMSB)
+    return steami_screen.GC9A01Display(raw), raw, ref
+
+
+@pytest.mark.parametrize("scale", (1, 2, 3))
+def test_scaled_text_clips_to_every_edge(mods, scale):
+    # Text partly off each edge of the frame: no exception, nothing written
+    # outside the frame (Guarded refuses any index past it, the frame keeps
+    # its length and its pad nibbles) and the visible part is the zoomed
+    # petme128 glyphs. 37 x 23 has an odd width.
+    text = "MW"
+    width, height, bg, ink = 37, 23, 2, 5
+    size = (width + 1) // 2 * height
+    glyphs = [FONT_PETME128_8X8[(ord(ch) - 32) * 8 :][:8] for ch in text]
+    extent_x, extent_y = len(text) * 8 * scale, 8 * scale
+    crossed = set()
+    for x in edge_positions(width, extent_x):
+        for y in edge_positions(height, extent_y):
+            display, raw, ref = scaled_text_frames(mods, width, height, bg)
+            display.draw_scaled_text(text, x, y, (255, 255, 255), scale)
+            shown = False
+            for ty in range(extent_y):
+                for tx in range(extent_x):
+                    glyph = glyphs[tx // (8 * scale)]
+                    if lit(glyph, tx % (8 * scale) // scale, ty // scale):
+                        px, py = x + tx, y + ty
+                        if 0 <= px < width and 0 <= py < height:
+                            ref.pixel(px, py, ink)
+                            shown = True
+            assert isinstance(raw.buffer, Guarded)
+            assert len(raw.buffer) == size
+            assert bytes(raw.buffer) == bytes(ref.buffer), (x, y)
+            if shown:
+                crossed.update(
+                    edge
+                    for edge, cut in (
+                        ("left", x < 0),
+                        ("top", y < 0),
+                        ("right", x + extent_x > width),
+                        ("bottom", y + extent_y > height),
+                    )
+                    if cut
+                )
+    # The positions do cut the text, with some of it left in view, at each edge.
+    assert crossed == {"left", "top", "right", "bottom"}
+
 # ----- draw_glyphs -----
 
 
