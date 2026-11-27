@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [0.31.1](https://github.com/steamicc/micropython-steami-lib/compare/v0.31.0...v0.31.1) (2026-11-27)
+
+
+### Bug Fixes
+
+* **steami_screen:** Show -- in graph() when there is no value to show. ([#464](https://github.com/steamicc/micropython-steami-lib/issues/464)) ([a4219a4](https://github.com/steamicc/micropython-steami-lib/commit/a4219a49fcb08048c63e62703d22e82ba221f4b9)), closes [#463](https://github.com/steamicc/micropython-steami-lib/issues/463)
+
 # [0.31.0](https://github.com/steamicc/micropython-steami-lib/compare/v0.30.2...v0.31.0) (2026-11-27)
 
 
