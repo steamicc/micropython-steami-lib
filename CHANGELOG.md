@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [0.30.0](https://github.com/steamicc/micropython-steami-lib/compare/v0.29.0...v0.30.0) (2026-11-27)
+
+
+### Features
+
+* **steami_screen:** Add the V1c GC9A01 screen and steami.Screen. ([#454](https://github.com/steamicc/micropython-steami-lib/issues/454)) ([dfcea46](https://github.com/steamicc/micropython-steami-lib/commit/dfcea46f7f56b54285933b24e2d67bde322378e6)), closes [#368](https://github.com/steamicc/micropython-steami-lib/issues/368)
+
 # [0.29.0](https://github.com/steamicc/micropython-steami-lib/compare/v0.28.2...v0.29.0) (2026-11-26)
 
 
