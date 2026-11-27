@@ -484,9 +484,114 @@ def test_mock_128_never_touches_spleen(panel):  # noqa: F811
     s.compass(90)
     s.watch(10, 30, 15)
     s.face("happy")
+    s.title("Été")
+    s.value(21.5, unit="°C", label="Températ")
+    s.menu(["Réglages"])
     for scale in (1, 2):
         for at in (*ANCHORS, (3, 4)):
             s.text("Hi", at=at, scale=scale)
     assert lit(raw)
     assert "steami_screen.spleen" not in sys.modules
     assert n["blit"] == 0
+
+
+# ----- 128 px: accents folded, Arduino's 8x8 degree sign -----
+
+
+class Rec128:
+    """A 128 px display that records its drawing calls, colours as given."""
+
+    width = height = 128
+
+    def __init__(self):
+        self.calls = []
+
+    def text(self, s, x, y, c):
+        self.calls.append(("text", s, x, y, c))
+
+    def fill_rect(self, x, y, w, h, c):
+        self.calls.append(("fill_rect", x, y, w, h, c))
+
+    def draw_scaled_text(self, s, x, y, c, scale):
+        self.calls.append(("scaled", s, x, y, c, scale))
+
+    def pixel(self, x, y, c):
+        self.calls.append(("pixel", x, y, c))
+
+    def line(self, x1, y1, x2, y2, c):
+        self.calls.append(("line", x1, y1, x2, y2, c))
+
+    def rect(self, x, y, w, h, c):
+        self.calls.append(("rect", x, y, w, h, c))
+
+    def fill(self, c):
+        self.calls.append(("fill", c))
+
+    def show(self):
+        self.calls.append(("show",))
+
+
+@pytest.fixture
+def s128(mods):  # noqa: F811 (the imported fixture)
+    """(Screen on a Rec128, the Rec128, steami_screen.const)."""
+    rec = Rec128()
+    screen = mods[0].Screen(rec)
+    return screen, rec, importlib.import_module("steami_screen.const")
+
+
+def degree_runs(x, y, n, c):
+    """The six fill_rect calls of the 8x8 degree at (x, y), scale n."""
+    runs = ((2, 0, 2), (1, 1, 1), (4, 1, 1), (1, 2, 1), (4, 2, 1), (2, 3, 2))
+    return [("fill_rect", x + col * n, y + r * n, w * n, n, c) for col, r, w in runs]
+
+
+def test_mock_128_folds_accents_to_one_cell(s128):
+    s, rec, const = s128
+    s.title("Été")
+    assert rec.calls == [("text", "Ete", 52, 20, const.GRAY)]
+
+
+def test_mock_128_degree_is_the_arduino_glyph(s128):
+    s, rec, const = s128
+    w = const.WHITE
+    s.text("°", at=(10, 20))
+    assert rec.calls == [
+        ("fill_rect", 12, 20, 2, 1, w),
+        ("fill_rect", 11, 21, 1, 1, w),
+        ("fill_rect", 14, 21, 1, 1, w),
+        ("fill_rect", 11, 22, 1, 1, w),
+        ("fill_rect", 14, 22, 1, 1, w),
+        ("fill_rect", 12, 23, 2, 1, w),
+    ]
+    rec.calls.clear()
+    s.text("°", at=(10, 20), scale=2)
+    assert rec.calls == [
+        ("fill_rect", 14, 20, 4, 2, w),
+        ("fill_rect", 12, 22, 2, 2, w),
+        ("fill_rect", 18, 22, 2, 2, w),
+        ("fill_rect", 12, 24, 2, 2, w),
+        ("fill_rect", 18, 24, 2, 2, w),
+        ("fill_rect", 14, 26, 4, 2, w),
+    ]
+
+
+def test_mock_128_text_splits_at_the_degree(s128):
+    s, rec, const = s128
+    w = const.WHITE
+    s.text("23°C", at=(0, 0))
+    assert rec.calls == [
+        ("text", "23", 0, 0, w),
+        *degree_runs(16, 0, 1, w),
+        ("text", "C", 24, 0, w),
+    ]
+
+
+def test_mock_128_leaves_other_characters_to_framebuf(s128):
+    # Review Focus 2: only EXTRA folds; a literal "\x7f" is never a degree.
+    s, rec, const = s128
+    w = const.WHITE
+    s.text("€", at=(0, 0))
+    assert rec.calls == [("text", "€", 0, 0, w)]
+    rec.calls.clear()
+    s.text("a\x7fb\n", at=(0, 0))
+    assert rec.calls == [("text", "a\x7fb\n", 0, 0, w)]

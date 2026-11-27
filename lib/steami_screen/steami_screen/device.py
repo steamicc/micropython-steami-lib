@@ -17,7 +17,8 @@ factor k = (width + 64) // 128, 1 on the 128 px SSD1327 and 2 on the 240 px
 GC9A01. When k > 1, widget text is kept inside the round screen: it is
 moved or cut to the longest prefix that fits the circle at its inked rows.
 
-Fonts, one per panel: the 128 px panel draws the 8x8 framebuf font. On the
+Fonts, one per panel: the 128 px panel draws the 8x8 framebuf font, accents
+folded to their base letter and '°' drawn as Arduino's 8x8 degree. On the
 240 px panel the text is Spleen (steami_screen.spleen, through
 steami_screen.fonts), with accents: text(s, at=(x, y)) is Spleen 8x16 x
 scale. Strokes still use k. Primitives and text(s, at=(x, y)) take real
@@ -287,9 +288,9 @@ class Screen:
 
         if label:
             lx = x + tw // 2 - len(label) * self.CHAR_W // 2
-            self._d.text(label, lx, y - self.CHAR_H - 4, GRAY)
+            self._text8(label, lx, y - self.CHAR_H - 4, GRAY, 1, "text")
 
-        self._draw_scaled_text(text, x, y, color, scale)
+        self._text8(text, x, y, color, scale, None)
 
         if unit:
             unit_y = y + char_h
@@ -588,7 +589,7 @@ class Screen:
             if k > 1:
                 self._put(text, x, iy, c, TEXT, k, 0, x, None, k)
             else:
-                self._d.text(text, x, iy, c)
+                self._text8(text, x, iy, c, 1, "text")
 
     def compass(self, heading, color=LIGHT):
         """Draw a compass with a rotating needle."""
@@ -820,15 +821,44 @@ class Screen:
     def _txt(self, s, x, y, c, f=1, alt="text", ink=TEXT):
         """Text at glyph factor f, (x, y) the top left of its first cell.
 
-        When k > 1, the Spleen face of `ink` at f. When k == 1, the 8x8 font:
-        at f 1 through the backend's `alt` method if any.
+        When k > 1, the Spleen face of `ink` at f. When k == 1, the 8x8 font
+        through _text8: at f 1 through the backend's `alt` method if any.
         """
         if self.k > 1:
             self._draw(s, x, y, c, ink, f)
-        elif f > 1:
+        else:
+            self._text8(s, x, y, c, f, alt)
+
+    def _text8(self, s, x, y, c, f, alt):
+        """8x8 text at factor f, accents folded and '°' drawn by _degree8.
+
+        s is split at '°' before folding, so a literal "\\x7f" stays a framebuf
+        glyph. Each segment goes to draw_scaled_text when alt is None or
+        f > 1, else to the backend's `alt` method if any. The pen advances
+        8f per character. A text without '°' is one call, as before.
+        """
+        if "°" not in s:
+            self._seg8(fonts.fold8(s), x, y, c, f, alt)
+            return
+        first = True
+        for seg in s.split("°"):
+            if not first:
+                self._degree8(x, y, c, f)
+                x += 8 * f
+            first = False
+            if seg:
+                self._seg8(fonts.fold8(seg), x, y, c, f, alt)
+                x += len(seg) * 8 * f
+
+    def _seg8(self, s, x, y, c, f, alt):
+        if alt is None or f > 1:
             self._draw_scaled_text(s, x, y, c, f)
         else:
             getattr(self._d, alt, self._d.text)(s, x, y, c)
+
+    def _degree8(self, x, y, c, f):
+        """Arduino's 8x8 degree sign at (x, y), f x f per font pixel."""
+        fonts.draw_runs(self._fill_rect, fonts.DEGREE8, ((0, x, y),), f, 0, c)
 
     def _hline(self, x, y, w, c):
         self._d.line(x, y, x + w - 1, y, c)
