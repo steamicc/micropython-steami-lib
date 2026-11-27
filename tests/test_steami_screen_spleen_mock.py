@@ -14,6 +14,7 @@ import pytest
 from tests.runner.executor import cleanup_driver, load_driver_mock
 from tests.test_steami_screen_scaling_mock import (  # noqa: F401 (mods and panel are fixtures)
     ANCHORS,
+    GRAY,
     WHITE,
     RecordingDisplay,
     box,
@@ -439,6 +440,35 @@ def test_mock_native_widget_text_is_one_blit_per_glyph(panel):  # noqa: F811
     n = counting(s, raw)
     s.gauge(342, 0, 500)
     assert n["blit"] == 4
+
+
+def test_mock_value_label_draws_accents_in_6x12(panel, psp):  # noqa: F811
+    # Design 5.4, LABEL face: the value "8" is 16x32 at top 104, its label 6x12
+    # at 104 - u(4) - 12 = 85, centred on x 120 (12 px wide). 'É' inks row 0,
+    # 'Ÿ' is the slot-159 Y.
+    s, raw = panel(240)
+    s.value(8, label="ÉŸ")
+    gray = {p for p, c in lit(raw).items() if c == GRAY}
+    pixels = spleen_pixels(psp.F6X12, "ÉŸ", 114, 85, 1)
+    assert gray == pixels
+    assert len(pixels) == 36
+    assert box(raw, GRAY) == (114, 85, 124, 93)
+
+
+def test_mock_program_04_text_is_31_blits(panel):  # noqa: F811
+    # Program 04: gauge labels 1 + 3, title 8, value 3 x 2 (bold), unit 2,
+    # subtitle 11. The text adds no fill_rect to the gauge's own.
+    s, raw = panel(240)
+    n = counting(s, raw)
+    s.gauge(342, 0, 500)
+    s.title("Distance")
+    s.value(342, "mm")
+    s.subtitle("VL53L1X ToF")
+    assert n["blit"] == 31
+    s, raw = panel(240)
+    gauge = counting(s, raw)
+    s.gauge(342, 0, 500)
+    assert n["fill_rect"] == gauge["fill_rect"]
 
 
 def test_mock_128_never_touches_spleen(panel):  # noqa: F811

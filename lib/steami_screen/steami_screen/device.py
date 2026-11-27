@@ -214,73 +214,6 @@ class Screen:
         """Draw the longest prefix of s that fits (see _fit and _place)."""
         return self._place(s, ax, y, color, ink, f, align, self._fit(s, y, ink, f, lo, hi, shrink))
 
-    # Temporary 8x8 fitting, used by _value only until it moves to the Spleen
-    # value faces.
-
-    def _ink8(self, s):
-        """Row masks of the prefixes of s: bit i is set when a glyph inks row i."""
-        import framebuf
-
-        b = bytearray(8)
-        fb = framebuf.FrameBuffer(b, 8, 8, framebuf.MONO_HLSB)
-        m = 0
-        out = []
-        for ch in s:
-            fb.fill(0)
-            fb.text(ch, 0, 0, 1)
-            for i in range(8):
-                if b[i]:
-                    m |= 1 << i
-            out.append(m)
-        return out
-
-    def _band8(self, m, y, f):
-        """Chord at the rows that mask m inks (glyph factor f, top y); the panel if none."""
-        if not m:
-            return 0, self.width - 1
-        a = 0
-        while not m >> a & 1:
-            a += 1
-        b = 7
-        while not m >> b & 1:
-            b -= 1
-        return self._chord(y + a * f, y + b * f + f - 1)
-
-    def _fit8(self, s, y, f, lo=0, hi=None, shrink=0, pad=0):
-        """Longest prefix of s that fits [lo, hi] and the chord at its inked rows.
-
-        The chord is shrunk by `shrink` at each end. Returns (n, lo, hi): the
-        characters kept and the room they fit in.
-        """
-        if hi is None:
-            hi = self.width - 1
-        pre = self._ink8(s)
-        n = len(s)
-        while n:
-            m = pre[n - 1]
-            c = self._band8(m, y, f)
-            if c:
-                left, right = max(c[0] + shrink, lo), min(c[1] - shrink, hi)
-                if not m or n * 8 * f + pad <= right - left + 1:
-                    return n, left, right
-            n -= 1
-        return 0, lo, hi
-
-    def _put8(self, s, ax, y, color, f, align=1, lo=0, hi=None, shrink=0, pad=0):
-        """Draw the longest prefix of s that fits (see _fit8), at glyph factor f.
-
-        align: 0 left edge at ax, 1 centred on ax, 2 right edge before ax,
-        3 centred in the room. x is clamped into the room. Returns (x, width).
-        """
-        n, lo, hi = self._fit8(s, y, f, lo, hi, shrink, pad)
-        w = n * 8 * f
-        if align == 3:
-            ax, align = (lo + hi + 1) // 2, 1
-        x = max(lo, min(ax - (0, w // 2, w)[align], hi - w + 1))
-        if n:
-            self._draw_scaled_text(s[:n], x, y, color, f)
-        return x, w
-
     def _tw(self, s, ink, f):
         """Width of text s drawn with ink at glyph factor f."""
         if self.k == 1:
@@ -366,9 +299,11 @@ class Screen:
     def _value(self, text, unit, at, label, color, scale, y_offset):
         """value() when k > 1: Arduino's fit of the value, its label and unit.
 
-        The glyph factor goes from scale * k down to 1 until the value fits
-        its region; at 1 the value is cut. W and E use the half region of
-        their side, sized for the widest of the text and "88.8".
+        The glyph factor goes from scale * k down to k until the value fits
+        its region, skipping a factor without a value face; at k the value is
+        cut. W and E use the half region of their side, sized for the widest
+        of the text and "88.8". The value and its label are fitted once, then
+        placed.
         """
         k = self.k
         f = max(scale, 1) * k
@@ -378,8 +313,12 @@ class Screen:
         side = at in ("W", "E")
         corner = at in ("NE", "NW", "SE", "SW")
         pad = 0 if side or corner else self.u(STEAMI_VALUE_FIT_MARGIN)
+        fit = None
         while True:
-            vw = len(text) * 8 * f
+            if f > k and not fonts.face(text, VALUE, f):
+                f -= 1
+                continue
+            vw = fonts.width(text, len(text), VALUE, f)
             x, y = self._at(at, vw, f)
             if not corner and at not in ("N", "S"):
                 block = 8 * f + (8 * f // 3 + 8 * k if unit else 0)
@@ -392,13 +331,19 @@ class Screen:
                     hi = cx - gap - 1
                 elif at == "E":
                     lo = cx + gap + 1
-                # B6: "88.8" sets the factor of every narrower value at W/E.
-                fits = max(vw, 32 * f) <= hi - lo + 1 if side else lo <= x <= hi - vw + 1
+                # B6: "88.8" (14f) sets the factor of every narrower value at W/E.
+                if side:
+                    fits = max(vw, fonts.width("88.8", 4, VALUE, f)) <= hi - lo + 1
+                else:
+                    fits = lo <= x <= hi - vw + 1
             else:
-                fits = self._fit8(text, y, f, lo, hi, 0, pad)[0] == len(text)
-            if fits or f == 1:
+                fit = self._fit(text, y, VALUE, f, lo, hi, 0, pad)
+                fits = fit[0] == len(text)
+            if fits or f == k:
                 break
             f -= 1
+        if side or corner:
+            fit = self._fit(text, y, VALUE, f, lo, hi, 0, pad)
         if side:
             ax, align = 0, 3
         elif corner:
@@ -407,7 +352,7 @@ class Screen:
                 ax, align = x + vw, 2
         else:
             ax, align = cx, 1
-        vx, vw = self._put8(text, ax, y, color, f, align, lo, hi, 0, pad)
+        vx, vw = self._place(text, ax, y, color, VALUE, f, align, fit)
         # Label and unit: the chord at their own rows, within the value's half
         # at W and E (centred there), shrunk by k at the sides and corners.
         ax = vx + vw // 2 if corner else cx
@@ -419,18 +364,28 @@ class Screen:
         sh = k if side or corner else 0
         align = 3 if side else 1
         if label:
-            ly = y - self.u(4) - 8 * k
-            if not self._fit8(label, ly, k, lo, hi, sh)[0]:
-                # Near the top its rows can leave the circle: lower it, at
-                # most down to the value, to the row that keeps the most.
-                best = 0
-                for t in range(ly + 1, y - 8 * k + 1):
-                    n = self._fit8(label, t, k, lo, hi, sh)[0]
-                    if n > best:
-                        best, ly = n, t
-            self._put8(label, ax, ly, GRAY, k, align, lo, hi, sh)
+            # Label 6x12 at top - u(4) - 12 (its cell height is 12 on 240).
+            ly, fit = self._label_fit(label, y - self.u(4) - 12, y, lo, hi, sh)
+            self._place(label, ax, ly, GRAY, LABEL, k, align, fit)
         if unit:
-            self._put8(unit, ax, y + 8 * f, LIGHT, k, align, lo, hi, sh)
+            self._put(unit, ax, y + 8 * f, LIGHT, TEXT, k, align, lo, hi, sh)
+
+    def _label_fit(self, label, ly, y, lo, hi, sh):
+        """(row, fit) of a value label whose cell top is ly, the value top y.
+
+        Near the top its rows can leave the circle: when no character fits on
+        ly, the label is lowered, at most until its 12 px cell ends on the
+        value top, to the first row that keeps the most characters (kept
+        MicroPython difference).
+        """
+        k = self.k
+        fit = self._fit(label, ly, LABEL, k, lo, hi, sh)
+        if not fit[0]:
+            for t in range(ly + 1, y - 12 + 1):
+                ft = self._fit(label, t, LABEL, k, lo, hi, sh)
+                if ft[0] > fit[0]:
+                    ly, fit = t, ft
+        return ly, fit
 
     def subtitle(self, *lines, color=DARK):
         """Draw subtitle text at the bottom (S). Accepts multiple lines."""

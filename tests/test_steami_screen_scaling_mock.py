@@ -304,17 +304,17 @@ def test_mock_widget_text_routes_to_the_spleen_faces(mods):
     s.value(42)
     s.text("xy", at=(10, 20))  # real pixels: Spleen 8x16 x scale
     s.text("xy", at=(10, 20), scale=3)
-    f8x16 = sys.modules["steami_screen.spleen"].F8X16
+    spleen = sys.modules["steami_screen.spleen"]
+    f8x16 = spleen.F8X16
     o_h, o_i = fonts.offset(f8x16, "H"), fonts.offset(f8x16, "i")
-    # Title and text(at=...) are 8x16 x f/2; value() keeps the 8x8 scaled
-    # text until its own task moves it.
-    assert d.calls[:3] == [
+    o_4, o_2 = fonts.offset(spleen.F16X32, "4"), fonts.offset(spleen.F16X32, "2")
+    # Title and text(at=...) are 8x16 x f/2; value(42) is 16x32 at f 4, bold.
+    assert d.calls[:4] == [
         ("glyphs", 8, 16, [(o_h, 112, 37), (o_i, 120, 37)], 1, 0),
         ("glyphs", 8, 16, [(o_h, 191, 37), (o_i, 199, 37)], 1, 0),
         ("glyphs", 8, 16, [(o_h, 104, 141), (o_i, 120, 141)], 2, 0),
+        ("glyphs", 16, 32, [(o_4, 104, 104), (o_2, 120, 104)], 1, 1),
     ]
-    assert d.calls[3][0] == "scaled"
-    assert d.calls[3][4] == 4
     o_x, o_y = fonts.offset(f8x16, "x"), fonts.offset(f8x16, "y")
     assert d.calls[4:] == [
         ("glyphs", 8, 16, [(o_x, 10, 20), (o_y, 18, 20)], 1, 0),
@@ -362,31 +362,65 @@ def test_mock_subtitle_cuts_a_line_that_cannot_fit(panel):
 
 # ----- value -----
 
+# Value faces on 240 (design 5.1): f 2 is 8x16, f 3 12x24, f 4 16x32, judged on
+# the whole text; '.' and ':' are narrow (half advance), 12x24 and 16x32 are
+# bold. The fit lowers f from scale * k down to k and skips a factor without a
+# face. Ink rows: 16x32 digits 6..25, 12x24 4..18, 8x16 2..11, 6x12 1..8.
+
 
 def test_mock_value_center_with_unit_and_offset(panel):
     # Arduino kValues "72", "%", CENTER, yOffset -12: block 8f + 8f/3 + 8k = 58 at
-    # f 4, top 120 + u(-12) - 29 = 69; the unit 8x8 x k at top + 8f.
+    # f 4, top 120 + u(-12) - 29 = 69 (16x32 ink 75..94); the unit 8x16 at top + 8f.
     s, raw = panel()
     s.value(72, unit="%", y_offset=-12)
-    assert box(raw, WHITE) == (92, 69, 147, 96)
-    assert box(raw, LIGHT) == (114, 101, 125, 114)
+    assert box(raw, WHITE) == (106, 75, 134, 94)
+    assert box(raw, LIGHT) == (117, 103, 122, 112)
 
 
 def test_mock_value_center_default(panel):
-    # rule: f = 2k = 4, no unit: top cy - 8f/2 = 104, centred 120 - 64/2 = 88
-    # ("42": '4' inks from column 1, '2' up to column 6, rows 0-6, at x4 ->
-    # 92..147, 104..131).
+    # Arduino: f = 2k = 4, no unit: top cy - 8f/2 = 104, 16x32 bold; "23.5" is
+    # 16 + 16 + 8 + 16 = 56 px wide (narrow '.').
     s, raw = panel()
-    s.value(42)
-    assert box(raw, WHITE) == (92, 104, 147, 131)
+    s.value(23.5)
+    assert box(raw, WHITE) == (94, 110, 146, 129)
+    s, raw = panel()
+    s.value(8)
+    assert box(raw, WHITE) == (114, 110, 126, 129)
+    assert count(raw, WHITE) == 146
 
 
-# Arduino kSides[240]: value(text, unit, W or E) alone (texts without '.' or ':',
-# whose width MicroPython and Arduino measure alike).
+def test_mock_value_program_04_and_01(panel):
+    # Arduino programs 04 (distance) and 01 (temperature): value and unit.
+    s, raw = panel()
+    s.value(342, unit="mm")
+    assert box(raw, WHITE) == (98, 97, 142, 116)
+    assert box(raw, LIGHT) == (112, 128, 126, 134)
+    s, raw = panel()
+    s.value(23.5, unit="°C")
+    assert box(raw, WHITE) == (94, 97, 146, 116)
+    assert box(raw, LIGHT) == (113, 124, 126, 134)
+
+
+def test_mock_value_at_n_and_s(panel):
+    # Arduino: at N the 16x32 value sits on the floor row 67 of f 4, the unit
+    # 8x16 at 67 + 8f = 99; S mirrors it.
+    s, raw = panel()
+    s.value(23.5, unit="°C", at="N")
+    assert box(raw, WHITE) == (94, 73, 146, 92)
+    assert box(raw, LIGHT) == (113, 100, 126, 110)
+    s, raw = panel()
+    s.value(23.5, unit="°C", at="S")
+    assert box(raw, WHITE) == (94, 147, 146, 166)
+    assert box(raw, LIGHT) == (113, 174, 126, 184)
+
+
+# Arduino kSides[240]: value(text, "C", W or E). The half region is sized for
+# the widest of the text and "88.8" (14f with the narrow '.').
 SIDES_240 = {
-    "1": ((51, 96, 68, 116), (172, 96, 189, 116)),
-    "8888": ((15, 96, 104, 116), (136, 96, 225, 116)),
-    "123456": ((13, 102, 104, 115), (135, 102, 226, 115)),
+    "1": ((55, 97, 65, 116), (175, 97, 185, 116)),
+    "8888": ((30, 97, 90, 116), (150, 97, 210, 116)),
+    "123456": ((15, 97, 106, 116), (135, 97, 226, 116)),
+    "12:34:56": ((20, 100, 101, 114), (141, 100, 222, 114)),
 }
 
 
@@ -398,25 +432,39 @@ def test_mock_value_side_by_side(panel, text):
         assert box(raw, WHITE) == expected, at
 
 
-def test_mock_value_side_is_cut_at_scale_1(panel):
-    # Arduino test_value_truncation: "Uncomfortable" whole at W, 15 glyphs cut to 14.
+def test_mock_value_mockup_03(panel):
+    # Arduino mockup 03: two values side by side, with label and unit.
     s, raw = panel()
-    s.value("Uncomfortable", unit="C", at="W")
-    assert box(raw, WHITE) == (8, 107, 109, 113)
+    s.value(23.5, "°C", "W", "TEMP")
+    assert box(raw, WHITE) == (34, 97, 86, 116)
+    assert box(raw, GRAY) == (51, 73, 73, 80)
+    assert box(raw, LIGHT) == (52, 124, 65, 134)
     s, raw = panel()
-    s.value("ABCDEFGHIJKLMNO", unit="C", at="W")
-    assert box(raw, WHITE) == (4, 107, 113, 113)
+    s.value(45.3, "%", "E", "HUM")
+    assert box(raw, WHITE) == (154, 97, 206, 116)
+    assert box(raw, GRAY) == (168, 73, 184, 80)
+    assert box(raw, LIGHT) == (179, 125, 184, 134)
+
+
+def test_mock_value_side_is_cut_at_factor_k(panel):
+    # Arduino test_value_truncation: at the floor f = k = 2 (8x16, TEXT ladder),
+    # "Uncomfortable" and "ABCDEFGHIJKLMNO" are cut to the same 13 cells.
+    for text in ("Uncomfortable", "ABCDEFGHIJKLMNO"):
+        s, raw = panel()
+        s.value(text, unit="C", at="W")
+        assert box(raw, WHITE) == (7, 104, 109, 113), text
 
 
 def test_mock_value_center_cut_near_the_edge(panel):
-    # Arduino test_value_truncation: 15 '8' with a unit at yOffset -50 keep 13 glyphs.
+    # Arduino test_value_truncation: 15 '8' with a unit at yOffset -50 fall to
+    # f 2 and are cut at the chord of their ink rows.
     s, raw = panel()
     s.value("888888888888888", unit="C", y_offset=-50)
-    assert box(raw, WHITE) == (69, 14, 170, 20)
+    assert box(raw, WHITE) == (76, 11, 162, 20)
 
 
 def test_mock_value_label_and_unit_stay_in_their_half(panel):
-    # rule: label 8x8 x k at top - u(4) - 8k; at W the label and unit are cut to
+    # rule: label 6x12 at top - u(4) - 12; at W the label and unit are cut to
     # [chord left + k, cx - u(3) - 1] at their own rows and centred there.
     for at in ("W", "E"):
         s, raw = panel()
@@ -439,32 +487,138 @@ def test_mock_value_stays_inside_at_every_anchor(panel, at):
         assert not outside(raw, slack=0), (at, text)
 
 
-@pytest.mark.parametrize(
-    "args,kwargs",
-    (
-        ((8, "C", "NE", "TEMP"), {"scale": 1}),
-        ((8, "C", "NW", "TEMP"), {"scale": 1}),
-        (("Temperature",), {"at": "N", "label": "X", "scale": 1}),
-    ),
-)
-def test_mock_value_label_kept_when_the_value_falls_to_factor_1(panel, args, kwargs):
-    # At N/NE/NW the value falls to factor 1 on row 22; the label's rows
-    # 22 - u(4) - 16 = -1.. leave the circle, so it is lowered (never into the
-    # value's rows) instead of being dropped.
+def test_mock_value_floor_is_k_at_the_corners(panel):
+    # Design 5.1: f never falls below k, corners included. At NE scale 1 the
+    # value is 8x16 on row 37 (ink 39..48), its label 6x12 at 37 - 7 - 12 = 18
+    # (ink 19..26), the unit at 37 + 8f = 53.
     s, raw = panel()
-    s.value(*args, **kwargs)
-    label = box(raw, GRAY)
-    assert label is not None
-    assert label[3] < 22
-    assert box(raw, WHITE)[1] == 22
+    s.value(8, "C", "NE", "TEMP", scale=1)
+    assert box(raw, WHITE) == (197, 39, 203, 48)
+    assert box(raw, GRAY) == (159, 19, 181, 26)
+    assert box(raw, LIGHT) == (197, 55, 203, 64)
+    assert not outside(raw, slack=0)
+    s, raw = panel()
+    s.value(8, "C", "NW", "TEMP", scale=1)
+    label, value = box(raw, GRAY), box(raw, WHITE)
+    assert label and value
+    assert label[3] < value[1]
+    assert not outside(raw, slack=0)
+    s, raw = panel()
+    s.value("Temperature", at="N", label="X", scale=1)
+    assert box(raw, WHITE)[1] == 39
+    assert box(raw, GRAY)[3] < 37
     assert not outside(raw, slack=0)
 
 
 def test_mock_value_label_row_unchanged_when_it_fits(panel):
-    # rule: the label top stays at value top - u(4) - 8k when it fits.
+    # Arduino: the label cell top stays at value top - u(4) - 12 when it fits
+    # (16x32 value top 67 at f 4, label cell 48, ink 49..56).
     s, raw = panel()
     s.value(8, "C", "NE", "TEMP")
-    assert box(raw, GRAY)[1] == box(raw, WHITE)[1] - 7 - 16
+    assert box(raw, GRAY) == (183, 49, 205, 56)
+    assert box(raw, WHITE) == (189, 73, 201, 92)
+    assert box(raw, LIGHT) == (191, 101, 197, 110)
+
+
+def test_mock_value_fit_floor_and_skipped_factors(panel):
+    # Arduino: from scale 4 (f 8) the fit falls to f 2 for wide texts; at W
+    # "8888" skips f 7 (no face) and takes f 6, 12x24 x 2 (ink 104..133).
+    s, raw = panel()
+    s.value("888888888888888", "°C", y_offset=-50, scale=4)
+    assert box(raw, WHITE) == (76, 11, 162, 20)
+    s, raw = panel()
+    s.value("ABCDEFGHIJKLMNO", at="W", scale=4)
+    assert box(raw, WHITE) == (3, 114, 113, 123)
+    s, raw = panel()
+    s.value("ABCDEFGHIJKLMNO", at="NE", scale=4)
+    assert box(raw, WHITE) == (85, 39, 203, 48)
+    s, raw = panel()
+    s.value(8888, at="W", scale=4)
+    assert box(raw, WHITE) == (14, 104, 107, 133)
+
+
+def test_mock_value_bold_stays_in_its_cells(panel):
+    # Design 5.2: the bold strike at x + n stays inside the cells (16x32 at
+    # f 4: 4 * 16 + 8 = 72 px from x 84; 12x24 x 2 at f 6: 4 * 24 + 12 = 108 px
+    # from x 66).
+    s, raw = panel()
+    s.value("-88.8")
+    assert count(raw, WHITE) == 473
+    assert all(84 <= x < 156 for (x, _), c in lit(raw).items() if c == WHITE)
+    s, raw = panel()
+    s.value("-88.8", scale=3)
+    assert count(raw, WHITE) == 1176
+    assert all(66 <= x < 174 for (x, _), c in lit(raw).items() if c == WHITE)
+
+
+def test_mock_value_narrow_colon(panel):
+    # Design 5.2: "12:30 PM" takes the TEXT ladder (8x16 at f 2) and keeps the
+    # narrow ':' of the VALUE ink: its pen is at 106 and it is drawn 2 px left,
+    # so its ink (8x16 columns 3..4) lands on columns 107..108.
+    s, raw = panel()
+    s.value("12:30 PM", scale=1)
+    assert box(raw, WHITE) == (91, 114, 148, 123)
+    assert count(raw, WHITE) == 228
+    colon = [p for p, c in lit(raw).items() if c == WHITE and 106 <= p[0] <= 109]
+    assert colon
+    assert {x for x, _ in colon} <= {107, 108}
+    assert all(117 <= y <= 123 for _, y in colon)
+
+
+def test_mock_value_unknown_character(panel):
+    # Review Focus 2: '€' is a '?' cell, and the text takes the TEXT ladder.
+    s, raw = panel()
+    s.value("€5")
+    euro = lit(raw)
+    s, raw = panel()
+    s.value("?5")
+    assert euro == lit(raw)
+    assert box(raw, WHITE) == (104, 108, 133, 127)
+    assert count(raw, WHITE) == 236
+
+
+def test_mock_value_face_follows_the_whole_text(mods):
+    # Review Focus 5: str(val) forms that are not plain numbers take the TEXT
+    # ladder (8x16 x 2 at f 4, never bold); "-0.5" takes the value set.
+    steami_screen, _ = mods
+    d = RecordingDisplay()
+    s = steami_screen.Screen(d)
+    for val, expected in (
+        (float("nan"), (8, 16, 3, 2, 0)),
+        (1e-05, (8, 16, 5, 2, 0)),
+        (-0.5, (16, 32, 4, 1, 1)),
+    ):
+        s.value(val)
+        kind, w, h, glyphs, n, bold = d.calls[-1]
+        assert kind == "glyphs"
+        assert (w, h, len(glyphs), n, bold) == expected, val
+
+
+def test_mock_value_of_empty_text_raises_nothing(panel):
+    # Review Focus 4.
+    s, raw = panel()
+    s.value("")
+    assert count(raw, WHITE) == 0
+    s, raw = panel()
+    s.value("", unit="", label="")
+    s.value(" ")
+    assert not outside(raw, slack=0)
+
+
+def test_mock_value_label_never_enters_the_value_rows(panel):
+    # Kept MicroPython difference: a label of which no character fits is
+    # lowered (never into the value's rows), not dropped. At y_offset -40 the
+    # value top is 16 and the label cell row 16 - 7 - 12 = -3, whose ink rows
+    # leave the circle.
+    for y_offset in range(-64, -39, 4):
+        s, raw = panel()
+        s.value(8, "C", label="TEMP", y_offset=y_offset)
+        label, value = box(raw, GRAY), box(raw, WHITE)
+        if label and value:
+            assert label[3] < value[1], y_offset
+        assert not outside(raw, slack=0), y_offset
+        if y_offset == -40:
+            assert label is not None
 
 
 # ----- bar, gauge -----
