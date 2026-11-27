@@ -24,6 +24,7 @@ MicroPython program look alike on a V1c. The 128 px panel (V1a/V1b) keeps its 8x
 - On 240 px, every widget text and the pixel text `text(s, (x, y), c, scale)` drawn in the faces of 5.1
   with the metrics and rules of 5.2 to 5.4 (the rulings below).
 - Native faces blitted from the frozen bytes; replicated faces drawn by runs. No per-pixel call.
+  (Superseded on the GC9A01 frame by the viper glyph writer: see "Measured on the board (deviation)".)
 - Accents drawn on 240 px; folded to one 8x8 cell on 128 px, with a real 8x8 degree sign.
 - `Screen.text_height(scale=1)` (the Arduino `textHeight()`), and `max_chars` 30 on 240 px.
 - The firmware flash layout that makes room for the tables (fork PR, merged first).
@@ -41,8 +42,9 @@ MicroPython program look alike on a V1c. The 128 px panel (V1a/V1b) keeps its 8x
   output is the accent fold and the degree sign, pinned by one new golden entry.
 - Touching `spleen`, `GS4_HMSB` or `blit` on the 128 path (the 128 golden's `RawDisplay` has neither).
 - A widget text slower than today's, or a native-face widget text over 10 ms on the board.
-  The maintainer accepted the measured times (2026-11-27): with viper glyph writing, widget text takes 8 to
-  12 ms (17 to 19 ms for a side value with its label), 3 to 10 times faster than v0.30. `@micropython.native`
+  The maintainer accepted the measured times (2026-11-27): with viper glyph writing, a title, value or
+  subtitle takes 8 to 12 ms, a gauge label 3 to 4 ms and a side value with its label 19 ms, 2.4 to 5 times
+  faster than v0.30 (the table in the V1c scenario). `@micropython.native`
   on the hot Python helpers gained only 10 to 20 % for 2.2 to 5.6 KB of flash, so it is not used. The V1c
   scenario bounds each entry at about twice its measured time.
 - Hand edits to `spleen.py`.
@@ -176,10 +178,11 @@ Measured by the controller on the V1c (STM32WB55 at 64 MHz, MicroPython 1.29, re
   real viper function with the same output.
 
 The SPI clock goes from 16 to 32 MHz (`BAUDRATE` in `gc9a01/const.py`, the SPI1 maximum: 64 MHz PCLK2 / 2),
-measured by the controller at 2.0 ms per strip instead of 3.9 ms, so `show()` should take about
-15 x (3.6 + 2.0) = 85 ms. The maintainer's rule: if the panel does not hold 32 MHz, keep 16 MHz. The
-controller checks it on the board under the webcam; the change is one constant in its own commit, easy to
-revert.
+measured by the controller at 2.0 ms per strip instead of 3.9 ms. Measured by the controller on the V1c:
+`show()` takes 74 ms (was 167 ms); 32 MHz was checked under the webcam (identical pixels) and all 11 V1c
+hardware tests pass. The V1c scenario bounds `show()` at 150 ms, about twice that. The maintainer's rule
+stays as a fallback: if a panel does not hold 32 MHz, keep 16 MHz; the change is one constant in its own
+commit, easy to revert.
 
 **`Screen` (device.py).** When k > 1:
 - `_fit` and `_put` take an ink. The face is judged once from the whole text, and `_fit` returns it with
