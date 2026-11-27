@@ -13,6 +13,11 @@ ptr8 arguments as they are (a bytearray already indexes bytes). A word
 view reaches the bytes through the buffer's own indexing, so a guarded
 buffer still sees every access, and it refuses an index outside the
 buffer, where viper would read or write past it.
+
+Not emulated: viper ints are signed 32-bit on the board (shifts and
+overflow wrap, << 32 gives 0), while the stub runs them as unbounded
+Python ints. Callers keep their values in range (for example
+GC9A01Display packs dims only for a width below 32768).
 """
 
 import builtins

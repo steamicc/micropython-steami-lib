@@ -473,6 +473,51 @@ def test_draw_glyphs_needs_a_whole_gs4_frame(mods, sp):
     assert not any(raw.buffer)
 
 
+def test_draw_glyphs_frame_needs_a_width_below_32768(mods, sp):
+    # dims = (width << 16) | height is a signed 32-bit viper int on the board:
+    # from 32768 on, width >> 16 is negative there and nothing would be drawn.
+    steami_screen, _ = mods
+    raw = RecordingRaw()
+    raw.width, raw.height = 40000, 1
+    raw.buffer = bytearray(20000)
+    display = steami_screen.GC9A01Display(raw)
+    display.draw_glyphs(sp.F8X16, [(528, 10, 0)], 1, 0, (255, 255, 255))
+    assert display._frame is False
+    assert [call[0] for call in raw.calls] == ["blit"]
+
+
+@pytest.mark.parametrize("o", (-16, -1, 1, 10**7))
+def test_draw_glyphs_frame_rejects_an_offset_outside_the_face(real, sp, o):
+    # _write_glyph reads src[o ...] unchecked: an offset whose glyph is not
+    # wholly in the face data would read memory around it (or fault).
+    display, raw = real
+    fc = sp.F8X16
+    size = fc[1] * ((fc[0] + 7) // 8)
+    o = len(fc[4]) - size + o if o > 0 and o < size else o
+    before = bytes(raw.buffer)
+    with pytest.raises(ValueError):
+        display.draw_glyphs(fc, [(o, 10, 20)], 1, 0, (255, 255, 255))
+    assert bytes(raw.buffer) == before
+    # The last glyph of the face is still drawn.
+    display.draw_glyphs(fc, [(len(fc[4]) - size, 10, 20)], 1, 0, (255, 255, 255))
+
+
+@pytest.mark.parametrize("width", (17, 24, 25, 32))
+@pytest.mark.parametrize("n", (1, 2))
+def test_draw_glyphs_wider_faces_match_the_blit(mods, width, n):
+    # _write_glyph reads 1 or 2 bytes per row: a face wider than 16 px takes
+    # the blit / fill_rect path, which draws any width.
+    bpr = (width + 7) // 8
+    data = bytes((0x81 + 37 * i) & 0xFF for i in range(2 * 8 * bpr))
+    fc = (width, 8, 0, None, data)
+    glyphs = [(0, 3, 2), (8 * bpr, 3 + width * n + 1, 2)]
+    display, raw, ref = frame_pair(mods, 2 * width * n + 9, 8 * n + 4, 2)
+    display.draw_glyphs(fc, glyphs, n, 1, (255, 255, 255))
+    reference(ref, fc, glyphs, n, 1, 5)
+    assert bytes(raw.buffer) == bytes(ref.buffer)
+    assert bytes(raw.buffer) != bytes([0x22]) * len(raw.buffer)
+
+
 # ----- draw_glyphs: viper frame writer against the blit and fill_rect -----
 
 FACE_NAMES = ("F6X12", "F8X16", "F12X24", "F16X32")

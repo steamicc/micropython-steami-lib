@@ -90,6 +90,8 @@ def _write_glyph(
     frame is (width + 1) // 2 bytes per row (even x = high nibble), dims is
     (width << 16) | height. The glyph is h rows of bpr bytes at src[o],
     MSB = column 0, drawn at (x, y) with each font pixel an n x n block.
+    bpr is 1 or 2 (faces up to 16 px wide): draw_glyphs checks the width and
+    that the glyph lies wholly in src before the call.
     ink is the palette index (0-15), plus 16 for bold: each row is ORed with
     itself one column right, so a run gains one column, as the second blit
     at x + 1 (n = 1) or fonts.draw_runs (n >= 2) gave. Clear bits leave the
@@ -239,13 +241,15 @@ class GC9A01Display:
         """The raw's GS4_HMSB frame buffer for _write_glyph, or False.
 
         The buffer must hold ((width + 1) // 2) * height bytes: _write_glyph
-        stays inside that size, so a smaller one is never handed to it.
+        stays inside that size, so a smaller one is never handed to it. The
+        width stays below 32768: dims is a signed 32-bit viper int on the
+        board, and a larger width would make dims >> 16 negative there.
         """
         raw = self._raw
         buf = getattr(raw, "buffer", None)
         w = getattr(raw, "width", None)
         h = getattr(raw, "height", None)
-        if buf is None or w is None or h is None or not 0 < w < 65536 or not 0 < h < 65536:
+        if buf is None or w is None or h is None or not 0 < w < 32768 or not 0 < h < 65536:
             return False
         if len(buf) < (w + 1) // 2 * h:
             return False
@@ -257,8 +261,10 @@ class GC9A01Display:
 
         Only the glyph's set bits are painted, whatever the colour (BLACK
         included). On the gc9a01 driver, whose GS4_HMSB frame is raw.buffer,
-        _write_glyph (viper) writes each glyph into the frame, clipped, at
-        any n and bold: the same pixels as the paths below, in one call.
+        _write_glyph (viper) writes each glyph of a face up to 16 px wide
+        into the frame, clipped, at any n and bold: the same pixels as the
+        paths below, in one call. A glyph offset outside the face data
+        raises ValueError there, since viper reads it unchecked.
         Other raws: at n = 1 each glyph is blitted through a 2x1 palette
         (set bit -> c, clear bit -> b != c) with key b; bold blits it again
         one pixel right. At n >= 2 each run of set bits is one fill_rect.
@@ -270,12 +276,17 @@ class GC9A01Display:
         frame = self._frame
         if frame is None:
             frame = self._frame = self._gs4_frame()
-        if frame:
+        if frame and fc[0] <= 16:
             write = _write_glyph
             dims = self._dims
             data, bpr, h = fc[4], (fc[0] + 7) // 8, fc[1]
             ink = c | 16 if bold else c
+            # _write_glyph reads src[o ...] unchecked: each glyph must lie
+            # wholly in the face data.
+            last = len(data) - h * bpr
             for o, x, y in glyphs:
+                if not 0 <= o <= last:
+                    raise ValueError("glyph offset outside the face")
                 write(frame, dims, data, o, bpr, h, x, y, n, ink)
             return
         if n > 1:
