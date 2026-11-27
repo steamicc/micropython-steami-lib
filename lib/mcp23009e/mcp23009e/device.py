@@ -273,6 +273,13 @@ class MCP23009E(object):
         """
         Active l'interruption pour un GPIO spécifique
 
+        Le callback doit déjà être enregistré : une interruption qui arrive
+        dès l'écriture de GPINTEN le trouve. Avant cette écriture,
+        l'interruption en attente est lue et effacée, pour qu'un changement
+        antérieur à l'enregistrement n'appelle pas le nouveau callback. Les
+        événements en attente des autres GPIO sont transmis à leurs
+        callbacks, pas perdus.
+
         Args:
             gpx: Numéro de GPIO (0 à 7)
         """
@@ -285,9 +292,12 @@ class MCP23009E(object):
         # Configurer pour comparer avec l'état précédent
         intcon = _set_bit(intcon, gpx, MCP23009_INTCON_PREVIOUS_STATE)
 
-        # Écrire les registres
-        self._write_reg(MCP23009_GPINTEN, gpinten)
+        # INTCON d'abord : en mode DEFVAL, activer GPINTEN déclencherait
+        # une interruption tout de suite
         self._write_reg(MCP23009_INTCON, intcon)
+        # Effacer l'interruption en attente, sans appeler le callback de gpx
+        self._service_interrupt(1 << gpx)
+        self._write_reg(MCP23009_GPINTEN, gpinten)
 
     def _send_disable_interrupt(self, gpx):
         """
@@ -323,8 +333,8 @@ class MCP23009E(object):
         if gpx > 7:
             return
 
-        self._send_enable_interrupt(gpx)
         self.events_change[gpx] = callback
+        self._send_enable_interrupt(gpx)
 
     def interrupt_on_falling(self, gpx, callback):
         """
@@ -337,8 +347,8 @@ class MCP23009E(object):
         if gpx > 7:
             return
 
-        self._send_enable_interrupt(gpx)
         self.events_fall[gpx] = callback
+        self._send_enable_interrupt(gpx)
 
     def interrupt_on_raising(self, gpx, callback):
         """
@@ -351,8 +361,8 @@ class MCP23009E(object):
         if gpx > 7:
             return
 
-        self._send_enable_interrupt(gpx)
         self.events_rise[gpx] = callback
+        self._send_enable_interrupt(gpx)
 
     def disable_interrupt(self, gpx):
         """
@@ -391,6 +401,15 @@ class MCP23009E(object):
         relâchement survenus tous deux avant cette lecture peuvent ne
         donner qu'un seul événement, celui de l'appui.
         """
+        self._service_interrupt(0)
+
+    def _service_interrupt(self, skip_mask):
+        """
+        Lit et efface l'interruption en attente, puis appelle les callbacks
+
+        Args:
+            skip_mask: masque des GPIO dont l'événement est ignoré
+        """
         intcc = self._read_reg(MCP23009_IOCON) & MCP23009_IOCON_INTCC
 
         # Lire les flags d'interruption
@@ -402,6 +421,8 @@ class MCP23009E(object):
         if not intcc:
             # Sinon, lire GPIO efface l'interruption
             self._read_reg(MCP23009_GPIO)
+
+        intf &= ~skip_mask
 
         # Traiter chaque GPIO ayant généré une interruption
         for i in range(8):

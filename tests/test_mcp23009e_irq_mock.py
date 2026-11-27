@@ -289,6 +289,93 @@ def test_device_falling_and_rising_callbacks(drv, dev, chip):
     assert calls == ["fall", "rise"]
 
 
+# ----- Registration -----
+
+
+def test_registering_dpad_handlers_fires_no_event(drv, dev, chip):
+    events = []
+    pins = [dpad_pin(drv, dev, gp) for gp in DPAD]
+    chip.reference = 0x00  # port value before the pull-ups were set
+    for gp, pin in zip(DPAD, pins):
+        pin.irq(recorder(events, gp), BOTH)
+    dev.interrupt_event()  # the soft IRQ, if INT was raised
+    assert events == []
+    assert chip.regs[INTF] == 0
+
+
+def test_registration_clears_pending_interrupt(drv, dev, chip):
+    events = []
+    btn = dpad_pin(drv, dev, UP)
+    chip.latch(UP)
+    btn.irq(recorder(events, "UP"), BOTH)
+    assert chip.regs[INTF] == 0
+    dev.interrupt_event()
+    assert events == []
+
+
+def test_registration_clears_pending_interrupt_with_intcc(drv, dev, chip):
+    dev.set_iocon(0x01)
+    events = []
+    btn = dpad_pin(drv, dev, UP)
+    chip.latch(UP)
+    btn.irq(recorder(events, "UP"), BOTH)
+    assert chip.regs[INTF] == 0
+    dev.interrupt_event()
+    assert events == []
+
+
+def test_callback_stored_and_interrupt_cleared_before_gpinten(drv, dev, chip):
+    """A soft IRQ that runs as GPINTEN is written finds the new callback
+    and no stale interrupt."""
+    events = []
+    seen = []
+    btn = dpad_pin(drv, dev, UP)
+    chip.reference = 0x00  # a change latched before registration
+
+    def on_write(reg, value):
+        if reg == GPINTEN and value & (1 << UP):
+            seen.append((dev.events_change[UP] is not None, chip.regs[INTF]))
+            dev.interrupt_event()
+
+    chip.on_write = on_write
+    btn.irq(recorder(events, "UP"), BOTH)
+    assert seen == [(True, 0)]
+    assert events == []
+
+
+def test_press_at_enable_time_reaches_new_handler(drv, dev, chip):
+    events = []
+    btn = dpad_pin(drv, dev, UP)
+
+    def on_write(reg, value):
+        if reg == GPINTEN and value & (1 << UP):
+            chip.press(UP)
+            dev.interrupt_event()
+
+    chip.on_write = on_write
+    btn.irq(recorder(events, "UP"), BOTH)
+    assert events == [("UP", 0, 0)]
+
+
+def test_intcon_written_before_gpinten(drv, dev, chip):
+    dpad_pin(drv, dev, UP)
+    chip.log.clear()
+    dev.interrupt_on_change(UP, lambda level: None)
+    writes = [reg for op, reg in chip.log if op == "w"]
+    assert writes.index(INTCON) < writes.index(GPINTEN)
+
+
+def test_pending_event_on_other_pin_is_kept(drv, dev, chip):
+    events = []
+    down = dpad_pin(drv, dev, DOWN)
+    up = dpad_pin(drv, dev, UP)
+    down.irq(recorder(events, "DOWN"), BOTH)
+    chip.press(DOWN)  # the soft IRQ has not run yet
+    up.irq(recorder(events, "UP"), BOTH)
+    dev.interrupt_event()
+    assert events == [("DOWN", 0, 0)]
+
+
 def test_disable_interrupt_stops_callbacks(drv, dev, chip):
     events = []
     btn = dpad_pin(drv, dev, UP)

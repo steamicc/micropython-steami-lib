@@ -141,6 +141,9 @@ class MCP23009Pin:
         Dans le handler, pin.irq_level() donne le niveau capturé au moment
         de l'interruption, et pin.value() le niveau actuel.
 
+        L'enregistrement efface l'interruption en attente : un changement
+        antérieur à l'appel de irq() n'appelle pas le handler.
+
         Args:
             handler: Fonction appelée lors de l'interruption (reçoit la pin en paramètre)
             trigger: Type de déclenchement (IRQ_FALLING, IRQ_RISING, ou les deux)

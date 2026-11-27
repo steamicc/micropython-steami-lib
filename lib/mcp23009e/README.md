@@ -104,6 +104,13 @@ The MCP23009 captures only the first change until the interrupt is read.
 If a press and its release both happen before the driver reads it, they
 can be reported as a single event, the press.
 
+Registering a handler (`irq()`, or `interrupt_on_change()`,
+`interrupt_on_falling()` and `interrupt_on_raising()`) stores the callback,
+then clears a pending interrupt before it enables the pin. A change that
+happened before the registration does not call the new handler. If another
+pin has a pending event at that moment, its handler is called during the
+registration, so the event is not lost.
+
 ## API Reference
 
 ### MCP23009E Class
