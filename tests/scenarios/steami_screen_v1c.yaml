@@ -143,9 +143,12 @@ tests:
     expect_true: true
     mode: [hardware]
 
-  - name: "show() sends a frame in under 500 ms"
+  - name: "show() sends a frame in under 150 ms"
     action: hardware_script
     script: |
+      # About 2x the 74 ms measured on a V1c (viper RGB565 conversion, SPI at
+      # 32 MHz); v0.30 took 167 ms (palette blit, 16 MHz), so going back to
+      # either fails here.
       import time
       from steami import Screen
       screen = Screen()
@@ -159,7 +162,7 @@ tests:
           screen.show()
           times.append(time.ticks_diff(time.ticks_ms(), t0))
       print("show() ms:", times)
-      result = max(times) < 500
+      result = max(times) < 150
     expect_true: true
     mode: [hardware]
 
