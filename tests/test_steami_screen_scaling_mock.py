@@ -203,6 +203,31 @@ def test_mock_text_scale_0_counts_as_1(panel, size):
         assert zero == lit(raw), at
 
 
+@pytest.mark.parametrize("size", (128, 240))
+@pytest.mark.parametrize("scale", (1, 2, 3))
+@pytest.mark.parametrize("text", ("MWM", "Été", "Hi"))
+def test_mock_text_box_is_8_px_per_character_times_scale(panel, size, scale, text):
+    # The README "Units and Scale" rule: n characters at a given scale take
+    # n * 8 * scale px by text_height(scale), on both panels (8x8 x scale on
+    # 128 px, Spleen 8x16 x scale on 240 px), at (x, y) and at a cardinal
+    # position. The last cell starts (n - 1) * 8 * scale px after the first.
+    n = len(text)
+    w = n * 8 * scale
+    s, raw = panel(size)
+    h = s.text_height(scale)
+    assert h == (8 if size == 128 else 16) * scale
+    s.text(text, at=(10, 20), scale=scale)
+    x0, y0, x1, y1 = box(raw)
+    assert x0 >= 10 and x1 < 10 + w
+    assert y0 >= 20 and y1 < 20 + h
+    assert x1 >= 10 + (n - 1) * 8 * scale
+    s, raw = panel(size)
+    s.text(text, at="CENTER", scale=scale)
+    x0, y0, x1, y1 = box(raw)
+    assert (n - 1) * 8 * scale < x1 - x0 + 1 <= w
+    assert y1 - y0 + 1 <= h
+
+
 def test_mock_title_at_scale_2_sits_at_its_floor(panel):
     # Arduino test_title_rows: text("ABCDEFGH", N, WHITE, 2) on 240, 8x16 x 2, cell
     # (56, 67), the 8 cells kept.

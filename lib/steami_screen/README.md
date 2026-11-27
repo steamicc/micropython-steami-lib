@@ -72,7 +72,24 @@ box_w = screen.u(56)  # 56 on 128 px, 105 on 240 px
 screen.rect(screen.center[0] - box_w // 2, 10, box_w, screen.u(10), BLACK, fill=True)
 ```
 
-Text grows by `k`, not by `u()`: at scale 1 a cell is 8x8 on 128 px and 8x16 on 240 px (see Fonts). Size a box that must hold text from the glyphs: `len(text) * 8 * screen.k` wide holds it on both sizes (on 240 px the text takes half of that width), and `screen.text_height()` (`8 * screen.k`) high.
+Text does not grow by `u()`: a character of `text()` is 8 px wide at scale 1 on both sizes, 8x8 on 128 px and 8x16 on 240 px (see Fonts), and `scale` multiplies both. Size a box that must hold `text(s, at, color, scale)`, at `(x, y)` or at a cardinal position, from its cells:
+
+* width: `len(s) * 8 * scale` (there is no public text-width method; on 240 px each character, accented or not, is one cell, and on 128 px an accented letter is one cell once folded to its base letter);
+* height: `screen.text_height(scale)`, that is `8 * scale` on 128 px and `16 * scale` on 240 px;
+* `screen.max_chars` is the number of characters that fit the width at scale 1 (16 on 128 px, 30 on 240 px); at scale `s` it is `screen.max_chars // s`.
+
+```python
+from steami_screen import DARK
+
+s = "Été"
+scale = 2
+w = len(s) * 8 * scale  # 48 on both sizes
+h = screen.text_height(scale)  # 16 on 128 px, 32 on 240 px
+screen.rect(10, 10, w + 4, h + 4, DARK, fill=True)
+screen.text(s, at=(12, 12), scale=scale)
+```
+
+On the round 240 px screen, text at a cardinal position is also kept inside the circle: a text too wide there keeps only the characters that fit. Widget text (value, labels, menu) uses its own faces (see Fonts).
 
 ---
 
