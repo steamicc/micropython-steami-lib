@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [0.31.0](https://github.com/steamicc/micropython-steami-lib/compare/v0.30.2...v0.31.0) (2026-11-27)
+
+
+### Features
+
+* **steami_screen:** Draw the V1c text with the Spleen fonts. ([#462](https://github.com/steamicc/micropython-steami-lib/issues/462)) ([a2d4625](https://github.com/steamicc/micropython-steami-lib/commit/a2d4625232bcd0955e3ddb1b6dc4a48d09aa3249))
+
 ## [0.30.2](https://github.com/steamicc/micropython-steami-lib/compare/v0.30.1...v0.30.2) (2026-11-27)
 
 ## [0.30.1](https://github.com/steamicc/micropython-steami-lib/compare/v0.30.0...v0.30.1) (2026-11-27)
