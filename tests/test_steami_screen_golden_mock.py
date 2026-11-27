@@ -268,6 +268,15 @@ def test_mock_graph_nan_last_value_shows_dashes_at_128():
     assert _curve(calls) == [["line", 21, 84, 67, 74, 5]]
 
 
+@pytest.mark.parametrize(("last", "row"), ((float("inf"), 38), (float("-inf"), 90)))
+def test_mock_graph_infinite_last_value_shows_dashes_at_128(last, row):
+    # An infinite last value has no integer part: "--", like NaN. Its point
+    # is kept and clamped to the top (inf) or the bottom (-inf) of the box.
+    calls = record(lambda s: s.graph([10, 30, last], color=5))
+    assert _values(calls) == [["text", "--", 56, 31, 15]]
+    assert _curve(calls) == [["line", 21, 84, 67, 74, 5], ["line", 67, 74, 113, row, 5]]
+
+
 def test_mock_graph_nan_in_the_middle_leaves_a_gap_at_128():
     # Points x 21, 51, 82, 113 (step 92 / 3); the NaN point 1 is skipped and
     # point 0 has no neighbour left: only 30 (row 74) -> 70 (row 53) is drawn.

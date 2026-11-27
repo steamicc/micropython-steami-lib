@@ -954,6 +954,18 @@ def test_mock_graph_nan_last_value_shows_dashes(panel, size):
         assert not outside(raw, slack=0)
 
 
+@pytest.mark.parametrize("last", (float("inf"), float("-inf")))
+@pytest.mark.parametrize("size", (240, 128))
+def test_mock_graph_infinite_last_value_shows_dashes(panel, size, last):
+    # int(inf) raises OverflowError: an infinite last value shows "--" too.
+    s, raw = panel(size)
+    s.graph([10, 30, last], color=(119, 255, 119))
+    assert box(raw, WHITE) == DASHES[size]
+    assert box(raw, GREEN) is not None
+    if size == 240:
+        assert not outside(raw, slack=0)
+
+
 @pytest.mark.parametrize("size", (240, 128))
 def test_mock_graph_all_nan_shows_dashes_and_no_line(panel, size):
     s, raw = panel(size)

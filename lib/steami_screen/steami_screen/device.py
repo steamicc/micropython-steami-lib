@@ -503,7 +503,8 @@ class Screen:
         """Draw a scrolling line graph with the current value above.
 
         The current value is the integer part of the last point, or "--"
-        when data is empty or its last point is NaN (Arduino 5.9). With 0
+        when data is empty or its last point is NaN or infinite (Arduino
+        5.9). An infinite point is clamped to the box like any other. With 0
         or 1 point only the frame and the value are drawn. A NaN point is
         skipped and leaves a gap: no segment reaches it, and the other
         points keep their x.
@@ -518,7 +519,7 @@ class Screen:
         gh = u(STEAMI_GRAPH_HEIGHT)
 
         text = "--"
-        if data and not math.isnan(data[-1]):
+        if data and math.isfinite(data[-1]):
             text = str(int(data[-1]))
         tw = self._tw(text, TEXT, k)
         self._txt(

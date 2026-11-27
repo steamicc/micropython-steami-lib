@@ -209,7 +209,7 @@ screen.graph([10, 20, 15, 30], min_val=0, max_val=100)
 
 Draws a scrolling line graph with the last value displayed above.
 
-With an empty list, or when the last value is NaN, the frame is drawn and the value shows `--`. With a single value, only the frame and that value are drawn. A NaN value elsewhere leaves a gap in the line: no segment reaches it, and the other points keep their place.
+With an empty list, or when the last value is NaN or infinite, the frame is drawn and the value shows `--`. With a single value, only the frame and that value are drawn. A NaN value elsewhere leaves a gap in the line: no segment reaches it, and the other points keep their place.
 
 ---
 
