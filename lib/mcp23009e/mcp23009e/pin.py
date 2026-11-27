@@ -63,6 +63,7 @@ class MCP23009Pin:
         self._pull = -1
         self._irq_handler = None
         self._irq_trigger = None
+        self._irq_level = None
 
         # Configuration initiale si des paramètres sont fournis
         if mode != -1:
@@ -135,6 +136,20 @@ class MCP23009Pin:
         """
         Configure une interruption sur la pin
 
+        Le handler reçoit la pin, comme avec machine.Pin. Il s'exécute après
+        coup (soft IRQ) : la broche a pu changer depuis l'interruption.
+        Dans le handler, pin.irq_level() donne le niveau de l'événement
+        (capturé au moment de l'interruption, ou lu dans GPIO pour un
+        changement que le MCP23009 n'a pas signalé), et pin.value() le
+        niveau actuel. Un appui bref donne deux événements : l'appui, puis
+        le relâchement.
+
+        L'enregistrement remplace le précédent, efface l'interruption en
+        attente et prend le niveau actuel de la pin comme dernier niveau
+        connu : un changement antérieur à l'appel de irq() n'appelle pas le
+        handler, même s'il est encore en file pendant qu'un autre handler
+        s'exécute.
+
         Args:
             handler: Fonction appelée lors de l'interruption (reçoit la pin en paramètre)
             trigger: Type de déclenchement (IRQ_FALLING, IRQ_RISING, ou les deux)
@@ -145,16 +160,24 @@ class MCP23009Pin:
 
         Exemple:
             >>> def callback(pin):
-            ...     print(f"Interruption sur pin {pin._pin_number}")
-            >>> pin.irq(handler=callback, trigger=MCP23009Pin.IRQ_FALLING)
+            ...     print("appuyé" if pin.irq_level() == 0 else "relâché")
+            >>> pin.irq(handler=callback, trigger=MCP23009Pin.IRQ_FALLING | MCP23009Pin.IRQ_RISING)
         """
         self._irq_handler = handler
         self._irq_trigger = trigger
 
-        # Créer un wrapper qui appelle le handler avec self en paramètre
+        # Créer un wrapper qui note le niveau de l'événement, puis appelle le
+        # handler avec self en paramètre
         def wrapper(level):
+            self._irq_level = level
             if self._irq_handler is not None:
                 self._irq_handler(self)
+
+        # Retirer les callbacks d'un enregistrement précédent, qui peut avoir
+        # utilisé un autre trigger
+        self._mcp.events_change[self._pin_number] = None
+        self._mcp.events_fall[self._pin_number] = None
+        self._mcp.events_rise[self._pin_number] = None
 
         # Enregistrer les callbacks appropriés selon le trigger
         if trigger & self.IRQ_FALLING:
@@ -169,6 +192,22 @@ class MCP23009Pin:
             self._mcp.interrupt_on_raising(self._pin_number, lambda: wrapper(1))
 
         return self
+
+    def irq_level(self):
+        """
+        Niveau de la pin pour l'événement en cours de traitement
+
+        À lire dans le handler de irq() : c'est le niveau capturé au moment
+        de l'interruption (registre INTCAP), même si la broche a changé
+        avant que le handler ne s'exécute, ou le niveau lu dans GPIO pour
+        un changement que le MCP23009 n'a pas signalé (survenu pendant
+        qu'une autre interruption était en attente). pin.value(), lui,
+        relit le niveau actuel.
+
+        Returns:
+            0 ou 1, ou None si aucune interruption n'a encore été reçue
+        """
+        return self._irq_level
 
     def mode(self, mode=None):
         """

@@ -84,10 +84,65 @@ mcp = MCP23009E(bus, address=MCP23009_I2C_ADDR, reset_pin=reset, interrupt_pin=i
 btn = MCP23009Pin(mcp, 7, MCP23009Pin.IN, MCP23009Pin.PULL_UP)
 
 def callback(pin):
-    print(f"Button state changed: {pin.value()}")
+    if pin.irq_level() == 0:
+        print("UP pressed")
+    else:
+        print("UP released")
 
 btn.irq(handler=callback, trigger=MCP23009Pin.IRQ_FALLING | MCP23009Pin.IRQ_RISING)
 ```
+
+The handler receives the pin, like with `machine.Pin`. It runs as a soft
+IRQ, so it can run some time after the interrupt, for example after a
+long `show()` call. By then the button may already be released:
+
+* `pin.irq_level()` gives the level of the event being handled: the level
+  captured at the interrupt (INTCAP register), or the level read in GPIO
+  for a change the chip did not signal (see below). Use it to tell a press
+  from a release.
+* `pin.value()` reads the current level again over I2C.
+
+The MCP23009 latches one INTCAP snapshot per interrupt. While an interrupt
+is pending, a change on any pin raises no new interrupt, and the read that
+clears the interrupt makes the new level the compare reference, so the chip
+never signals that change. The driver therefore keeps the last known level
+of every interrupt-enabled pin. When it handles an interrupt, it reads
+INTF, INTCAP and GPIO, then, for each enabled pin:
+
+1. if the pin is in INTF and its captured level differs from the last
+   known level, it reports the captured level;
+2. if the current level (GPIO) still differs from the last known level, it
+   reports the current level.
+
+So a short tap, released before the driver reads the interrupt, gives a
+press then a release, and a button pressed or released while another
+button's interrupt was pending is reported too. A captured level equal to
+the last known level (a change already reported) is not reported twice.
+With a falling-only or rising-only trigger, each reported level is filtered
+the same way. Registering a handler takes the current level of the pin as
+its last known level, without an event.
+
+Remaining limit: a press and its release that both happen while an
+interrupt is pending (between the capture and the read) cancel out and
+are not seen.
+
+Events are delivered one handler at a time, in the order the driver read
+them. If the driver reads the chip again while a handler runs (a soft IRQ,
+or a handler that registers another pin), the new events are queued and
+delivered after the ones still waiting, so each pin's press and release
+always come in order. The queue holds 8 reads; changes that find no room
+are read again from GPIO once the queue is empty (the edges in between are
+lost, the last reported level stays right). If a handler raises an
+exception, the other queued events are still delivered, then the first
+exception is raised again to the caller (the soft IRQ, or the `irq()` call).
+
+Registering a handler (`irq()`, or `interrupt_on_change()`,
+`interrupt_on_falling()` and `interrupt_on_raising()`) stores the callback,
+then clears a pending interrupt before it enables the pin. A change that
+happened before the registration does not call the new handler, even if
+its event is still queued. If another pin has a pending event at that
+moment, its handler is called during the registration, so the event is not
+lost. Calling `irq()` again replaces the previous handler and trigger.
 
 ## API Reference
 
@@ -104,7 +159,7 @@ MCP23009E(i2c, address, reset_pin, interrupt_pin=None)
 * `setup(gpx, direction, pullup, polarity)` - Configure a GPIO
 * `set_level(gpx, level)` - Set output level
 * `get_level(gpx)` - Read input level
-* `interrupt_on_change(gpx, callback)` - Register change callback
+* `interrupt_on_change(gpx, callback)` - Register change callback; `callback(level)` gets the level of the event (captured in INTCAP, or read in GPIO for a missed change)
 * `interrupt_on_falling(gpx, callback)` - Register falling edge callback
 * `interrupt_on_raising(gpx, callback)` - Register rising edge callback
 * `disable_interrupt(gpx)` - Disable interrupts on a GPIO
@@ -124,7 +179,8 @@ MCP23009Pin(mcp, pin_number, mode=-1, pull=-1, value=None)
 * `on()` - Set pin high
 * `off()` - Set pin low
 * `toggle()` - Toggle pin state
-* `irq(handler, trigger)` - Configure interrupt
+* `irq(handler, trigger)` - Configure interrupt; the handler receives the pin
+* `irq_level()` - Level of the event being handled (0 or 1, `None` before the first one); read it in the handler
 * `mode(mode=None)` - Get or set mode
 * `pull(pull=None)` - Get or set pull configuration
 
@@ -175,7 +231,8 @@ The driver provides simple hardware power management helpers through the reset p
 mcp.power_off()
 ```
 
-Holds the reset pin low.
+Holds the reset pin low. The chip loses its configuration: register the
+interrupt handlers again after `power_on()`.
 
 ### Power on
 
@@ -190,7 +247,8 @@ Releases the reset pin.
 ```python
 mcp.reset()
 ```
-Toggles the reset pin to perform a hardware reset.
+Toggles the reset pin to perform a hardware reset. Interrupts are disabled
+afterwards: register the handlers again.
 
 ## Examples
 

@@ -10,9 +10,6 @@ from mcp23009e.const import (
     MCP23009_GPPU,
     MCP23009_INTCAP,
     MCP23009_INTCON,
-    MCP23009_INTCON_PREVIOUS_STATE,
-    MCP23009_INTEN_DISABLE,
-    MCP23009_INTEN_ENABLE,
     MCP23009_INTF,
     MCP23009_IOCON,
     MCP23009_IODIR,
@@ -33,6 +30,13 @@ def _set_bit(reg, bit, value):
     else:
         reg |= (1 << bit)
     return reg
+
+
+# Lectures d'interruption en attente de transmission : file circulaire de
+# _QUEUE_LEN enregistrements de _RECORD mots, plus un emplacement de rebut
+# (indice _QUEUE_LEN) écrit quand la file est pleine
+_QUEUE_LEN = 8
+_RECORD = 5
 
 
 def _get_bit(reg, bit):
@@ -62,6 +66,29 @@ class MCP23009E(object):
         self.events_fall = [None] * 8
         self.events_rise = [None] * 8
 
+        # GPIO dont l'interruption est activée (un bit par GPIO), et dernier
+        # niveau connu de chacun : celui du dernier événement transmis, ou
+        # celui lu à l'activation
+        self._enabled = 0
+        self._levels = 0
+
+        # Lectures d'interruption dont les événements restent à transmettre,
+        # dans l'ordre : pour chacune, GPIO à transmettre depuis INTCAP, INTCAP,
+        # GPIO à transmettre depuis GPIO, GPIO, et numéro d'enregistrement.
+        # Indices de tête et de queue modulo 2 * _QUEUE_LEN. Tout est alloué
+        # ici : le chemin d'interruption n'alloue rien.
+        self._queue = [0] * (_RECORD * (_QUEUE_LEN + 1))
+        self._head = 0
+        self._tail = 0
+        self._dispatching = False
+        # 1 si une lecture n'a pas trouvé de place dans la file
+        self._overflow = 0
+        # Compteur des enregistrements de callbacks, et valeur de ce compteur
+        # au dernier enregistrement de chaque GPIO : une lecture antérieure
+        # n'appelle pas le nouveau callback
+        self._generation = 0
+        self._registered = [0] * 8
+
         # Configuration du pin de reset
         self.reset_pin.init(Pin.OUT)
 
@@ -74,13 +101,26 @@ class MCP23009E(object):
         self.reset()
 
     def reset(self):
-        """Effectue un reset hardware du MCP23009E"""
+        """
+        Effectue un reset hardware du MCP23009E
+
+        Le reset désactive les interruptions du composant : les callbacks
+        doivent être enregistrés à nouveau.
+        """
+        self._enabled = 0
         self.reset_pin.value(0)
         sleep_ms(5)
         self.reset_pin.value(1)
         sleep_ms(10)
 
     def power_off(self):
+        """
+        Maintient le MCP23009E en reset
+
+        Les interruptions du composant sont désactivées : les callbacks
+        doivent être enregistrés à nouveau après power_on().
+        """
+        self._enabled = 0
         self.reset_pin.value(0)
 
     def power_on(self):
@@ -88,7 +128,13 @@ class MCP23009E(object):
         sleep_ms(10)
 
     def _soft_reset(self):
-        """Réinitialise le composant avec les valeurs par défaut"""
+        """
+        Réinitialise le composant avec les valeurs par défaut
+
+        Les interruptions sont désactivées : les callbacks doivent être
+        enregistrés à nouveau.
+        """
+        self._enabled = 0
         # Configuration par défaut : toutes les pins en entrée
         self._write_reg(MCP23009_IODIR, 0xFF)
         # Désactiver les pull-ups
@@ -272,21 +318,39 @@ class MCP23009E(object):
         """
         Active l'interruption pour un GPIO spécifique
 
+        Le callback doit déjà être enregistré : une interruption qui arrive
+        dès l'écriture de GPINTEN le trouve. Avant cette écriture,
+        l'interruption en attente est lue et effacée, pour qu'un changement
+        antérieur à l'enregistrement n'appelle pas le nouveau callback. Le
+        niveau lu à ce moment devient le dernier niveau connu du GPIO, sans
+        événement, et les événements de ce GPIO encore en file sont
+        abandonnés. Les événements en attente des autres GPIO sont transmis
+        à leurs callbacks, pas perdus.
+
         Args:
             gpx: Numéro de GPIO (0 à 7)
         """
-        # Lire les registres actuels
-        gpinten = self._read_reg(MCP23009_GPINTEN)
-        intcon = self._read_reg(MCP23009_INTCON)
+        # MicroPython n'exécute les IRQ logicielles qu'aux sauts (if, boucle,
+        # and, or) : il n'y en a aucun dans cette méthode avant
+        # _dispatch_queued(). Chaque lecture-modification-écriture de
+        # registre est donc atomique, et une IRQ logicielle qui suit compare
+        # gpx avec le niveau lu ici et transmet ses changements ultérieurs.
+        # INTCON d'abord, bit à 0 = comparer avec l'état précédent : en mode
+        # DEFVAL, activer GPINTEN déclencherait une interruption tout de suite
+        self._write_reg(MCP23009_INTCON, self._read_reg(MCP23009_INTCON) & ~(1 << gpx))
 
-        # Activer l'interruption sur changement pour ce GPIO
-        gpinten = _set_bit(gpinten, gpx, MCP23009_INTEN_ENABLE)
-        # Configurer pour comparer avec l'état précédent
-        intcon = _set_bit(intcon, gpx, MCP23009_INTCON_PREVIOUS_STATE)
+        # Les lectures déjà en file ne transmettent plus d'événement de gpx
+        self._generation += 1
+        self._registered[gpx] = self._generation
+        self._enabled |= 1 << gpx
 
-        # Écrire les registres
-        self._write_reg(MCP23009_GPINTEN, gpinten)
-        self._write_reg(MCP23009_INTCON, intcon)
+        # Effacer l'interruption en attente, sans événement de gpx, et prendre
+        # le niveau actuel de gpx comme dernier niveau connu
+        self._read_interrupt(1 << gpx)
+        self._write_reg(MCP23009_GPINTEN, self._read_reg(MCP23009_GPINTEN) | (1 << gpx))
+
+        # Puis transmettre les événements des autres GPIO
+        self._dispatch_queued()
 
     def _send_disable_interrupt(self, gpx):
         """
@@ -295,20 +359,15 @@ class MCP23009E(object):
         Args:
             gpx: Numéro de GPIO (0 à 7)
         """
-        # Lire les registres actuels
-        gpinten = self._read_reg(MCP23009_GPINTEN)
-        intcon = self._read_reg(MCP23009_INTCON)
-        defval = self._read_reg(MCP23009_DEFVAL)
-
-        # Désactiver l'interruption pour ce GPIO
-        gpinten = _set_bit(gpinten, gpx, MCP23009_INTEN_DISABLE)
-        intcon = _set_bit(intcon, gpx, MCP23009_INTCON_PREVIOUS_STATE)
-        defval = _set_bit(defval, gpx, MCP23009_LOGIC_LOW)
-
-        # Écrire les registres
-        self._write_reg(MCP23009_GPINTEN, gpinten)
-        self._write_reg(MCP23009_INTCON, intcon)
-        self._write_reg(MCP23009_DEFVAL, defval)
+        # Clear the gpx bit of GPINTEN, INTCON (previous state) and DEFVAL
+        # (low). Each read-modify-write has no jump between its read and its
+        # write, so a scheduled soft IRQ cannot run in between.
+        mask = ~(1 << gpx)
+        # No event of gpx from now on, even one found in GPIO.
+        self._enabled &= mask
+        self._write_reg(MCP23009_GPINTEN, self._read_reg(MCP23009_GPINTEN) & mask)
+        self._write_reg(MCP23009_INTCON, self._read_reg(MCP23009_INTCON) & mask)
+        self._write_reg(MCP23009_DEFVAL, self._read_reg(MCP23009_DEFVAL) & mask)
 
     def interrupt_on_change(self, gpx, callback):
         """
@@ -316,13 +375,15 @@ class MCP23009E(object):
 
         Args:
             gpx: Numéro de GPIO (0 à 7)
-            callback: Fonction appelée lors d'un changement (reçoit le niveau logique en paramètre)
+            callback: Fonction appelée lors d'un changement (reçoit en paramètre
+                le niveau de l'événement : capturé dans INTCAP, ou lu dans
+                GPIO pour un changement que le composant n'a pas signalé)
         """
         if gpx > 7:
             return
 
-        self._send_enable_interrupt(gpx)
         self.events_change[gpx] = callback
+        self._send_enable_interrupt(gpx)
 
     def interrupt_on_falling(self, gpx, callback):
         """
@@ -335,8 +396,8 @@ class MCP23009E(object):
         if gpx > 7:
             return
 
-        self._send_enable_interrupt(gpx)
         self.events_fall[gpx] = callback
+        self._send_enable_interrupt(gpx)
 
     def interrupt_on_raising(self, gpx, callback):
         """
@@ -349,8 +410,8 @@ class MCP23009E(object):
         if gpx > 7:
             return
 
-        self._send_enable_interrupt(gpx)
         self.events_rise[gpx] = callback
+        self._send_enable_interrupt(gpx)
 
     def disable_interrupt(self, gpx):
         """
@@ -379,35 +440,176 @@ class MCP23009E(object):
     def interrupt_event(self):
         """
         Traite les événements d'interruption du MCP23009E
-        Cette méthode lit les flags d'interruption et appelle les callbacks appropriés
+
+        Lit INTF, INTCAP (le niveau de chaque GPIO au moment de
+        l'interruption), puis GPIO. L'interruption est effacée quel que soit
+        IOCON.INTCC. Pour chaque GPIO dont l'interruption est activée, le
+        driver garde le dernier niveau connu et transmet, dans l'ordre :
+
+        - le niveau capturé (INTCAP), si le GPIO est dans INTF et que ce
+          niveau diffère du dernier connu ;
+        - le niveau actuel (GPIO), s'il diffère encore du dernier connu.
+
+        Un appui bref, relâché avant cette lecture, donne donc l'appui puis
+        le relâchement. Tant qu'une interruption est en attente, le
+        MCP23009 ne signale pas les changements des autres GPIO, et la
+        lecture qui l'efface les prend comme nouvelle référence : la lecture
+        de GPIO les retrouve et les transmet. Un niveau capturé égal au
+        dernier connu (changement déjà transmis) n'est pas transmis deux
+        fois.
+
+        Les événements sont transmis dans l'ordre des lectures, un callback
+        après l'autre. Une lecture faite pendant qu'un callback s'exécute
+        (IRQ logicielle, ou callback qui enregistre une interruption) met
+        ses événements en file : ils sont transmis après ceux des lectures
+        précédentes. La file contient 8 lectures ; au-delà, les changements
+        sont relus dans GPIO une fois la file vidée (les fronts
+        intermédiaires sont alors perdus, le dernier niveau transmis reste
+        juste). Si un callback lève une exception, les autres événements
+        sont transmis quand même, puis la première exception est levée à
+        nouveau.
+
+        Limite : un appui et son relâchement survenus tous deux pendant
+        qu'une interruption est en attente (entre la capture et cette
+        lecture) s'annulent et restent invisibles.
         """
-        # Lire la configuration IOCON pour savoir comment effacer l'interruption
-        iocon = self.get_iocon()
+        self._read_interrupt(0)
+        self._dispatch_queued()
 
-        # Lire les flags d'interruption
+    def _read_interrupt(self, skip_mask):
+        """
+        Lit et efface l'interruption en attente, et met ses événements en file
+
+        Args:
+            skip_mask: masque des GPIO dont l'événement est ignoré ; leur
+                niveau actuel devient leur dernier niveau connu
+        """
+        # Lire INTF, puis INTCAP (niveau des GPIO capturé au moment de
+        # l'interruption), puis GPIO. Selon IOCON.INTCC, la lecture de
+        # INTCAP ou celle de GPIO efface l'interruption : lire les deux
+        # l'efface dans tous les cas. MicroPython n'exécute les IRQ
+        # logicielles qu'aux sauts (if, boucle, and, or) : cette méthode
+        # n'en a aucun, pour qu'une IRQ logicielle ne traite pas une seconde
+        # fois l'événement lu ici, ne compare pas avec des niveaux périmés,
+        # ni ne mette ses événements en file avant ceux-ci.
         intf = self._read_reg(MCP23009_INTF)
+        captured = self._read_reg(MCP23009_INTCAP)
+        gpio = self._read_reg(MCP23009_GPIO)
 
-        # Lire l'état des GPIO
-        if iocon.has_intcc():
-            # Si INTCC est activé, lire INTCAP efface l'interruption
-            state = self._read_reg(MCP23009_INTCAP)
-        else:
-            # Sinon, lire GPIO efface l'interruption
-            state = self._read_reg(MCP23009_GPIO)
+        enabled = self._enabled & ~skip_mask
+        last = self._levels
+        # GPIO dans INTF dont le niveau capturé diffère du dernier connu
+        from_intcap = intf & enabled & (captured ^ last)
+        # GPIO dont le niveau actuel diffère encore (après from_intcap) :
+        # changements après la capture, ou que le composant n'a pas signalés
+        from_gpio = enabled & (gpio ^ last ^ from_intcap)
 
-        # Traiter chaque GPIO ayant généré une interruption
-        for i in range(8):
-            if _get_bit(intf, i):
-                level = _get_bit(state, i)
+        # File pleine (tail - head == _QUEUE_LEN) : full = 1, sinon 0, calculé
+        # sans saut. Si elle est pleine, l'enregistrement va à l'emplacement
+        # de rebut, et les GPIO activés gardent leur dernier niveau connu :
+        # une nouvelle lecture, une fois la file vidée, retrouve leurs
+        # changements dans GPIO.
+        tail = self._tail
+        full = ((tail - self._head) & (2 * _QUEUE_LEN - 1)) // _QUEUE_LEN
+        kept = full - 1  # 0 si la file est pleine, -1 (tous les bits) sinon
+        tracked = skip_mask | (enabled & kept)
+        self._overflow |= full
+        self._levels = (last & ~tracked) | (gpio & tracked)
 
-                # Appeler les callbacks appropriés
-                if level == MCP23009_LOGIC_HIGH:
-                    if self.events_rise[i] is not None:
-                        self.events_rise[i]()
-                else:
-                    if self.events_fall[i] is not None:
-                        self.events_fall[i]()
+        slot = _RECORD * ((tail % _QUEUE_LEN) * (1 - full) + _QUEUE_LEN * full)
+        queue = self._queue
+        queue[slot] = from_intcap
+        queue[slot + 1] = captured
+        queue[slot + 2] = from_gpio
+        queue[slot + 3] = gpio
+        queue[slot + 4] = self._generation
+        self._tail = (tail + 1 - full) % (2 * _QUEUE_LEN)
 
-                # Appeler le callback de changement avec le niveau
-                if self.events_change[i] is not None:
-                    self.events_change[i](level)
+    def _dispatch_queued(self):
+        """
+        Transmet aux callbacks les événements en file, dans l'ordre
+
+        Un seul appel transmet à la fois : un appel fait pendant un callback
+        (IRQ logicielle, ou callback qui enregistre une interruption) revient
+        tout de suite, et ses événements sont transmis par l'appel en cours,
+        après ceux qui les précèdent.
+
+        Un callback qui lève une exception n'arrête pas la transmission :
+        les événements restants, y compris ceux mis en file entre-temps,
+        sont transmis, puis la première exception est levée à nouveau.
+        """
+        error = None
+        while not self._dispatching and (self._head != self._tail or self._overflow):
+            self._dispatching = True
+            try:
+                # Une IRQ logicielle a pu vider la file juste avant que
+                # _dispatching ne passe à True
+                head = self._head
+                if head != self._tail:
+                    queue = self._queue
+                    slot = _RECORD * (head % _QUEUE_LEN)
+                    from_intcap = queue[slot]
+                    captured = queue[slot + 1]
+                    from_gpio = queue[slot + 2]
+                    gpio = queue[slot + 3]
+                    generation = queue[slot + 4]
+                    self._head = (head + 1) % (2 * _QUEUE_LEN)
+                    # Les niveaux capturés précèdent les niveaux actuels
+                    for i in range(8):
+                        if (from_intcap >> i) & 1:
+                            exc = self._dispatch_if_current(i, (captured >> i) & 1, generation)
+                            if error is None:
+                                error = exc
+                    for i in range(8):
+                        if (from_gpio >> i) & 1:
+                            exc = self._dispatch_if_current(i, (gpio >> i) & 1, generation)
+                            if error is None:
+                                error = exc
+                elif self._overflow:
+                    # File vidée après un débordement : relire les
+                    # changements qui n'y ont pas trouvé de place
+                    self._overflow = 0
+                    self._read_interrupt(0)
+            finally:
+                self._dispatching = False
+        if error is not None:
+            raise error
+
+    def _dispatch_if_current(self, i, level, generation):
+        """
+        Appelle les callbacks du GPIO i, sauf si son interruption a été
+        désactivée, ou enregistrée à nouveau, après la lecture de l'événement
+
+        Returns:
+            La première exception levée par un callback, ou None
+        """
+        if (self._enabled >> i) & 1 and generation >= self._registered[i]:
+            return self._dispatch(i, level)
+        return None
+
+    def _dispatch(self, i, level):
+        """
+        Appelle les callbacks du GPIO i pour un événement de niveau level
+
+        Une exception levée par un callback n'empêche pas l'appel du suivant.
+
+        Returns:
+            La première exception levée par un callback, ou None
+        """
+        error = None
+        callback = self.events_rise[i] if level == MCP23009_LOGIC_HIGH else self.events_fall[i]
+        if callback is not None:
+            try:
+                callback()
+            except Exception as exc:
+                error = exc
+
+        # Appeler le callback de changement avec le niveau
+        callback = self.events_change[i]
+        if callback is not None:
+            try:
+                callback(level)
+            except Exception as exc:
+                if error is None:
+                    error = exc
+        return error

@@ -18,6 +18,7 @@ MCP23009_IOCON_SEQOP = const(0x20)  # Mode d'opération séquentielle
 MCP23009_IOCON_DISSLW = const(0x10)  # Désactive le slew rate
 MCP23009_IOCON_ODR = const(0x04)  # Configure INT comme drain ouvert
 MCP23009_IOCON_INTPOL = const(0x02)  # Polarité de la sortie INT
+MCP23009_IOCON_INTCC = const(0x01)  # Lire INTCAP (et non GPIO) efface l'interruption
 
 # Adresse I2C mise à jour pour 0x20
 MCP23009_I2C_ADDR = const(0x20)
