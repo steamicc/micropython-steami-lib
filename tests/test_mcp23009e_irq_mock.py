@@ -945,6 +945,58 @@ def test_handler_exception_does_not_block_later_events(drv, dev, chip):
     assert events == [0, 1]
 
 
+def test_handler_exception_still_delivers_nested_events(drv, dev, chip):
+    """The UP handler raises after a soft IRQ queued a DOWN press. That read
+    already cleared the interrupt, so no later interrupt would deliver the
+    press: the same service delivers it, then the exception reaches the
+    caller."""
+    events = []
+    up = dpad_pin(drv, dev, UP)
+    down = dpad_pin(drv, dev, DOWN)
+
+    def on_up(pin):
+        events.append(("UP", pin.irq_level()))
+        chip.press(DOWN)
+        dev.interrupt_event()  # soft IRQ at a jump of the handler
+        raise RuntimeError("handler")
+
+    up.irq(on_up, BOTH)
+    down.irq(recorder(events, "DOWN"), BOTH)
+    chip.press(UP)
+    with pytest.raises(RuntimeError, match="handler"):
+        dev.interrupt_event()
+    assert events == [("UP", 0), ("DOWN", 0, 0)]
+    assert chip.regs[INTF] == 0
+    assert dev._head == dev._tail
+
+
+def test_first_handler_exception_is_raised_after_all_events(drv, dev, chip):
+    """Two handlers of the same read raise: both run, and the first
+    exception reaches the caller once every event is delivered."""
+    events = []
+    up = dpad_pin(drv, dev, UP)
+    down = dpad_pin(drv, dev, DOWN)
+
+    def failing(name):
+        def handler(pin):
+            events.append((name, pin.irq_level()))
+            raise RuntimeError(name)
+
+        return handler
+
+    up.irq(failing("UP"), BOTH)
+    down.irq(failing("DOWN"), BOTH)
+    chip.press(UP)
+    chip.press(DOWN)  # missed by the chip, found in GPIO
+    with pytest.raises(RuntimeError, match="UP"):
+        dev.interrupt_event()
+    assert events == [("UP", 0), ("DOWN", 0)]
+    chip.release(UP)
+    with pytest.raises(RuntimeError, match="UP"):
+        dev.interrupt_event()
+    assert events[-1] == ("UP", 1)
+
+
 def test_many_services_during_a_slow_handler_lose_no_level(drv, dev, chip):
     """More nested services than the queue holds: the changes that found no
     room are read again from GPIO once the queue is empty, so the last

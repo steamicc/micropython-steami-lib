@@ -465,7 +465,9 @@ class MCP23009E(object):
         précédentes. La file contient 8 lectures ; au-delà, les changements
         sont relus dans GPIO une fois la file vidée (les fronts
         intermédiaires sont alors perdus, le dernier niveau transmis reste
-        juste).
+        juste). Si un callback lève une exception, les autres événements
+        sont transmis quand même, puis la première exception est levée à
+        nouveau.
 
         Limite : un appui et son relâchement survenus tous deux pendant
         qu'une interruption est en attente (entre la capture et cette
@@ -531,7 +533,12 @@ class MCP23009E(object):
         (IRQ logicielle, ou callback qui enregistre une interruption) revient
         tout de suite, et ses événements sont transmis par l'appel en cours,
         après ceux qui les précèdent.
+
+        Un callback qui lève une exception n'arrête pas la transmission :
+        les événements restants, y compris ceux mis en file entre-temps,
+        sont transmis, puis la première exception est levée à nouveau.
         """
+        error = None
         while not self._dispatching and (self._head != self._tail or self._overflow):
             self._dispatching = True
             try:
@@ -550,10 +557,14 @@ class MCP23009E(object):
                     # Les niveaux capturés précèdent les niveaux actuels
                     for i in range(8):
                         if (from_intcap >> i) & 1:
-                            self._dispatch_if_current(i, (captured >> i) & 1, generation)
+                            exc = self._dispatch_if_current(i, (captured >> i) & 1, generation)
+                            if error is None:
+                                error = exc
                     for i in range(8):
                         if (from_gpio >> i) & 1:
-                            self._dispatch_if_current(i, (gpio >> i) & 1, generation)
+                            exc = self._dispatch_if_current(i, (gpio >> i) & 1, generation)
+                            if error is None:
+                                error = exc
                 elif self._overflow:
                     # File vidée après un débordement : relire les
                     # changements qui n'y ont pas trouvé de place
@@ -561,24 +572,44 @@ class MCP23009E(object):
                     self._read_interrupt(0)
             finally:
                 self._dispatching = False
+        if error is not None:
+            raise error
 
     def _dispatch_if_current(self, i, level, generation):
         """
         Appelle les callbacks du GPIO i, sauf si son interruption a été
         désactivée, ou enregistrée à nouveau, après la lecture de l'événement
+
+        Returns:
+            La première exception levée par un callback, ou None
         """
         if (self._enabled >> i) & 1 and generation >= self._registered[i]:
-            self._dispatch(i, level)
+            return self._dispatch(i, level)
+        return None
 
     def _dispatch(self, i, level):
-        """Appelle les callbacks du GPIO i pour un événement de niveau level"""
-        if level == MCP23009_LOGIC_HIGH:
-            if self.events_rise[i] is not None:
-                self.events_rise[i]()
-        else:
-            if self.events_fall[i] is not None:
-                self.events_fall[i]()
+        """
+        Appelle les callbacks du GPIO i pour un événement de niveau level
+
+        Une exception levée par un callback n'empêche pas l'appel du suivant.
+
+        Returns:
+            La première exception levée par un callback, ou None
+        """
+        error = None
+        callback = self.events_rise[i] if level == MCP23009_LOGIC_HIGH else self.events_fall[i]
+        if callback is not None:
+            try:
+                callback()
+            except Exception as exc:
+                error = exc
 
         # Appeler le callback de changement avec le niveau
-        if self.events_change[i] is not None:
-            self.events_change[i](level)
+        callback = self.events_change[i]
+        if callback is not None:
+            try:
+                callback(level)
+            except Exception as exc:
+                if error is None:
+                    error = exc
+        return error

@@ -132,7 +132,9 @@ or a handler that registers another pin), the new events are queued and
 delivered after the ones still waiting, so each pin's press and release
 always come in order. The queue holds 8 reads; changes that find no room
 are read again from GPIO once the queue is empty (the edges in between are
-lost, the last reported level stays right).
+lost, the last reported level stays right). If a handler raises an
+exception, the other queued events are still delivered, then the first
+exception is raised again to the caller (the soft IRQ, or the `irq()` call).
 
 Registering a handler (`irq()`, or `interrupt_on_change()`,
 `interrupt_on_falling()` and `interrupt_on_raising()`) stores the callback,
