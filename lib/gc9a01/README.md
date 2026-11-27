@@ -143,6 +143,8 @@ The GS4_HMSB FrameBuffer itself is `display.framebuf`, for the other FrameBuffer
 
 * `show()` — send the frame to the screen (required after drawing)
 
+`show()` takes about 74 ms (see Memory) and is not synchronised with the panel refresh: the tearing-effect (TE) output of the GC9A01 is not wired on the STeaMi V1c, so a fast animation can tear.
+
 ### Power Management
 
 * `power_off()` — turn the display off and put the controller to sleep

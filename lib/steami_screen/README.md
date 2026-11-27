@@ -283,6 +283,8 @@ screen.clear()
 screen.show()
 ```
 
+`show()` sends the whole frame. On the V1c (240 px GC9A01) it takes about 74 ms, measured on the board (167 ms before v0.31.0), so an animation redrawn at every frame runs at about 13 frames per second at best, less the drawing time. It is not synchronised with the panel refresh: the panel's tearing-effect (TE) signal is not wired on the STeaMi, so a frame can show partly old and partly new content (tearing) on fast animations.
+
 ---
 
 ### Properties
