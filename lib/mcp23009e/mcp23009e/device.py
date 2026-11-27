@@ -10,9 +10,6 @@ from mcp23009e.const import (
     MCP23009_GPPU,
     MCP23009_INTCAP,
     MCP23009_INTCON,
-    MCP23009_INTCON_PREVIOUS_STATE,
-    MCP23009_INTEN_DISABLE,
-    MCP23009_INTEN_ENABLE,
     MCP23009_INTF,
     MCP23009_IOCON,
     MCP23009_IODIR,
@@ -284,18 +281,18 @@ class MCP23009E(object):
         """
         # INTCON d'abord, pour comparer avec l'état précédent : en mode
         # DEFVAL, activer GPINTEN déclencherait une interruption tout de suite
-        intcon = self._read_reg(MCP23009_INTCON)
-        intcon = _set_bit(intcon, gpx, MCP23009_INTCON_PREVIOUS_STATE)
-        self._write_reg(MCP23009_INTCON, intcon)
+        # Each read-modify-write below has no jump between its read and its
+        # write, so no scheduled soft IRQ can run there and have its own
+        # change overwritten (MicroPython runs them only at jumps).
+        # INTCON bit 0 = compare with the previous state.
+        self._write_reg(MCP23009_INTCON, self._read_reg(MCP23009_INTCON) & ~(1 << gpx))
 
         # Effacer l'interruption en attente, sans appeler le callback de gpx
         self._service_interrupt(1 << gpx)
 
         # Lire GPINTEN seulement maintenant : un callback appelé ci-dessus
         # a pu activer ou désactiver un autre GPIO
-        gpinten = self._read_reg(MCP23009_GPINTEN)
-        gpinten = _set_bit(gpinten, gpx, MCP23009_INTEN_ENABLE)
-        self._write_reg(MCP23009_GPINTEN, gpinten)
+        self._write_reg(MCP23009_GPINTEN, self._read_reg(MCP23009_GPINTEN) | (1 << gpx))
 
     def _send_disable_interrupt(self, gpx):
         """
@@ -304,20 +301,13 @@ class MCP23009E(object):
         Args:
             gpx: Numéro de GPIO (0 à 7)
         """
-        # Lire les registres actuels
-        gpinten = self._read_reg(MCP23009_GPINTEN)
-        intcon = self._read_reg(MCP23009_INTCON)
-        defval = self._read_reg(MCP23009_DEFVAL)
-
-        # Désactiver l'interruption pour ce GPIO
-        gpinten = _set_bit(gpinten, gpx, MCP23009_INTEN_DISABLE)
-        intcon = _set_bit(intcon, gpx, MCP23009_INTCON_PREVIOUS_STATE)
-        defval = _set_bit(defval, gpx, MCP23009_LOGIC_LOW)
-
-        # Écrire les registres
-        self._write_reg(MCP23009_GPINTEN, gpinten)
-        self._write_reg(MCP23009_INTCON, intcon)
-        self._write_reg(MCP23009_DEFVAL, defval)
+        # Clear the gpx bit of GPINTEN, INTCON (previous state) and DEFVAL
+        # (low). Each read-modify-write has no jump between its read and its
+        # write, so a scheduled soft IRQ cannot run in between.
+        mask = ~(1 << gpx)
+        self._write_reg(MCP23009_GPINTEN, self._read_reg(MCP23009_GPINTEN) & mask)
+        self._write_reg(MCP23009_INTCON, self._read_reg(MCP23009_INTCON) & mask)
+        self._write_reg(MCP23009_DEFVAL, self._read_reg(MCP23009_DEFVAL) & mask)
 
     def interrupt_on_change(self, gpx, callback):
         """

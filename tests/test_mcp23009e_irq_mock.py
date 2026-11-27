@@ -466,6 +466,37 @@ def test_interrupt_read_and_clear_have_no_scheduler_point():
             assert not isinstance(sub, (ast.If, ast.IfExp, ast.BoolOp, ast.For, ast.While))
 
 
+@pytest.mark.parametrize("name", ("_send_enable_interrupt", "_send_disable_interrupt"))
+def test_register_read_modify_writes_have_no_scheduler_point(name):
+    """Each read-modify-write of GPINTEN, INTCON or DEFVAL is one statement
+    with no jump: a soft IRQ run between the read and the write could change
+    the register and have its change overwritten."""
+    import ast
+    from pathlib import Path
+
+    path = Path(__file__).parents[1] / "lib/mcp23009e/mcp23009e/device.py"
+    tree = ast.parse(path.read_text())
+    func = next(
+        node for node in ast.walk(tree) if isinstance(node, ast.FunctionDef) and node.name == name
+    )
+    writes = [
+        node
+        for node in ast.walk(func)
+        if isinstance(node, ast.Call)
+        and isinstance(node.func, ast.Attribute)
+        and node.func.attr == "_write_reg"
+    ]
+    assert len(writes) >= 1
+    for call in writes:
+        # The read is inside the write call itself.
+        assert any(
+            isinstance(sub, ast.Attribute) and sub.attr == "_read_reg" for sub in ast.walk(call)
+        )
+        for sub in ast.walk(call):
+            assert not isinstance(sub, (ast.If, ast.IfExp, ast.BoolOp, ast.For, ast.While))
+            assert not (isinstance(sub, ast.Name) and sub.id == "_set_bit")
+
+
 def test_disable_interrupt_stops_callbacks(drv, dev, chip):
     events = []
     btn = dpad_pin(drv, dev, UP)
