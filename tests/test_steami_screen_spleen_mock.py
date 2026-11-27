@@ -12,6 +12,15 @@ from pathlib import Path
 import pytest
 
 from tests.runner.executor import cleanup_driver, load_driver_mock
+from tests.test_steami_screen_scaling_mock import (  # noqa: F401 (mods and panel are fixtures)
+    ANCHORS,
+    WHITE,
+    RecordingDisplay,
+    box,
+    lit,
+    mods,
+    panel,
+)
 
 ROOT = Path(__file__).parent.parent
 SPLEEN_PATH = ROOT / "lib" / "steami_screen" / "steami_screen" / "spleen.py"
@@ -207,3 +216,208 @@ def test_mock_fonts_loads_spleen_only_for_a_face():
         assert "steami_screen.spleen" in sys.modules
     finally:
         cleanup_driver("steami_screen")
+
+
+# ----- Pixel text on 240: Spleen 8x16 x scale -----
+
+RGB_WHITE = (255, 255, 255)
+
+
+@pytest.fixture
+def psp(mods):  # noqa: F811 (the imported fixture)
+    """The steami_screen.spleen module of the `mods` context."""
+    return importlib.import_module("steami_screen.spleen")
+
+
+def spleen_pixels(fc, s, x, y, n):
+    """Set of the pixels of s drawn in face fc at (x, y), n x n per font pixel.
+
+    Read from the spleen.py bytes directly (MSB = column 0), not through
+    fonts: a full set maps ASCII 32..126, then EXTRA from 127, else '?';
+    a value set looks its key up. Each cell advances w * n.
+    """
+    w, h, key, data = fc[0], fc[1], fc[3], fc[4]
+    extra = sys.modules["steami_screen.spleen"].EXTRA
+    bpr = (w + 7) // 8
+    out = set()
+    for ch in s:
+        if key is not None:
+            i = key.find(ch)
+        elif 32 <= ord(ch) <= 126:
+            i = ord(ch) - 32
+        elif ch in extra:
+            i = 95 + extra.find(ch)
+        else:
+            i = ord("?") - 32
+        o = i * h * bpr
+        for r in range(h):
+            for col in range(w):
+                if data[o + r * bpr + col // 8] >> (7 - col % 8) & 1:
+                    for dy in range(n):
+                        for dx in range(n):
+                            out.add((x + col * n + dx, y + r * n + dy))
+        x += w * n
+    return out
+
+
+def on_panel(pixels, size=240):
+    """{(x, y): WHITE} of the pixels that lie on a size x size panel."""
+    return {p: WHITE for p in pixels if 0 <= p[0] < size and 0 <= p[1] < size}
+
+
+def counting(screen, raw):
+    """Count raw.blit and fill_rect calls of screen's GC9A01 adapter.
+
+    Apply before the first draw on that screen. Returns the live counts.
+    """
+    n = {"blit": 0, "fill_rect": 0}
+    blit, fill_rect = raw.blit, screen._d._fill_rect_raw
+
+    def counted_blit(*args):
+        n["blit"] += 1
+        return blit(*args)
+
+    def counted_fill_rect(*args):
+        n["fill_rect"] += 1
+        return fill_rect(*args)
+
+    raw.blit = counted_blit
+    screen._d._fill_rect_raw = counted_fill_rect
+    return n
+
+
+def test_mock_text_height_and_max_chars(panel):  # noqa: F811
+    s, _ = panel(128)
+    assert [s.text_height(), s.text_height(2), s.text_height(0)] == [8, 16, 8]
+    assert s.max_chars == 16
+    s, _ = panel(240)
+    assert [s.text_height(), s.text_height(2), s.text_height(0)] == [16, 32, 16]
+    assert s.max_chars == 30
+
+
+ACCENTED = "Élève 12:3.5°Ÿ"
+
+
+@pytest.mark.parametrize("scale", (1, 2, 3))
+def test_mock_pixel_text_matches_the_spleen_rows(panel, psp, scale):  # noqa: F811
+    # ':' and '.' are full 8x16 cells (no narrow window, no bold, 5.3);
+    # 'Ÿ' comes from slot 159.
+    s, raw = panel(240)
+    s.text(ACCENTED, at=(5, 30), color=RGB_WHITE, scale=scale)
+    pixels = spleen_pixels(psp.F8X16, ACCENTED, 5, 30, scale)
+    assert lit(raw) == on_panel(pixels)
+    if scale == 1:
+        assert len(pixels) == 342
+        assert box(raw) == (5, 30, 115, 41)
+    elif scale == 2:
+        assert len(pixels) == 1368
+        assert box(raw) == (5, 30, 226, 53)
+    else:
+        assert max(p[0] for p in pixels) > 239  # clipped at the right edge
+        assert box(raw)[2] == 239
+
+
+def test_mock_pixel_text_unknown_character_is_a_question_mark(panel):  # noqa: F811
+    s, raw = panel(240)
+    s.text("€5", at=(0, 0))
+    euro = lit(raw)
+    s, raw = panel(240)
+    s.text("?5", at=(0, 0))
+    assert euro
+    assert euro == lit(raw)
+
+
+def test_mock_pixel_text_clips_at_the_panel_edges(panel, psp):  # noqa: F811
+    for text, at, scale in (
+        ("Hello", (-5, 230), 2),
+        ("Hi", (235, -10), 3),
+        ("Hi", (-3, 232), 1),
+        ("Hi", (236, -6), 1),
+    ):
+        s, raw = panel(240)
+        s.text(text, at=at, scale=scale)
+        pixels = spleen_pixels(psp.F8X16, text, at[0], at[1], scale)
+        assert lit(raw) == on_panel(pixels), (text, at, scale)
+        assert lit(raw), (text, at, scale)
+    for scale in (1, 2):
+        s, raw = panel(240)
+        s.text("A", at=(300, 300), scale=scale)
+        assert lit(raw) == {}
+
+
+def test_mock_pixel_text_call_counts(panel):  # noqa: F811
+    s, raw = panel(240)
+    n = counting(s, raw)
+    s.text("Hi", at=(0, 0))
+    assert n == {"blit": 2, "fill_rect": 0}
+    s, raw = panel(240)
+    n = counting(s, raw)
+    s.text("Hi", at=(0, 0), scale=2)
+    # One fill_rect per run: 19 for 'H' and 9 for 'i', fewer than 252 // 4.
+    assert n == {"blit": 0, "fill_rect": 28}
+
+
+def test_mock_draw_value_ink_is_narrow_and_bold(mods, psp):  # noqa: F811
+    steami_screen, _ = mods
+    fonts = sys.modules["steami_screen.fonts"]
+    d = RecordingDisplay()
+    s = steami_screen.Screen(d)
+    o8, odot = fonts.offset(psp.F16X32, "8"), fonts.offset(psp.F16X32, ".")
+    s._draw("8.8", 100, 50, RGB_WHITE, fonts.VALUE, 4)
+    s._draw("8.8", 100, 50, RGB_WHITE, fonts.VALUE, 8)
+    s._draw("12:30 PM", 0, 0, RGB_WHITE, fonts.VALUE, 2)
+    s._draw("a.b", 0, 0, RGB_WHITE, fonts.TEXT, 2)
+    assert d.calls[0] == ("glyphs", 16, 32, [(o8, 100, 50), (odot, 112, 50), (o8, 124, 50)], 1, 1)
+    assert d.calls[1] == ("glyphs", 16, 32, [(o8, 100, 50), (odot, 124, 50), (o8, 148, 50)], 2, 1)
+    kind, w, h, glyphs, n, bold = d.calls[2]
+    assert (kind, w, h, n, bold) == ("glyphs", 8, 16, 1, 0)
+    assert [g[1] for g in glyphs] == [0, 8, 14, 20, 28, 36, 44, 52]
+    assert glyphs[2][0] == fonts.offset(psp.F8X16, ":")
+    kind, w, h, glyphs, n, bold = d.calls[3]
+    assert (kind, w, h, n, bold) == ("glyphs", 8, 16, 1, 0)
+    assert [g[1] for g in glyphs] == [0, 8, 16]
+
+
+def test_mock_draw_without_draw_glyphs_fills_runs(mods, psp):  # noqa: F811
+    # A display without draw_glyphs gets fonts.draw_runs over Screen._fill_rect.
+    steami_screen, _ = mods
+
+    class RectDisplay:
+        width = height = 240
+
+        def __init__(self):
+            self.rects = []
+
+        def fill_rect(self, *args):
+            self.rects.append(args)
+
+    d = RectDisplay()
+    s = steami_screen.Screen(d)
+    s.text("Hi", at=(0, 0))
+    pixels = set()
+    for x, y, w, h, c in d.rects:
+        assert c == RGB_WHITE
+        pixels.update((x + i, y + j) for i in range(w) for j in range(h))
+    assert len(d.rects) == 28  # one per run: 19 for 'H' and 9 for 'i'
+    assert pixels == spleen_pixels(psp.F8X16, "Hi", 0, 0, 1)
+
+
+def test_mock_128_never_touches_spleen(panel):  # noqa: F811
+    s, raw = panel(128)
+    n = counting(s, raw)
+    s.title("Title")
+    s.value(21.5, unit="C", label="T")
+    s.subtitle("one", "two")
+    s.bar(40)
+    s.gauge(30)
+    s.graph([1, 5, 3, 8])
+    s.menu(["a", "b", "c"], selected=1)
+    s.compass(90)
+    s.watch(10, 30, 15)
+    s.face("happy")
+    for scale in (1, 2):
+        for at in (*ANCHORS, (3, 4)):
+            s.text("Hi", at=at, scale=scale)
+    assert lit(raw)
+    assert "steami_screen.spleen" not in sys.modules
+    assert n["blit"] == 0

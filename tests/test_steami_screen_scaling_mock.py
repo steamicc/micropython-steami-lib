@@ -96,7 +96,7 @@ def test_mock_k_and_u_at_128_and_240(panel):
     # Arduino test_scale_quantities.
     assert [s128.u(v) for v in (8, -12, 40)] == [8, -12, 40]
     assert [s240.u(v) for v in (8, -12, 40, 11, 4, 3, 20)] == [15, -22, 75, 20, 7, 5, 37]
-    assert (s128.max_chars, s240.max_chars) == (16, 15)
+    assert (s128.max_chars, s240.max_chars) == (16, 30)
     assert (s240.width, s240.height, s240.center, s240.radius) == (240, 240, (120, 120), 120)
 
 
@@ -185,7 +185,8 @@ def test_mock_title_rows_and_cut_at_240(panel, text):
 @pytest.mark.parametrize("size", (128, 240))
 def test_mock_text_scale_0_counts_as_1(panel, size):
     # Arduino treats scale 0 as 1; at k > 1 it used to give f = 0 and draw nothing.
-    for at in ("N", "CENTER", "SW"):
+    # The pixel text (x, y) form too: on 240 it is Spleen 8x16 x scale.
+    for at in ("N", "CENTER", "SW", (10, 20)):
         s, raw = panel(size)
         s.text("Hi", at=at, scale=0)
         zero = lit(raw)
@@ -214,7 +215,7 @@ def test_mock_lowercase_title_takes_its_width_from_its_inked_rows(panel):
 
 
 class RecordingDisplay:
-    """A 240 px display that records draw_scaled_text and text calls."""
+    """A 240 px display that records draw_scaled_text, draw_glyphs and text calls."""
 
     width = height = 240
 
@@ -226,6 +227,9 @@ class RecordingDisplay:
 
     def draw_scaled_text(self, s, x, y, c, scale):
         self.calls.append(("scaled", s, x, y, scale))
+
+    def draw_glyphs(self, fc, glyphs, n, bold, c):
+        self.calls.append(("glyphs", fc[0], fc[1], list(glyphs), n, bold))
 
     def fill(self, c):
         pass
@@ -281,18 +285,26 @@ def test_mock_long_texts_stay_inside_the_circle(panel, text):
     assert not outside(raw, slack=0)
 
 
-def test_mock_widget_text_is_scaled_by_k(mods):
+def test_mock_widget_text_routes_to_the_spleen_faces(mods):
     steami_screen, _ = mods
+    fonts = sys.modules["steami_screen.fonts"]
     d = RecordingDisplay()
     s = steami_screen.Screen(d)
     s.title("Hi")
     s.text("Hi", at="NE")
     s.text("Hi", at="S", scale=2)
     s.value(42)
-    s.text("xy", at=(10, 20))  # real pixels: not scaled
+    s.text("xy", at=(10, 20))  # real pixels: Spleen 8x16 x scale
     s.text("xy", at=(10, 20), scale=3)
-    assert [c[4] for c in d.calls] == [2, 2, 4, 4, 1, 3]
-    assert d.calls[4][0] == "text"
+    # The widgets keep the 8x8 scaled text until their own task moves them.
+    assert [c[0] for c in d.calls[:4]] == ["scaled"] * 4
+    assert [c[4] for c in d.calls[:4]] == [2, 2, 4, 4]
+    f8x16 = sys.modules["steami_screen.spleen"].F8X16
+    o_x, o_y = fonts.offset(f8x16, "x"), fonts.offset(f8x16, "y")
+    assert d.calls[4:] == [
+        ("glyphs", 8, 16, [(o_x, 10, 20), (o_y, 18, 20)], 1, 0),
+        ("glyphs", 8, 16, [(o_x, 10, 20), (o_y, 34, 20)], 3, 0),
+    ]
 
 
 # ----- subtitle -----

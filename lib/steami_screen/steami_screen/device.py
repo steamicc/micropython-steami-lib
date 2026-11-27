@@ -16,11 +16,17 @@ Scaling rule (as the Arduino SteamiScreen): widget layout is written in
 factor k = (width + 64) // 128, 1 on the 128 px SSD1327 and 2 on the 240 px
 GC9A01. When k > 1, widget text is kept inside the round screen: it is
 moved or cut to the longest prefix that fits the circle at its inked rows.
-Primitives and text(s, at=(x, y)) take real pixels and are never scaled.
+
+Fonts, one per panel: the 128 px panel draws the 8x8 framebuf font. On the
+240 px panel the text is Spleen (steami_screen.spleen, through
+steami_screen.fonts), with accents: text(s, at=(x, y)) is Spleen 8x16 x
+scale. Strokes still use k. Primitives and text(s, at=(x, y)) take real
+pixels.
 """
 
 import math
 
+from steami_screen import fonts
 from steami_screen.const import (
     BLACK,
     DARK,
@@ -45,6 +51,7 @@ from steami_screen.const import (
     STEAMI_VALUE_SIDE_GAP,
     WHITE,
 )
+from steami_screen.fonts import TEXT, VALUE
 
 
 def _ray(deg):
@@ -77,7 +84,13 @@ class Screen:
 
     @property
     def max_chars(self):
-        return self.width // (self.CHAR_W * self.k)
+        """Characters of text that fit the width: 16 on 128 px, 30 on 240 px."""
+        k = self.k
+        return self.width // (8 if k == 1 else 4 * k)
+
+    def text_height(self, scale=1):
+        """Cell height of text(s, (x, y), c, scale): 8 x scale on 128, 16 x scale on 240."""
+        return (8 if self.k == 1 else 16) * max(scale, 1)
 
     @property
     def k(self):
@@ -204,6 +217,40 @@ class Screen:
         if n:
             self._draw_scaled_text(s[:n], x, y, color, f)
         return x, w
+
+    def _tw(self, s, ink, f):
+        """Width of text s drawn with ink at glyph factor f."""
+        if self.k == 1:
+            return len(s) * 8 * f
+        return fonts.width(s, len(s), ink, f)
+
+    def _draw(self, s, x, y, color, ink, f, fn=None):
+        """Draw s in its Spleen face at (x, y), the top of its cell (k > 1 only).
+
+        fn is the (face, n) pair judged on the whole text by the caller, so a
+        cut prefix keeps the face of the whole text; when None it is judged
+        on s. Without a face nothing is drawn. VALUE ink draws '.' and ':'
+        narrow (shifted left by a quarter cell, half advance) and is bold on
+        12x24 and 16x32.
+        """
+        if fn is None:
+            fn = fonts.face(s, ink, f)
+        if not fn:
+            return
+        fc, n = fn
+        adv = fonts.advance(ink, f)
+        bold = 1 if ink == VALUE and fc[0] >= 12 else 0
+        shift = (fc[0] // 4) * n
+        entries = []
+        for ch in s:
+            narrow = ink == VALUE and ch in ".:"
+            entries.append((fonts.offset(fc, ch), x - shift if narrow else x, y))
+            x += adv // 2 if narrow else adv
+        draw = getattr(self._d, "draw_glyphs", None)
+        if draw:
+            draw(fc, entries, n, bold, color)
+        else:
+            fonts.draw_runs(self._fill_rect, fc, entries, n, bold, color)
 
     # --- Level 1: Widgets ---
 
@@ -641,8 +688,10 @@ class Screen:
 
         At a cardinal position the glyphs are scaled by k and, when k > 1,
         the text is kept inside the circle (moved, then cut). An explicit
-        (x, y) is in real pixels and the scale is used as given. A scale
-        below 1 counts as 1.
+        (x, y) is in real pixels, the top left of the first cell: the 8x8
+        font x scale on 128 px, Spleen 8x16 x scale on 240 px (accents
+        included, any other character drawn as '?'). A scale below 1
+        counts as 1.
         """
         scale = max(scale, 1)
         if isinstance(at, str):
@@ -666,6 +715,9 @@ class Screen:
             scale = f
         else:
             x, y = at
+            if self.k > 1:
+                self._draw(text, x, y, color, TEXT, scale * self.k)
+                return
         self._txt(text, x, y, color, scale)
 
     def line(self, x1, y1, x2, y2, color=WHITE):
