@@ -74,7 +74,7 @@ screen.rect(screen.center[0] - box_w // 2, 10, box_w, screen.u(10), BLACK, fill=
 
 Text does not grow by `u()`: a character of `text()` is 8 px wide at scale 1 on both sizes, 8x8 on 128 px and 8x16 on 240 px (see Fonts), and `scale` multiplies both. Size a box that must hold `text(s, at, color, scale)`, at `(x, y)` or at a cardinal position, from its cells:
 
-* width: `len(s) * 8 * scale` (there is no public text-width method; on 240 px each character, accented or not, is one cell, and on 128 px an accented letter is one cell once folded to its base letter);
+* width: `len(s) * 8 * scale` (there is no public text-width method). On 240 px each character is one cell, accented or not. On 128 px a French accented letter or `°` is one cell too (folded to its base letter, or drawn as the 8x8 degree sign), but any other non-ASCII character, such as `€`, takes one cell per UTF-8 byte at scale 1;
 * height: `screen.text_height(scale)`, that is `8 * scale` on 128 px and `16 * scale` on 240 px;
 * `screen.max_chars` is the number of characters that fit the width at scale 1 (16 on 128 px, 30 on 240 px); at scale `s` it is `screen.max_chars // s`.
 
