@@ -157,6 +157,20 @@ The pixels are identical: the mock tests compare the frame byte for byte with th
 bold included, against 1.2 ms for the blit. Program 04's text is 28 writer calls (the bold value is one call
 per glyph, not two blits).
 
+**`show()` speed-up (maintainer request).** The maintainer asked to speed up the driver's `show()` in this
+PR, after the two tips of the stm32python round TFT page (the highest SPI clock, native or viper code).
+Measured by the controller on the V1c (STM32WB55 at 64 MHz, MicroPython 1.29, real driver), `show()` took
+167 ms: 15 strips of 16 rows, each a palette blit from `GS4_HMSB` to RGB565 (7.1 ms) and an SPI write
+(3.9 ms at 16 MHz). A viper converter gave byte-identical strips in 3.6 ms per strip:
+- `_to_rgb565` (`@micropython.viper`, module level in `gc9a01/device.py`) looks up each nibble's RGB565 word
+  in a 32-byte palette buffer built once in `__init__` by an RGB565 FrameBuffer, so the words are copied in
+  the byte order the blit wrote (panel order);
+- it converts the rows of one strip only, the last short strip included; an odd width's padding nibble
+  gives no pixel;
+- the mock tests compare the SPI writes byte for byte with the old blit, on guarded buffers (the
+  micropython stub views ptr16 arguments as little-endian words), and the host unix MicroPython ran the
+  real viper function with the same output.
+
 **`Screen` (device.py).** When k > 1:
 - `_fit` and `_put` take an ink. The face is judged once from the whole text, and `_fit` returns it with
   the fit, so a cut prefix is drawn in the face of the whole text. The prefix masks, the replication and

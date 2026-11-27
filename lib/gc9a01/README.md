@@ -89,7 +89,17 @@ Colours are palette indexes (0 to 15), not RGB values. The palette is `gc9a01.PA
 
 All buffers are allocated by the constructor, so a lack of RAM shows up when the object is created. Create the display early in the program, before the heap gets fragmented.
 
-`show()` converts 16 rows at a time with `FrameBuffer.blit()` and a palette, into the strip buffer, and sends each strip over SPI (15 writes of 7 680 bytes; each write stays under the 65 535-byte DMA limit). CS stays low for the whole frame.
+`show()` converts 16 rows at a time into the strip buffer and sends each strip over SPI (15 writes of 7 680 bytes; each write stays under the 65 535-byte DMA limit). CS stays low for the whole frame.
+
+The conversion is a `@micropython.viper` function that looks up the RGB565 word of each pixel in the palette and writes it into the strip. The bytes are the same as with the `FrameBuffer.blit()` through a palette it replaced. Measured on the V1c (STM32WB55 at 64 MHz, MicroPython 1.29), per strip of 16 rows:
+
+| Step                              | Time   |
+| --------------------------------- | ------ |
+| Conversion, viper                 | 3.6 ms |
+| Conversion, palette blit (before) | 7.1 ms |
+| SPI write at 16 MHz               | 3.9 ms |
+
+A whole `show()` took 167 ms with the blit; with the viper conversion it should take about 15 x (3.6 + 3.9) = 112 ms.
 
 ## API Reference
 
