@@ -3,10 +3,14 @@
 The driver keeps a 16-colour GS4 frame and converts it to RGB565 while
 sending. These tests check the bytes on a FakeSPI: the Arduino init
 sequence, the window, the byte order of each palette colour, the size of
-each write, and that drawing off screen never raises.
+each write, and that drawing off screen never raises. show() converts with
+a viper function: its writes are compared byte for byte with the palette
+blit it replaced, on guarded buffers (viper has no bounds check).
 """
 
 import importlib
+import random
+import sys
 
 import pytest
 
@@ -265,12 +269,17 @@ def test_init_clears_what_was_drawn_before(rig):
     assert rig.frame() == bytes(FRAME_BYTES)
 
 
-def test_spi_is_mode0_at_16mhz(rig):
+def test_spi_is_mode0_at_32mhz(rig):
+    # 32 MHz is the SPI1 maximum on the STeaMi (64 MHz PCLK2 / 2).
+    const = importlib.import_module("gc9a01.const")
+    assert const.BAUDRATE == 32_000_000
     rig.dev.init()
     rig.dev.show()
-    assert rig.spi.inits
+    rig.dev.power_off()
+    rig.dev.power_on()
+    assert len(rig.spi.inits) == 5  # init() and its show(), show(), power_off(), power_on()
     for kwargs in rig.spi.inits:
-        assert kwargs == {"baudrate": 16_000_000, "polarity": 0, "phase": 0}
+        assert kwargs == {"baudrate": 32_000_000, "polarity": 0, "phase": 0}
 
 
 # ----- show() -----
@@ -355,6 +364,113 @@ def test_two_shows_send_the_init_sequence_once(rig):
     assert cmds.count(RAMWR) == 3  # clear in init(), then two show()
 
 
+# ----- show() against the palette blit it replaced -----
+
+# Panel size, then sizes with a short last strip (height not a multiple of
+# STRIP_ROWS), fewer rows than a strip, and odd widths (the last byte of
+# each GS4_HMSB row holds one pixel and a padding nibble).
+GEOMETRIES = [(240, 240), (240, 37), (37, 23), (3, 40), (16, 5), (2, 17), (1, 1)]
+
+
+class Guarded(bytearray):
+    """A buffer that fails on any index outside it.
+
+    Viper has no bounds check; Python would raise past the end but wrap a
+    negative index silently, so both are refused here.
+    """
+
+    def __getitem__(self, i):
+        assert isinstance(i, int), i
+        assert 0 <= i < len(self), i
+        return super().__getitem__(i)
+
+    def __setitem__(self, i, v):
+        assert isinstance(i, int), i
+        assert 0 <= i < len(self), i
+        super().__setitem__(i, v)
+
+
+def make_device(device, width, height, seed=0):
+    """A width x height driver on a FakeSPI, its frame filled with random bytes.
+
+    Random bytes give every palette index in both nibbles, and a non-zero
+    padding nibble at the end of the rows of an odd width.
+    """
+    dc = FakePin("dc")
+    cs = FakePin("cs")
+    spi = FakeSPI(1, dc=dc, cs=cs)
+    dev = device.GC9A01(spi, dc, cs, None, width, height)
+    dev.buffer[:] = random.Random(seed).randbytes(len(dev.buffer))
+    return dev
+
+
+def blit_strips(dev):
+    """The frame writes of show() before viper: one palette blit per strip."""
+    framebuf = sys.modules["framebuf"]
+    const = importlib.import_module("gc9a01.const")
+    width, height = dev.width, dev.height
+    rows = min(const.STRIP_ROWS, height)
+    strip = bytearray(width * 2 * rows)
+    strip_fb = framebuf.FrameBuffer(strip, width, rows, framebuf.RGB565)
+    palette = framebuf.FrameBuffer(bytearray(32), 16, 1, framebuf.RGB565)
+    for i, word in enumerate(const.PALETTE_RGB565):
+        palette.pixel(i, 0, word)
+    source = framebuf.FrameBuffer(bytearray(dev.buffer), width, height, framebuf.GS4_HMSB)
+    writes = []
+    for y in range(0, height, rows):
+        strip_fb.blit(source, 0, -y, -1, palette)
+        left = min(rows, height - y)
+        writes.append(bytes(strip[: left * width * 2]))
+    return writes
+
+
+def frame_writes(spi):
+    """The data writes that follow the last RAMWR command."""
+    ramwr = max(
+        i for i, (dc, _cs, data) in enumerate(spi.writes) if dc == 0 and data == bytes([RAMWR])
+    )
+    return [data for _dc, _cs, data in spi.writes[ramwr + 1 :]]
+
+
+@pytest.mark.parametrize(("width", "height"), GEOMETRIES)
+def test_show_writes_the_strips_of_the_palette_blit(device, width, height):
+    dev = make_device(device, width, height)
+    expected = blit_strips(dev)
+    dev.show()
+    assert frame_writes(dev.spi) == expected
+
+
+@pytest.mark.parametrize(("width", "height"), GEOMETRIES)
+def test_show_stays_inside_the_frame_strip_and_palette(device, width, height):
+    dev = make_device(device, width, height, seed=1)
+    expected = blit_strips(dev)
+    sizes = (len(dev.buffer), len(dev._strip), len(dev._palette))
+    dev.buffer = Guarded(dev.buffer)
+    dev._strip = Guarded(dev._strip)
+    dev._palette = Guarded(dev._palette)
+    dev.show()
+    assert frame_writes(dev.spi) == expected
+    assert (len(dev.buffer), len(dev._strip), len(dev._palette)) == sizes
+    assert len(dev._strip) == width * 2 * min(16, height)
+    assert len(dev._palette) == 32
+
+
+def test_show_does_not_blit(device, monkeypatch):
+    # The frame is converted by the viper function, not by FrameBuffer.blit.
+    framebuf = sys.modules["framebuf"]
+
+    def no_blit(*_args):
+        raise AssertionError("show() used FrameBuffer.blit")
+
+    for width, height in ((240, 20), (37, 3)):
+        dev = make_device(device, width, height)
+        expected = blit_strips(dev)
+        monkeypatch.setattr(framebuf.FrameBuffer, "blit", no_blit)
+        dev.show()
+        monkeypatch.undo()
+        assert frame_writes(dev.spi) == expected
+
+
 # ----- Drawing -----
 
 
@@ -417,6 +533,24 @@ def test_blit_with_key(rig):
     rig.dev.blit(sprite, 50, 60, 0)
     assert rig.dev.pixel(50, 60) == 11
     assert rig.dev.pixel(51, 60) == 2
+
+
+def test_blit_with_palette_maps_then_keys(rig):
+    import framebuf
+
+    rig.dev.fill(2)
+    glyph = (memoryview(bytes([0b10100000]))[0:1], 3, 1, framebuf.MONO_HLSB)
+
+    # Palette pixel 0 (high nibble) = 0, pixel 1 (low nibble) = 9, key 0:
+    # set bits become 9, clear bits map to the key and are skipped.
+    palette = framebuf.FrameBuffer(bytearray([(0 << 4) | 9]), 2, 1, framebuf.GS4_HMSB)
+    rig.dev.blit(glyph, 50, 60, 0, palette)
+    assert [rig.dev.pixel(x, 60) for x in range(50, 53)] == [9, 2, 9]
+
+    # Colour 0 (BLACK) on set bits: the key moves to 1, so black is drawn.
+    palette = framebuf.FrameBuffer(bytearray([(1 << 4) | 0]), 2, 1, framebuf.GS4_HMSB)
+    rig.dev.blit(glyph, 50, 61, 1, palette)
+    assert [rig.dev.pixel(x, 61) for x in range(50, 53)] == [0, 2, 0]
 
 
 # ----- Power -----

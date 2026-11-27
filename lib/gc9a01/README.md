@@ -12,7 +12,7 @@ The init sequence, the reset timing and the V1c orientation come from the Arduin
 | Resolution  | 240 × 240 pixels (round)                |
 | Panel colour | RGB565 (65 536 colours)                |
 | Frame colour | 16-colour palette (4 bits per pixel)   |
-| Interface   | SPI, mode 0 at 16 MHz                   |
+| Interface   | SPI, mode 0 at 32 MHz                   |
 
 ## Features
 
@@ -89,7 +89,20 @@ Colours are palette indexes (0 to 15), not RGB values. The palette is `gc9a01.PA
 
 All buffers are allocated by the constructor, so a lack of RAM shows up when the object is created. Create the display early in the program, before the heap gets fragmented.
 
-`show()` converts 16 rows at a time with `FrameBuffer.blit()` and a palette, into the strip buffer, and sends each strip over SPI (15 writes of 7 680 bytes; each write stays under the 65 535-byte DMA limit). CS stays low for the whole frame.
+`show()` converts 16 rows at a time into the strip buffer and sends each strip over SPI (15 writes of 7 680 bytes; each write stays under the 65 535-byte DMA limit). CS stays low for the whole frame.
+
+The conversion is a `@micropython.viper` function that looks up the RGB565 word of each pixel in the palette and writes it into the strip. The bytes are the same as with the `FrameBuffer.blit()` through a palette it replaced. Measured on the V1c (STM32WB55 at 64 MHz, MicroPython 1.29), per strip of 16 rows:
+
+| Step                              | Time   |
+| --------------------------------- | ------ |
+| Conversion, viper                 | 3.6 ms |
+| Conversion, palette blit (before) | 7.1 ms |
+| SPI write at 16 MHz (before)      | 3.9 ms |
+| SPI write at 32 MHz               | 2.0 ms |
+
+A whole `show()` took 167 ms with the blit at 16 MHz and takes 74 ms with the viper conversion at 32 MHz, measured on the V1c (15 strips of 3.6 + 2.0 ms add up to 84 ms; the board measured less).
+
+The SPI clock is `BAUDRATE` in `gc9a01/const.py`: 32 MHz, the SPI1 maximum on the STeaMi (64 MHz PCLK2 / 2), checked on a V1c (identical pixels under a webcam, all V1c hardware tests pass). If a panel shows errors at that speed, set it back to 16 MHz (`16_000_000`), the speed used before.
 
 ## API Reference
 
@@ -113,7 +126,7 @@ Coordinates are in pixels; drawing outside the screen is clipped.
 * `rect(x, y, w, h, i)` — draw a rectangle outline
 * `line(x1, y1, x2, y2, i)` — draw a line
 * `text(s, x, y, i)` — draw text with the 8x8 framebuf font
-* `blit(fb, x, y, key=-1)` — copy a FrameBuffer; pixels equal to `key` are skipped
+* `blit(fb, x, y, key=-1, palette=None)` — copy a FrameBuffer, or a read-only `(buffer, w, h, format)` tuple; with a palette each source pixel is mapped through it before the key test; pixels equal to `key` are skipped
 
 The GS4_HMSB FrameBuffer itself is `display.framebuf`, for the other FrameBuffer methods (`ellipse()`, `poly()`, `scroll()`...).
 

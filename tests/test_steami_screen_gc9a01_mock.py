@@ -78,6 +78,21 @@ class RecordingRaw:
     def show(self):
         self.calls.append(("show",))
 
+    def blit(self, fb, x, y, key=-1, palette=None):
+        self.calls.append(
+            (
+                "blit",
+                bytes(fb[0]),
+                fb[1],
+                fb[2],
+                fb[3],
+                x,
+                y,
+                key,
+                (palette.pixel(0, 0), palette.pixel(1, 0)),
+            )
+        )
+
 
 @pytest.fixture
 def mods():
@@ -323,3 +338,406 @@ def test_scaled_text_goes_through_fill_rect_blocks(recorded):
     for call in raw.calls:
         assert call[0] == "fill_rect"
         assert call[3:] == (2, 2, 5)
+
+
+# ----- draw_glyphs -----
+
+
+@pytest.fixture
+def sp(mods):
+    """The steami_screen.spleen module, imported on CPython."""
+    return importlib.import_module("steami_screen.spleen")
+
+
+def glyph_bits(fc, o):
+    """Set (col, row) bits of the glyph at offset o, MSB = column 0."""
+    w, h, data = fc[0], fc[1], fc[4]
+    bpr = (w + 7) // 8
+    bits = set()
+    for r in range(h):
+        for col in range(w):
+            if data[o + r * bpr + col // 8] >> (7 - col % 8) & 1:
+                bits.add((col, r))
+    return bits
+
+
+def test_draw_glyphs_blits_native_faces_with_one_colour_lookup(
+    recorded, adapter_mod, sp, monkeypatch
+):
+    display, raw = recorded
+    lookups = []
+    original = adapter_mod.rgb_to_index
+
+    def counting(color):
+        lookups.append(color)
+        return original(color)
+
+    monkeypatch.setattr(adapter_mod, "rgb_to_index", counting)
+    data = bytes(sp.F8X16[4])
+    # Offset 528 is "A", 1168 is "i".
+    display.draw_glyphs(sp.F8X16, [(528, 10, 20), (1168, 18, 20)], 1, 0, (255, 255, 255))
+    assert raw.calls == [
+        ("blit", data[528:544], 8, 16, 3, 10, 20, 0, (0, 5)),
+        ("blit", data[1168:1184], 8, 16, 3, 18, 20, 0, (0, 5)),
+    ]
+    assert len(lookups) == 1
+
+
+def test_draw_glyphs_bold_is_a_second_blit_one_pixel_right(recorded, sp):
+    display, raw = recorded
+    o = sp.VALUE_KEY.find("8") * 32 * 2
+    display.draw_glyphs(sp.F16X32, [(o, 50, 60)], 1, 1, (255, 255, 255))
+    data = bytes(sp.F16X32[4])[o : o + 64]
+    assert raw.calls == [
+        ("blit", data, 16, 32, 3, 50, 60, 0, (0, 5)),
+        ("blit", data, 16, 32, 3, 51, 60, 0, (0, 5)),
+    ]
+
+
+def test_draw_glyphs_resolves_its_setup_once(recorded, sp, monkeypatch):
+    # A raw without a GS4 frame: its blit, one memoryview per face. (On the
+    # real driver draw_glyphs writes into the frame, see the next tests.)
+    display, raw = recorded
+    display.draw_glyphs(sp.F8X16, [(528, 10, 20)], 1, 0, (255, 255, 255))
+    assert display._frame is False
+    assert display._blit == raw.blit
+    views = dict(display._mvs)
+    assert list(views) == [id(sp.F8X16[4])]
+    monkeypatch.setattr(display._raw, "blit", None)
+    display.draw_glyphs(sp.F8X16, [(1168, 18, 20)], 1, 1, (0, 0, 0))
+    display.draw_glyphs(sp.F16X32, [(0, 30, 20)], 1, 0, (0, 0, 0))
+    assert display._mvs[id(sp.F8X16[4])][1] is views[id(sp.F8X16[4])][1]
+    assert len(display._mvs) == 2
+    assert len(raw.calls) == 4
+
+
+def test_draw_glyphs_resolves_the_frame_once(real, sp, monkeypatch):
+    # The driver's GS4_HMSB buffer and its size, packed (width << 16) | height.
+    display, raw = real
+    frame = raw.buffer
+    display.draw_glyphs(sp.F8X16, [(528, 10, 20)], 1, 0, (255, 255, 255))
+    assert display._frame is frame
+    assert display._dims == (240 << 16) | 240
+    monkeypatch.setattr(raw, "buffer", None)
+    display.draw_glyphs(sp.F8X16, [(528, 30, 20)], 2, 0, (255, 255, 255))
+    bits = glyph_bits(sp.F8X16, 528)  # "A"
+    assert all(raw.framebuf.pixel(31 + 2 * col, 21 + 2 * row) == 5 for col, row in bits)
+    # The blit setup is never made.
+    assert display._blit is None
+    assert display._mvs == {}
+
+
+def test_draw_glyphs_writes_each_glyph_once_on_the_real_frame(real, adapter_mod, sp, monkeypatch):
+    # One writer call per glyph, whatever n and bold (bold is the same call,
+    # not a second one), never a blit or a fill_rect, one colour lookup.
+    display, raw = real
+    calls = []
+    lookups = []
+    original = adapter_mod.rgb_to_index
+
+    def counting(color):
+        lookups.append(color)
+        return original(color)
+
+    def refused(*args):
+        raise AssertionError(args)
+
+    monkeypatch.setattr(adapter_mod, "rgb_to_index", counting)
+    monkeypatch.setattr(adapter_mod, "_write_glyph", lambda *args: calls.append(args))
+    monkeypatch.setattr(raw.framebuf, "blit", refused)
+    monkeypatch.setattr(display, "_fill_rect_raw", refused)
+    dims = (240 << 16) | 240
+    display.draw_glyphs(sp.F8X16, [(528, 10, 20), (1168, -3, 230)], 1, 0, (255, 255, 255))
+    assert calls == [
+        (raw.buffer, dims, sp.F8X16[4], 528, 1, 16, 10, 20, 1, 5),
+        (raw.buffer, dims, sp.F8X16[4], 1168, 1, 16, -3, 230, 1, 5),
+    ]
+    assert len(lookups) == 1
+    calls.clear()
+    o = sp.VALUE_KEY.find("8") * 32 * 2
+    display.draw_glyphs(sp.F16X32, [(o, 50, 60)], 2, 1, (0, 0, 0))
+    # ink is the palette index, plus 16 for bold.
+    assert calls == [(raw.buffer, dims, sp.F16X32[4], o, 2, 32, 50, 60, 2, 16)]
+    assert len(lookups) == 2
+
+
+def test_draw_glyphs_needs_a_whole_gs4_frame(mods, sp):
+    # A buffer smaller than ((width + 1) // 2) * height is never written:
+    # draw_glyphs keeps the blit.
+    steami_screen, _ = mods
+    raw = RecordingRaw()
+    raw.buffer = bytearray(120 * 240 - 1)
+    display = steami_screen.GC9A01Display(raw)
+    display.draw_glyphs(sp.F8X16, [(528, 10, 20)], 1, 0, (255, 255, 255))
+    assert [call[0] for call in raw.calls] == ["blit"]
+    assert not any(raw.buffer)
+
+
+def test_draw_glyphs_frame_needs_a_width_below_32768(mods, sp):
+    # dims = (width << 16) | height is a signed 32-bit viper int on the board:
+    # from 32768 on, width >> 16 is negative there and nothing would be drawn.
+    steami_screen, _ = mods
+    raw = RecordingRaw()
+    raw.width, raw.height = 40000, 1
+    raw.buffer = bytearray(20000)
+    display = steami_screen.GC9A01Display(raw)
+    display.draw_glyphs(sp.F8X16, [(528, 10, 0)], 1, 0, (255, 255, 255))
+    assert display._frame is False
+    assert [call[0] for call in raw.calls] == ["blit"]
+
+
+@pytest.mark.parametrize("o", (-16, -1, 1, 10**7))
+def test_draw_glyphs_frame_rejects_an_offset_outside_the_face(real, sp, o):
+    # _write_glyph reads src[o ...] unchecked: an offset whose glyph is not
+    # wholly in the face data would read memory around it (or fault).
+    display, raw = real
+    fc = sp.F8X16
+    size = fc[1] * ((fc[0] + 7) // 8)
+    o = len(fc[4]) - size + o if o > 0 and o < size else o
+    before = bytes(raw.buffer)
+    with pytest.raises(ValueError):
+        display.draw_glyphs(fc, [(o, 10, 20)], 1, 0, (255, 255, 255))
+    assert bytes(raw.buffer) == before
+    # The last glyph of the face is still drawn.
+    display.draw_glyphs(fc, [(len(fc[4]) - size, 10, 20)], 1, 0, (255, 255, 255))
+
+
+@pytest.mark.parametrize("width", (17, 24, 25, 32))
+@pytest.mark.parametrize("n", (1, 2))
+def test_draw_glyphs_wider_faces_match_the_blit(mods, width, n):
+    # _write_glyph reads 1 or 2 bytes per row: a face wider than 16 px takes
+    # the blit / fill_rect path, which draws any width.
+    bpr = (width + 7) // 8
+    data = bytes((0x81 + 37 * i) & 0xFF for i in range(2 * 8 * bpr))
+    fc = (width, 8, 0, None, data)
+    glyphs = [(0, 3, 2), (8 * bpr, 3 + width * n + 1, 2)]
+    display, raw, ref = frame_pair(mods, 2 * width * n + 9, 8 * n + 4, 2)
+    display.draw_glyphs(fc, glyphs, n, 1, (255, 255, 255))
+    reference(ref, fc, glyphs, n, 1, 5)
+    assert bytes(raw.buffer) == bytes(ref.buffer)
+    assert bytes(raw.buffer) != bytes([0x22]) * len(raw.buffer)
+
+
+# ----- draw_glyphs: viper frame writer against the blit and fill_rect -----
+
+FACE_NAMES = ("F6X12", "F8X16", "F12X24", "F16X32")
+# (ink, background) as (RGB, palette index): WHITE on DARK, BLACK on WHITE.
+COLOURS = (((255, 255, 255), 5, 2), ((0, 0, 0), 0, 5))
+
+
+class Guarded(bytearray):
+    """A frame that fails on any index outside it.
+
+    Viper has no bounds check; Python would raise past the end but wrap a
+    negative index silently, so both are refused here.
+    """
+
+    def __getitem__(self, i):
+        assert isinstance(i, int), i
+        assert 0 <= i < len(self), i
+        return super().__getitem__(i)
+
+    def __setitem__(self, i, v):
+        assert isinstance(i, int), i
+        assert 0 <= i < len(self), i
+        super().__setitem__(i, v)
+
+
+def reference(raw, fc, glyphs, n, bold, c):
+    """Paint glyphs as draw_glyphs did before viper, on raw's framebuf.
+
+    n = 1: one palette blit per glyph, bold a second blit one pixel right.
+    n >= 2: fonts.draw_runs over the frame's fill_rect.
+    """
+    fb = raw.framebuf
+    if n > 1:
+        sys.modules["steami_screen.fonts"].draw_runs(fb.fill_rect, fc, glyphs, n, bold, c)
+        return
+    fbm = sys.modules["framebuf"]
+    b = 1 if c == 0 else 0
+    pal = fbm.FrameBuffer(bytearray([(b << 4) | c]), 2, 1, fbm.GS4_HMSB)
+    w, h = fc[0], fc[1]
+    size = h * ((w + 7) // 8)
+    mv = memoryview(fc[4])
+    for o, x, y in glyphs:
+        src = (mv[o : o + size], w, h, fbm.MONO_HLSB)
+        fb.blit(src, x, y, b, pal)
+        if bold:
+            fb.blit(src, x + 1, y, b, pal)
+
+
+def frame_pair(mods, width, height, bg, guarded=False):
+    """(display, its raw, reference raw): two real drivers on a bg frame."""
+    steami_screen, driver = mods
+    raws = []
+    for _ in range(2):
+        raw = driver.GC9A01(
+            FakeSPI(1), FakePin("dc"), FakePin("cs"), width=width, height=height
+        )
+        raw.fill(bg)
+        raws.append(raw)
+    if guarded:
+        raws[0].buffer = Guarded(raws[0].buffer)
+    return steami_screen.GC9A01Display(raws[0]), raws[0], raws[1]
+
+
+def every_offset(fc):
+    """Offset of every glyph of fc: 128 codes (accents included) or the key."""
+    size = fc[1] * ((fc[0] + 7) // 8)
+    return [i * size for i in range(len(fc[4]) // size)]
+
+
+@pytest.mark.parametrize("colour", COLOURS)
+@pytest.mark.parametrize("bold", (0, 1))
+@pytest.mark.parametrize("n", (1, 2, 3))
+@pytest.mark.parametrize("name", FACE_NAMES)
+def test_draw_glyphs_frame_is_byte_identical_to_the_blit(mods, sp, name, n, bold, colour):
+    # Every glyph of the face, 16 per row with an odd pitch (even and odd x),
+    # on a frame of odd width (the last byte of each row has a pad nibble).
+    rgb, c, bg = colour
+    fc = getattr(sp, name)
+    w, h = fc[0], fc[1]
+    pitch, line = w * n + 3, h * n + 1
+    offsets = every_offset(fc)
+    rows = (len(offsets) + 15) // 16
+    width, height = 16 * pitch + 5, rows * line + 3
+    assert width % 2 == 1
+    glyphs = [(o, 1 + (i % 16) * pitch, 2 + (i // 16) * line) for i, o in enumerate(offsets)]
+    display, raw, ref = frame_pair(mods, width, height, bg)
+    display.draw_glyphs(fc, glyphs, n, bold, rgb)
+    reference(ref, fc, glyphs, n, bold, c)
+    assert len(raw.buffer) == len(ref.buffer) == (width + 1) // 2 * height
+    assert raw.buffer != bytearray([bg << 4 | bg]) * len(raw.buffer)
+    assert bytes(raw.buffer) == bytes(ref.buffer)
+
+
+def edge_positions(size, extent):
+    """Coordinates around a frame edge for a glyph extent px long: wholly
+    before, across the start (odd and even), inside, across the end, past it."""
+    return sorted(
+        {
+            -extent - 3,
+            -extent,
+            -extent + 1,
+            -5,
+            -4,
+            -1,
+            0,
+            1,
+            size - extent - 1,
+            size - extent,
+            size - 5,
+            size - 4,
+            size - 1,
+            size,
+            size + 3,
+        }
+    )
+
+
+# Glyphs that ink their first and last columns and rows: "M", "W", "@", "É"
+# for the full sets, "8" and "0" for the value sets.
+EDGE_GLYPHS = {"F6X12": "MW@É", "F8X16": "MW@É", "F12X24": "80", "F16X32": "80"}
+
+
+@pytest.mark.parametrize("bold", (0, 1))
+@pytest.mark.parametrize("n", (1, 2))
+@pytest.mark.parametrize("name", FACE_NAMES)
+def test_draw_glyphs_clips_to_the_frame_like_the_blit(mods, sp, name, n, bold):
+    # Text partly off the frame draws its visible part and nothing else: the
+    # frame equals the blit/fill_rect one, keeps its length, and no index
+    # outside it is ever read or written (Guarded). 37 x 23 has odd width.
+    fonts = sys.modules["steami_screen.fonts"]
+    fc = getattr(sp, name)
+    w, h = fc[0], fc[1]
+    width, height = 37, 23
+    size = (width + 1) // 2 * height
+    for ch in EDGE_GLYPHS[name]:
+        o = fonts.offset(fc, ch)
+        for x in edge_positions(width, (w + bold) * n):
+            for y in edge_positions(height, h * n):
+                display, raw, ref = frame_pair(mods, width, height, 2, guarded=True)
+                display.draw_glyphs(fc, [(o, x, y)], n, bold, (255, 255, 255))
+                reference(ref, fc, [(o, x, y)], n, bold, 5)
+                assert isinstance(raw.buffer, Guarded)
+                assert len(raw.buffer) == size
+                assert bytes(raw.buffer) == bytes(ref.buffer), (ch, x, y)
+
+
+def test_draw_glyphs_clipping_reaches_every_edge(mods, sp):
+    # The clipping test above does paint across each edge: a glyph at
+    # (-4, -5) and one at (width - 4, height - 5) both leave pixels.
+    fc = sp.F8X16
+    o = 528 + 12 * 16  # "M"
+    for x, y in ((-4, -5), (33, 18)):
+        display, raw, _ = frame_pair(mods, 37, 23, 0)
+        display.draw_glyphs(fc, [(o, x, y)], 1, 0, (255, 255, 255))
+        assert any(raw.buffer), (x, y)
+
+
+def test_draw_glyphs_black_uses_key_1(recorded, sp):
+    display, raw = recorded
+    display.draw_glyphs(sp.F8X16, [(528, 0, 0)], 1, 0, (0, 0, 0))
+    assert len(raw.calls) == 1
+    call = raw.calls[0]
+    assert call[0] == "blit"
+    assert call[7] == 1
+    assert call[8] == (1, 0)
+
+
+def test_draw_glyphs_fills_runs_for_replicated_faces(recorded, sp):
+    display, raw = recorded
+    o = 528 + 7 * 16  # "H"
+    display.draw_glyphs(sp.F8X16, [(o, 10, 20)], 2, 0, (255, 255, 255))
+    assert {call[0] for call in raw.calls} == {"fill_rect"}
+    assert len(raw.calls) == 19
+    assert all(call[4] == 2 and call[5] == 5 for call in raw.calls)
+    assert raw.calls[:2] == [
+        ("fill_rect", 10, 24, 4, 2, 5),
+        ("fill_rect", 20, 24, 4, 2, 5),
+    ]
+    assert ("fill_rect", 10, 32, 14, 2, 5) in raw.calls
+
+    raw.calls.clear()
+    display.draw_glyphs(sp.F8X16, [(o, 10, 20)], 2, 1, (255, 255, 255))
+    assert raw.calls[:2] == [
+        ("fill_rect", 10, 24, 6, 2, 5),
+        ("fill_rect", 20, 24, 6, 2, 5),
+    ]
+
+
+def test_draw_glyphs_keeps_the_background(real, sp):
+    # Review Focus 1: only the glyph's set bits change, whatever the colour.
+    display, raw = real
+    fb = raw.framebuf
+    bits = glyph_bits(sp.F8X16, 528)  # "A"
+    assert len(bits) == 44
+
+    def cell(x0, y0, n):
+        """{(x, y): value} of the n-replicated 8x16 cell at x0, y0."""
+        return {
+            (x0 + x, y0 + y): fb.pixel(x0 + x, y0 + y) for y in range(16 * n) for x in range(8 * n)
+        }
+
+    def expected(x0, y0, n, ink, bg):
+        return {
+            (x0 + x, y0 + y): ink if (x // n, y // n) in bits else bg
+            for y in range(16 * n)
+            for x in range(8 * n)
+        }
+
+    display.fill((102, 102, 102))  # DARK, index 2
+    display.draw_glyphs(sp.F8X16, [(528, 10, 20)], 1, 0, (255, 255, 255))
+    got = cell(10, 20, 1)
+    assert got == expected(10, 20, 1, 5, 2)
+    assert sum(1 for v in got.values() if v == 2) == 84
+
+    display.fill((255, 255, 255))
+    display.draw_glyphs(sp.F8X16, [(528, 10, 20)], 1, 0, (0, 0, 0))
+    assert cell(10, 20, 1) == expected(10, 20, 1, 0, 5)
+
+    display.fill((255, 255, 255))
+    display.draw_glyphs(sp.F8X16, [(528, 10, 20)], 2, 0, (0, 0, 0))
+    assert cell(10, 20, 2) == expected(10, 20, 2, 0, 5)
+    # Nothing around the cell is painted.
+    assert fb.pixel(9, 20) == fb.pixel(26, 20) == fb.pixel(10, 52) == 5

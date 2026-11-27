@@ -1,6 +1,7 @@
 from time import sleep_ms
 
 import framebuf
+import micropython
 
 from gc9a01.const import (
     BAUDRATE,
@@ -24,6 +25,43 @@ from gc9a01.const import (
 )
 
 
+@micropython.viper
+def _to_rgb565(
+    frame: ptr8,  # noqa: F821 (a viper type, resolved by the board compiler)
+    start: int,
+    rows: int,
+    width: int,
+    palette: ptr16,  # noqa: F821
+    strip: ptr16,  # noqa: F821
+):
+    """Convert rows of a GS4_HMSB frame to RGB565 through the palette.
+
+    frame has (width + 1) // 2 bytes per row, even x in the high nibble;
+    the rows converted start at byte start. palette holds the 16 RGB565
+    words as an RGB565 FrameBuffer stores them, so each pixel's two bytes
+    are copied as they are and the strip comes out in panel order, as the
+    palette blit gave. An odd width's last byte holds one pixel: its low
+    nibble is padding and gives no pixel. rows * width words are written
+    from the start of strip: viper has no bounds check, so the caller
+    keeps rows within the strip and the frame.
+    """
+    pairs = width >> 1
+    stride = (width + 1) >> 1
+    j = 0
+    r = 0
+    while r < rows:
+        for k in range(start, start + pairs):
+            b = frame[k]
+            strip[j] = palette[b >> 4]
+            strip[j + 1] = palette[b & 15]
+            j += 2
+        if width & 1:
+            strip[j] = palette[frame[start + pairs] >> 4]
+            j += 1
+        start += stride
+        r += 1
+
+
 class GC9A01(object):
     """GC9A01 round colour TFT on SPI, with a 16-colour frame.
 
@@ -44,10 +82,12 @@ class GC9A01(object):
         self.framebuf = framebuf.FrameBuffer(self.buffer, width, height, framebuf.GS4_HMSB)
         self._rows = min(STRIP_ROWS, height)
         self._strip = bytearray(width * 2 * self._rows)
-        self._strip_fb = framebuf.FrameBuffer(self._strip, width, self._rows, framebuf.RGB565)
-        self._palette = framebuf.FrameBuffer(bytearray(32), 16, 1, framebuf.RGB565)
+        # The 16 RGB565 words of the palette, stored by an RGB565 FrameBuffer
+        # (native little-endian words): the bytes the panel expects.
+        self._palette = bytearray(32)
+        palette = framebuf.FrameBuffer(self._palette, 16, 1, framebuf.RGB565)
         for i, word in enumerate(PALETTE_RGB565):
-            self._palette.pixel(i, 0, word)
+            palette.pixel(i, 0, word)
         self._cmd = bytearray(1)
 
     # ----- bus -----
@@ -122,9 +162,11 @@ class GC9A01(object):
         spi = self.spi
         rows = self._rows
         strip = self._strip
-        strip_fb = self._strip_fb
-        source = self.framebuf
+        frame = self.buffer
         palette = self._palette
+        width = self.width
+        height = self.height
+        stride = (width + 1) // 2
         window = bytearray(4)
         self._begin()
         self.cs.value(0)
@@ -137,14 +179,15 @@ class GC9A01(object):
         self._write(RASET, window)
         self._write(RAMWR)
         self.dc.value(1)
-        row_bytes = self.width * 2
-        for y in range(0, self.height, rows):
-            # Rows y..y+rows-1 of the frame, through the palette, into the
-            # strip: its bytes are already in panel order.
-            strip_fb.blit(source, 0, -y, -1, palette)
-            left = self.height - y
-            if left < rows:
-                spi.write(memoryview(strip)[: left * row_bytes])
+        row_bytes = width * 2
+        for y in range(0, height, rows):
+            # Rows y..y+n-1 of the frame, through the palette, into the
+            # strip: its bytes are already in panel order. The last strip
+            # may be short (n < rows): only its n rows are converted and sent.
+            n = min(rows, height - y)
+            _to_rgb565(frame, y * stride, n, width, palette, strip)
+            if n < rows:
+                spi.write(memoryview(strip)[: n * row_bytes])
             else:
                 spi.write(strip)
         self.cs.value(1)
@@ -172,5 +215,11 @@ class GC9A01(object):
     def text(self, s, x, y, i):
         self.framebuf.text(s, x, y, i)
 
-    def blit(self, fb, x, y, key=-1):
-        self.framebuf.blit(fb, x, y, key)
+    def blit(self, fb, x, y, key=-1, palette=None):
+        """Copy fb (a FrameBuffer or a (buf, w, h, fmt[, stride]) tuple) at x, y.
+
+        With a palette, each source pixel value is looked up in it first:
+        palette is applied before the key test, so a pixel whose mapped
+        colour equals key is skipped.
+        """
+        self.framebuf.blit(fb, x, y, key, palette)

@@ -5,6 +5,8 @@ layout of each format and the clipping rules, so driver tests that compare
 real pixels check what the board would draw.
 """
 
+import array
+
 import pytest
 
 from tests.fake_machine import framebuf_stub as framebuf
@@ -71,6 +73,54 @@ def test_pixel_outside_is_ignored():
     fb.pixel(0, 4, 15)
     assert not any(buf)
     assert fb.pixel(-1, 0) is None
+
+
+# ----- Buffers and signatures, as in MicroPython -----
+
+
+def test_constructor_rejects_a_read_only_buffer():
+    with pytest.raises(TypeError):
+        framebuf.FrameBuffer(bytes(8), 8, 8, framebuf.MONO_HLSB)
+    with pytest.raises(TypeError):
+        framebuf.FrameBuffer(memoryview(bytes(8)), 8, 8, framebuf.MONO_HLSB)
+
+
+def test_constructor_accepts_writable_buffers():
+    for buf in (bytearray(8), memoryview(bytearray(8)), array.array("B", bytes(8))):
+        fb = framebuf.FrameBuffer(buf, 8, 8, framebuf.MONO_HLSB)
+        fb.pixel(7, 7, 1)
+        assert fb.pixel(7, 7) == 1
+
+
+def test_signatures_are_positional_only():
+    src, _ = _fb(framebuf.MONO_HLSB, 8, 1)
+    pal, _ = _fb(framebuf.GS4_HMSB, 2, 1)
+    dst, _ = _fb(framebuf.GS4_HMSB, 8, 8)
+    with pytest.raises(TypeError):
+        framebuf.FrameBuffer(bytearray(8), 8, 8, framebuf.MONO_HLSB, stride=8)
+    with pytest.raises(TypeError):
+        dst.blit(src, 0, 0, key=0)
+    with pytest.raises(TypeError):
+        dst.blit(src, 0, 0, 0, palette=pal)
+    with pytest.raises(TypeError):
+        dst.rect(0, 0, 2, 2, 1, fill=True)
+
+
+def test_blit_draws_a_read_only_glyph_through_a_palette_and_key():
+    glyph = (memoryview(bytes([0b10100000]))[0:1], 3, 1, framebuf.MONO_HLSB)
+
+    def draw(palette, key):
+        dst, _ = _fb(framebuf.GS4_HMSB, 4, 1)
+        dst.fill(3)
+        dst.blit(glyph, 0, 0, key, palette)
+        return [dst.pixel(x, 0) for x in range(4)]
+
+    def pal(byte):
+        return framebuf.FrameBuffer(bytearray([byte]), 2, 1, framebuf.GS4_HMSB)
+
+    assert draw(pal((1 << 4) | 0), 1) == [0, 3, 0, 3]  # BLACK text drawn
+    assert draw(pal((0 << 4) | 5), 0) == [5, 3, 5, 3]
+    assert draw((bytes([0x05]), 2, 1, framebuf.GS4_HMSB), 0) == [5, 3, 5, 3]
 
 
 # ----- fill_rect, rect, line -----

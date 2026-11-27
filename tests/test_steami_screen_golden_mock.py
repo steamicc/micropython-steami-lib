@@ -7,7 +7,10 @@ SSD1327Display.draw_scaled_text. The reference JSON was recorded before the
 GC9A01 scaling rule. The SSD1327 output may change only to improve the
 drawing, and every change to the 128 px golden is justified: the gauge entry
 was re-recorded when the arc became a scanline ring sector (solid rings, about
-60 edge pixels per call changed).
+60 edge pixels per call changed). The accents entry was added when accented
+letters were folded to one 8x8 cell (they were two checkerboards, 16 px, for
+one counted cell) and '°' drawn with the Arduino 8x8 degree glyph (it was two
+checkerboards); no other entry changed.
 
 Regenerate (only on purpose): STEAMI_GOLDEN_WRITE=1 python3 -m pytest <this file>
 The writer rewrites every entry the same way, so `git diff` must show only the
@@ -160,6 +163,15 @@ SCRIPTS = {
     ),
     "pixel": lambda s: (s.pixel(5, 6), s.pixel(127, 127, 3)),
     "clear": lambda s: (s.clear(), s.clear(7), s.show()),
+    "accents": lambda s: (
+        s.title("Été"),
+        s.subtitle("élève", "Ÿ"),
+        s.text("23°C", at="NE"),
+        s.value("Été", unit="°C"),
+        s.value(21.5, unit="°C", label="Températ"),
+        s.menu(["Réglages", "Données"], selected=0),
+        s.text("°", at=(3, 100), scale=2),
+    ),
 }
 
 

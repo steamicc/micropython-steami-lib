@@ -48,8 +48,9 @@ MAX_DIST = 500
 REDRAW_THRESHOLD = 10  # mm — minimum change to trigger a redraw
 
 # === Center text area (erased before each text update) ===
-# Sized from the glyphs it erases: the CENTER text is 8x8 scaled by k (x2 on
-# 240 px), up to 7 characters ("1234 mm"), plus a 1 px margin above and below.
+# Sized from the glyphs it erases: the CENTER text is Spleen 8x16 on 240 px
+# (8x8 on 128 px), up to 7 characters ("1234 mm", 56 x 16 on 240 px), inside a
+# box 7 * 8 * k wide and 8k + 2 tall.
 _TEXT_W = 7 * 8 * screen.k
 _TEXT_H = 8 * screen.k + 2
 _TEXT_X = screen.center[0] - _TEXT_W // 2

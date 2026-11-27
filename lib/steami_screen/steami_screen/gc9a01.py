@@ -11,6 +11,10 @@ Usage on the STeaMi board:
     display = GC9A01Display(raw)
 """
 
+import micropython
+
+from steami_screen import fonts
+
 # Same entries and order as gc9a01.const.PALETTE (index: RGB).
 _PALETTE = (
     (0, 0, 0),  # 0 BLACK
@@ -68,6 +72,96 @@ def rgb_to_index(color):
     return index
 
 
+@micropython.viper
+def _write_glyph(
+    frame: ptr8,  # noqa: F821 (a viper type, resolved by the board compiler)
+    dims: int,
+    src: ptr8,  # noqa: F821
+    o: int,
+    bpr: int,
+    h: int,
+    x: int,
+    y: int,
+    n: int,
+    ink: int,
+):
+    """Write the set bits of one glyph into a GS4_HMSB frame, clipped to it.
+
+    frame is (width + 1) // 2 bytes per row (even x = high nibble), dims is
+    (width << 16) | height. The glyph is h rows of bpr bytes at src[o],
+    MSB = column 0, drawn at (x, y) with each font pixel an n x n block.
+    bpr is 1 or 2 (faces up to 16 px wide): draw_glyphs checks the width and
+    that the glyph lies wholly in src before the call.
+    ink is the palette index (0-15), plus 16 for bold: each row is ORed with
+    itself one column right, so a run gains one column, as the second blit
+    at x + 1 (n = 1) or fonts.draw_runs (n >= 2) gave. Clear bits leave the
+    frame as it is. Every write is clipped to 0 <= x < width,
+    0 <= y < height: viper has no bounds check.
+    """
+    fw = dims >> 16
+    fh = dims & 0xFFFF
+    stride = (fw + 1) >> 1
+    c = ink & 15
+    hi = c << 4
+    cc = hi | c
+    # Each row is shifted left one bit (v << 1 below) so that bold can ink the
+    # column just past the last one: bit top is font column 0.
+    top = 1 << (bpr << 3)
+    r = 0
+    py = y
+    while r < h:
+        if py >= fh:
+            break
+        # Font row r covers pixel rows y0 .. y1 - 1 once clipped.
+        y0 = 0 if py < 0 else py
+        y1 = fh if py + n > fh else py + n
+        if y0 < y1:
+            i = o + r * bpr
+            v = src[i]
+            if bpr == 2:
+                v = (v << 8) | src[i + 1]
+            v = v << 1
+            if ink & 16:  # bold
+                v = v | (v >> 1)
+            bit = top
+            col = 0
+            while v:
+                if v & bit:
+                    a = col
+                    while v & bit:
+                        v = v ^ bit
+                        bit = bit >> 1
+                        col += 1
+                    # The run is font columns a .. col - 1: pixels x0 .. x1 - 1.
+                    x0 = x + a * n
+                    x1 = x + col * n
+                    x0 = 0 if x0 < 0 else x0
+                    x1 = fw if x1 > fw else x1
+                    if x0 < x1:
+                        row = y0 * stride + (x0 >> 1)
+                        q = y0
+                        while q < y1:
+                            p = row
+                            px = x0
+                            if px & 1:
+                                frame[p] = (frame[p] & 0xF0) | c
+                                p += 1
+                                px += 1
+                            while px + 1 < x1:
+                                frame[p] = cc
+                                p += 1
+                                px += 2
+                            if px < x1:
+                                frame[p] = (frame[p] & 0x0F) | hi
+                            row += stride
+                            q += 1
+                else:
+                    bit = bit >> 1
+                    col += 1
+        r += 1
+        py += n
+
+
 class GC9A01Display:
     """Thin wrapper around a GC9A01 driver that accepts RGB colors."""
 
@@ -80,6 +174,17 @@ class GC9A01Display:
             self._fill_rect_raw = raw.fill_rect
         else:
             self._fill_rect_raw = raw.framebuf.fill_rect
+        # draw_glyphs state, resolved on its first call: the driver's GS4_HMSB
+        # frame (False when the raw has none) and its (width << 16) | height.
+        self._frame = None
+        self._dims = 0
+        # Without a frame, made on the first native blit: the 2x1 GS4_HMSB
+        # palette, the framebuf module, the blit (the C FrameBuffer.blit when
+        # the driver has a framebuf) and the glyph data memoryviews.
+        self._pal = None
+        self._fbm = None
+        self._blit = None
+        self._mvs = {}
 
     def fill(self, color):
         self._raw.fill(rgb_to_index(color))
@@ -131,3 +236,86 @@ class GC9A01Display:
                     if fb.pixel(px, py):
                         blit(cx + px * scale, y + py * scale, scale, scale, index)
             cx += 8 * scale
+
+    def _gs4_frame(self):
+        """The raw's GS4_HMSB frame buffer for _write_glyph, or False.
+
+        The buffer must hold ((width + 1) // 2) * height bytes: _write_glyph
+        stays inside that size, so a smaller one is never handed to it. The
+        width stays below 32768: dims is a signed 32-bit viper int on the
+        board, and a larger width would make dims >> 16 negative there.
+        """
+        raw = self._raw
+        buf = getattr(raw, "buffer", None)
+        w = getattr(raw, "width", None)
+        h = getattr(raw, "height", None)
+        if buf is None or w is None or h is None or not 0 < w < 32768 or not 0 < h < 65536:
+            return False
+        if len(buf) < (w + 1) // 2 * h:
+            return False
+        self._dims = (w << 16) | h
+        return buf
+
+    def draw_glyphs(self, fc, glyphs, n, bold, color):
+        """Draw Spleen glyphs of face fc, each (offset, x, y), at replication n.
+
+        Only the glyph's set bits are painted, whatever the colour (BLACK
+        included). On the gc9a01 driver, whose GS4_HMSB frame is raw.buffer,
+        _write_glyph (viper) writes each glyph of a face up to 16 px wide
+        into the frame, clipped, at any n and bold: the same pixels as the
+        paths below, in one call. A glyph offset outside the face data
+        raises ValueError there, since viper reads it unchecked.
+        Other raws: at n = 1 each glyph is blitted through a 2x1 palette
+        (set bit -> c, clear bit -> b != c) with key b; bold blits it again
+        one pixel right. At n >= 2 each run of set bits is one fill_rect.
+        The colour is looked up once per call; the frame, the framebuf
+        module, the blit and each face's memoryview are resolved once per
+        display.
+        """
+        c = rgb_to_index(color)
+        frame = self._frame
+        if frame is None:
+            frame = self._frame = self._gs4_frame()
+        if frame and fc[0] <= 16:
+            write = _write_glyph
+            dims = self._dims
+            data, bpr, h = fc[4], (fc[0] + 7) // 8, fc[1]
+            ink = c | 16 if bold else c
+            # _write_glyph reads src[o ...] unchecked: each glyph must lie
+            # wholly in the face data.
+            last = len(data) - h * bpr
+            for o, x, y in glyphs:
+                if not 0 <= o <= last:
+                    raise ValueError("glyph offset outside the face")
+                write(frame, dims, data, o, bpr, h, x, y, n, ink)
+            return
+        if n > 1:
+            fonts.draw_runs(self._fill_rect_raw, fc, glyphs, n, bold, c)
+            return
+        fbm = self._fbm
+        if fbm is None:
+            import framebuf
+
+            fbm = self._fbm = framebuf
+            self._pal_buf = bytearray(1)
+            self._pal = framebuf.FrameBuffer(self._pal_buf, 2, 1, framebuf.GS4_HMSB)
+            raw = self._raw
+            self._blit = raw.framebuf.blit if hasattr(raw, "framebuf") else raw.blit
+        b = 1 if c == 0 else 0
+        pal = self._pal
+        self._pal_buf[0] = (b << 4) | c
+        blit = self._blit
+        mono = fbm.MONO_HLSB
+        w, h = fc[0], fc[1]
+        size = h * ((w + 7) // 8)
+        data = fc[4]
+        mvs = self._mvs
+        entry = mvs.get(id(data))
+        if entry is None or entry[0] is not data:
+            entry = mvs[id(data)] = (data, memoryview(data))
+        mv = entry[1]
+        for o, x, y in glyphs:
+            src = (mv[o : o + size], w, h, mono)
+            blit(src, x, y, b, pal)
+            if bold:
+                blit(src, x + 1, y, b, pal)
