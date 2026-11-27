@@ -38,7 +38,9 @@ class Screen(Handle, _Screen):
     """
 
     def __init__(self):
-        super().__init__(Function.SCREEN)
+        # steami_screen.Screen.__init__ needs the display, so begin() calls it
+        # once the display exists: creating a Screen touches no hardware.
+        Handle.__init__(self, Function.SCREEN)
 
     def __getattr__(self, name):
         # _d, width and height are set by begin(): the first use starts the screen.
@@ -62,9 +64,7 @@ class Screen(Handle, _Screen):
                 else:
                     status = Status.UNKNOWN_BOARD
                     self._report(E_SCREEN_UNKNOWN_BOARD, _UNKNOWN_BOARD)
-            self._d = d
-            self.width = d.width
-            self.height = d.height
+            _Screen.__init__(self, d)
             self._status = status
         return self._status == Status.OK
 

@@ -129,9 +129,9 @@ def test_mock_screen_v1c_is_the_gc9a01(screen_env):
     assert screen.is_available() is True
     assert screen.status() == const.Status.OK
     assert screen.error() == ""
-    from steami_screen import GC9A01Display
+    import steami_screen
 
-    assert isinstance(s.steami.display(), GC9A01Display)
+    assert isinstance(s.steami.display(), steami_screen.GC9A01Display)
     assert ("SPI", (1,)) in hardware.created
     assert {args for kind, args in hardware.created if kind == "Pin"} == {
         ("CS_DISPLAY",),
@@ -149,9 +149,9 @@ def test_mock_screen_v1ab_is_the_ssd1327(screen_env, release):
     assert screen.begin() is True
     assert screen.chip() == "SSD1327"
     assert (screen.width, screen.height, screen.k) == (128, 128, 1)
-    from steami_screen import SSD1327Display
+    import steami_screen
 
-    assert isinstance(s.steami.display(), SSD1327Display)
+    assert isinstance(s.steami.display(), steami_screen.SSD1327Display)
     assert messages(s) == []
 
 
