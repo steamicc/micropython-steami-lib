@@ -988,6 +988,13 @@ def test_mock_graph_one_point_draws_the_frame_and_its_value(panel, size):
     s.graph([5], min_val=0, max_val=10, color=(119, 255, 119))
     white = box(raw, WHITE)
     assert white is not None and white != DASHES[size]
+    # The frame: the left axis at the box's left column, DARK.
+    gx, _gw = GRAPH_X[size]
+    assert lit(raw)[(gx, s.u(38))] == DARK
+    # The value "5", in the same place as a reference ending on 5.
+    ref, ref_raw = panel(size)
+    ref.graph([0, 5], min_val=0, max_val=10)
+    assert white == box(ref_raw, WHITE)
     assert box(raw, GREEN) is None
 
 
