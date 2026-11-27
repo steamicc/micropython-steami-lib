@@ -505,6 +505,7 @@ def test_mock_print_info(board_module):
         "VL53L1X 0x29 not tried",
         "BQ27441 0x55 not tried",
         "MCP23009E 0x20 not tried",
+        "GC9A01 screen not started",  # Arduino: "<chip> screen <state>", last
     ]
     s.steami.calibrate(s.const.Chip.BME280)
     s.lines.clear()

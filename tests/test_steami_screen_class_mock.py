@@ -352,6 +352,52 @@ def test_mock_no_memory_e31_v1ab(screen_env, monkeypatch):
     assert messages(s) == [E31.format(8192)]
 
 
+# --------------------------------------------------
+# print_info(): the screen line, as Arduino "<chip> screen <state>"
+# --------------------------------------------------
+
+
+def screen_lines(s):
+    s.lines.clear()
+    s.steami.print_info()
+    return [line for line in s.lines if " screen " in line]
+
+
+@pytest.mark.parametrize(("release", "chip"), [("V1c", "GC9A01"), ("V1b", "SSD1327")])
+def test_mock_print_info_screen_line(screen_env, release, chip):
+    _, screen_cls, hardware = screen_env
+    s = board_for(screen_env, release)
+    assert screen_lines(s) == [chip + " screen not started"]
+    assert hardware.created == []  # print_info() starts no screen
+    assert s.lines[-1] == chip + " screen not started"  # after the chips
+    assert screen_cls().begin() is True
+    assert screen_lines(s) == [chip + " screen OK"]
+    s.steami.end()  # forgets the display (and the logger)
+    s.steami.set_logger(s.lines.append)
+    s.steami.begin(release)
+    assert screen_lines(s) == [chip + " screen not started"]
+
+
+def test_mock_print_info_screen_no_memory(screen_env, monkeypatch):
+    _, screen_cls, _ = screen_env
+    import gc9a01.device
+
+    s = board_for(screen_env, "V1c")
+    _fail_allocation(monkeypatch, gc9a01.device, 28800)
+    assert screen_cls().begin() is False
+    assert screen_lines(s) == ["GC9A01 screen no memory"]
+    monkeypatch.delattr(gc9a01.device, "bytearray")
+    assert screen_cls().begin() is True  # tried again: the RAM is free now
+    assert screen_lines(s) == ["GC9A01 screen OK"]
+
+
+def test_mock_print_info_unknown_board_has_no_screen_line(screen_env):
+    _, screen_cls, _ = screen_env
+    s = board_for(screen_env, None)
+    assert screen_cls().begin() is False
+    assert screen_lines(s) == []  # no screen on an unknown release, as Arduino
+
+
 def test_mock_other_memory_error_propagates(screen_env, monkeypatch):
     _, screen_cls, _ = screen_env
     import steami_screen

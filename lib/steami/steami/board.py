@@ -52,6 +52,7 @@ class _Board(object):
         self._drivers = {}  # chip -> driver, or None when it did not answer
         self._display = None
         self._display_chip = None
+        self._display_status = Status.NOT_STARTED
         self._calibration_tried = []
         self._calibration_applied = []
         self._banner_delivered = False
@@ -228,10 +229,13 @@ class _Board(object):
         try:
             raw = cls(*args)
         except MemoryError:
+            self._display_status = Status.NO_MEMORY
             return None
         if chip == Chip.GC9A01:
             raw.init()
-        return adapter(raw)
+        display = adapter(raw)
+        self._display_status = Status.OK
+        return display
 
     def has(self, function):
         """Return True when this release has a chip for the function."""
@@ -304,7 +308,12 @@ class _Board(object):
     # --------------------------------------------------
 
     def print_info(self):
-        """Send the board line, then one line per chip of this release."""
+        """Send the board line, one line per chip of this release, then the screen.
+
+        The screen line is "<chip> screen <state>", as in Arduino: "not
+        started" before the first Steami.display() (print_info() starts
+        nothing), "OK", or "no memory". No screen line on an unknown release.
+        """
         self.begin()
         if not self._banner_delivered:
             self._log_banner()
@@ -321,6 +330,12 @@ class _Board(object):
                 "{} 0x{:02X} {}{}".format(
                     chip, ADDRESS[chip], state, ", calibrated" if self.calibrated(chip) else ""
                 )
+            )
+        screens = route(self._release, Function.SCREEN)
+        if screens:
+            status = self._display_status
+            self._deliver(
+                "{} screen {}".format(screens[0], "OK" if status == Status.OK else status)
             )
 
     # --------------------------------------------------
