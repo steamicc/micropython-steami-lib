@@ -13,7 +13,10 @@ the board, so they can delay it after a press, as a long blocking call
 does on a V1c.
 """
 
+import ast
 import importlib
+from itertools import pairwise
+from pathlib import Path
 
 import pytest
 
@@ -421,7 +424,8 @@ def test_handler_run_at_registration_can_disable_its_pin(drv, dev, chip):
 
 def test_soft_irq_after_registration_read_reports_event_once(drv, dev, chip):
     """The soft IRQ of a DOWN press runs at the first scheduler point after
-    the interrupt is read during the registration of UP: one DOWN event."""
+    the interrupt is read during the registration of UP (just after the
+    GPINTEN write, which follows the read with no jump): one DOWN event."""
     events = []
     down = dpad_pin(drv, dev, DOWN)
     up = dpad_pin(drv, dev, UP)
@@ -429,53 +433,58 @@ def test_soft_irq_after_registration_read_reports_event_once(drv, dev, chip):
     chip.press(DOWN)
     ran = []
 
-    def on_read(reg):
-        if reg == GPIO and not ran:
+    def on_write(reg, value):
+        if reg == GPINTEN and value & (1 << UP) and not ran:
             ran.append(reg)
             dev.interrupt_event()
 
-    chip.on_read = on_read
+    chip.on_write = on_write
     up.irq(recorder(events, "UP"), BOTH)
-    assert ran == [GPIO]
+    assert ran == [GPINTEN]
     assert events == [("DOWN", 0, 0)]
 
 
-def test_interrupt_read_and_clear_have_no_scheduler_point():
-    """MicroPython runs scheduled soft IRQs at jumps (if, loops, and, or).
-    None may sit between the INTF read, the read that clears the interrupt
-    and the update of the last known levels, or a soft IRQ could report the
-    same event a second time, or compare with stale levels."""
-    import ast
-    from pathlib import Path
+# Statements and expressions that compile to a jump in MicroPython.
+JUMPS = (ast.If, ast.IfExp, ast.BoolOp, ast.For, ast.While, ast.Try)
 
+
+def _device_function(name):
     path = Path(__file__).parents[1] / "lib/mcp23009e/mcp23009e/device.py"
     tree = ast.parse(path.read_text())
-    func = next(
-        node
-        for node in ast.walk(tree)
-        if isinstance(node, ast.FunctionDef) and node.name == "_service_interrupt"
+    return next(
+        node for node in ast.walk(tree) if isinstance(node, ast.FunctionDef) and node.name == name
     )
 
-    def reads(node, name):
-        return any(isinstance(sub, ast.Name) and sub.id == name for sub in ast.walk(node))
 
-    def writes_levels(node):
-        return any(
-            isinstance(sub, ast.Attribute)
-            and sub.attr == "_levels"
-            and isinstance(sub.ctx, ast.Store)
-            for sub in ast.walk(node)
-        )
+def test_interrupt_read_and_queueing_have_no_scheduler_point():
+    """MicroPython runs scheduled soft IRQs at jumps (if, loops, and, or).
+    None may sit between the INTF read, the read that clears the interrupt,
+    the update of the last known levels and the queueing of the events, or
+    a soft IRQ could report the same event a second time, compare with
+    stale levels, or queue its later events first."""
+    func = _device_function("_read_interrupt")
+    calls = [
+        sub
+        for sub in ast.walk(func)
+        if isinstance(sub, ast.Call)
+        and isinstance(sub.func, ast.Attribute)
+        and sub.func.attr == "_read_reg"
+    ]
+    assert len(calls) == 3
+    for sub in ast.walk(func):
+        assert not isinstance(sub, JUMPS)
 
-    body = func.body
-    start = next(i for i, st in enumerate(body) if reads(st, "MCP23009_INTF"))
-    gpio = next(i for i, st in enumerate(body) if reads(st, "MCP23009_GPIO"))
-    end = next(i for i, st in enumerate(body) if writes_levels(st))
-    assert start < gpio < end
-    for statement in body[start : end + 1]:
-        assert isinstance(statement, (ast.Assign, ast.AugAssign, ast.Expr))
-        for sub in ast.walk(statement):
-            assert not isinstance(sub, (ast.If, ast.IfExp, ast.BoolOp, ast.For, ast.While))
+
+def test_registration_has_no_scheduler_point_before_dispatch():
+    """From the INTCON write to the GPINTEN write, the registration has no
+    jump: a soft IRQ runs only once gpx is enabled, its level is read and
+    the pending events are queued."""
+    func = _device_function("_send_enable_interrupt")
+    for sub in ast.walk(func):
+        assert not isinstance(sub, JUMPS)
+    last = func.body[-1]
+    assert isinstance(last, ast.Expr)
+    assert last.value.func.attr == "_dispatch_queued"
 
 
 @pytest.mark.parametrize("name", ("_send_enable_interrupt", "_send_disable_interrupt"))
@@ -483,14 +492,7 @@ def test_register_read_modify_writes_have_no_scheduler_point(name):
     """Each read-modify-write of GPINTEN, INTCON or DEFVAL is one statement
     with no jump: a soft IRQ run between the read and the write could change
     the register and have its change overwritten."""
-    import ast
-    from pathlib import Path
-
-    path = Path(__file__).parents[1] / "lib/mcp23009e/mcp23009e/device.py"
-    tree = ast.parse(path.read_text())
-    func = next(
-        node for node in ast.walk(tree) if isinstance(node, ast.FunctionDef) and node.name == name
-    )
+    func = _device_function(name)
     writes = [
         node
         for node in ast.walk(func)
@@ -505,7 +507,7 @@ def test_register_read_modify_writes_have_no_scheduler_point(name):
             isinstance(sub, ast.Attribute) and sub.attr == "_read_reg" for sub in ast.walk(call)
         )
         for sub in ast.walk(call):
-            assert not isinstance(sub, (ast.If, ast.IfExp, ast.BoolOp, ast.For, ast.While))
+            assert not isinstance(sub, JUMPS)
             assert not (isinstance(sub, ast.Name) and sub.id == "_set_bit")
 
 
@@ -788,5 +790,248 @@ def test_soft_irq_during_dispatch_reports_each_change_once(drv, dev, chip):
     chip.press(UP)  # missed by the chip, found in GPIO
     left.irq(recorder(events, "LEFT"), BOTH)  # services the DOWN press
     dev.interrupt_event()
-    assert sorted(events) == sorted([("DOWN", 0), ("UP", 0, 0), ("DOWN", 1)])
-    assert len(events) == 3
+    # The DOWN release comes from the nested service: it is reported after
+    # the UP press still queued by the outer one.
+    assert events == [("DOWN", 0), ("UP", 0, 0), ("DOWN", 1)]
+
+
+# ----- Services nested in a dispatch -----
+
+
+def test_nested_registration_keeps_order_of_queued_changes(drv, dev, chip):
+    """LEFT is pressed, UP is pressed while LEFT is pending (missed by the
+    chip, found in GPIO) and released just after the GPIO read. The LEFT
+    handler registers DOWN: the UP release, read by that registration, comes
+    after the UP press."""
+    events = []
+    left = dpad_pin(drv, dev, LEFT)
+    up = dpad_pin(drv, dev, UP)
+    down = dpad_pin(drv, dev, DOWN)
+
+    def on_left(pin):
+        events.append(("LEFT", pin.irq_level()))
+        down.irq(recorder(events, "DOWN"), BOTH)
+
+    left.irq(on_left, BOTH)
+    up.irq(recorder(events, "UP"), BOTH)
+    chip.press(LEFT)
+    chip.press(UP)  # missed by the chip
+
+    def on_read(reg):
+        if reg == GPIO:
+            chip.on_read = None
+            chip.release(UP)  # after the read: raises a new interrupt
+
+    chip.on_read = on_read
+    dev.interrupt_event()
+    assert events == [("LEFT", 0), ("UP", 0, 1), ("UP", 1, 1)]
+    dev.interrupt_event()
+    assert events == [("LEFT", 0), ("UP", 0, 1), ("UP", 1, 1)]
+
+
+def test_soft_irq_during_registration_keeps_order(drv, dev, chip):
+    """Same as above, with the registration made from main code and the
+    soft IRQ of the UP release run at a jump of the dispatch."""
+    events = []
+    left = dpad_pin(drv, dev, LEFT)
+    up = dpad_pin(drv, dev, UP)
+    down = dpad_pin(drv, dev, DOWN)
+
+    def on_left(pin):
+        events.append(("LEFT", pin.irq_level()))
+        dev.interrupt_event()  # the soft IRQ of the UP release
+
+    left.irq(on_left, BOTH)
+    up.irq(recorder(events, "UP"), BOTH)
+    chip.press(LEFT)
+    chip.press(UP)  # missed by the chip
+
+    def on_read(reg):
+        if reg == GPIO:
+            chip.on_read = None
+            chip.release(UP)
+
+    chip.on_read = on_read
+    down.irq(recorder(events, "DOWN"), BOTH)
+    assert events == [("LEFT", 0), ("UP", 0, 1), ("UP", 1, 1)]
+
+
+def test_release_during_dispatch_comes_after_queued_press(drv, dev, chip):
+    """DOWN is pending and LEFT is pressed but missed. The DOWN handler
+    releases LEFT, then registers UP: the LEFT press, then its release."""
+    events = []
+    down = dpad_pin(drv, dev, DOWN)
+    left = dpad_pin(drv, dev, LEFT)
+    up = dpad_pin(drv, dev, UP)
+
+    def on_down(pin):
+        events.append(("DOWN", pin.irq_level()))
+        chip.release(LEFT)
+        up.irq(recorder(events, "UP"), BOTH)
+
+    down.irq(on_down, BOTH)
+    left.irq(recorder(events, "LEFT"), BOTH)
+    chip.press(DOWN)
+    chip.press(LEFT)  # missed by the chip
+    dev.interrupt_event()
+    assert events == [("DOWN", 0), ("LEFT", 0, 1), ("LEFT", 1, 1)]
+    chip.press(LEFT)
+    dev.interrupt_event()
+    assert events[-1] == ("LEFT", 0, 0)
+    assert len(events) == 4
+
+
+def test_reregistration_in_handler_drops_queued_events(drv, dev, chip):
+    """A tap before the new irq() call does not reach the new handler, even
+    when its release is still queued by the service that is running."""
+    first = []
+    second = []
+    btn = dpad_pin(drv, dev, UP)
+
+    def on_first(pin):
+        first.append(pin.irq_level())
+        btn.irq(recorder(second, "second"), BOTH)
+
+    btn.irq(on_first, BOTH)
+    chip.press(UP)
+    chip.release(UP)
+    dev.interrupt_event()
+    assert first == [0]
+    assert second == []
+    chip.press(UP)
+    dev.interrupt_event()
+    assert first == [0]
+    assert second == [("second", 0, 0)]
+
+
+def test_soft_irq_during_registration_dispatch_reports_new_pin(drv, dev, chip):
+    """DOWN is pending when main code registers UP; the soft IRQ of an UP
+    press runs in the DOWN handler. The press and the release of UP are
+    both reported."""
+    events = []
+    down = dpad_pin(drv, dev, DOWN)
+    up = dpad_pin(drv, dev, UP)
+
+    def on_down(pin):
+        events.append(("DOWN", pin.irq_level()))
+        if pin.irq_level() == 0:
+            chip.press(UP)
+            dev.interrupt_event()
+
+    down.irq(on_down, BOTH)
+    chip.press(DOWN)
+    up.irq(recorder(events, "UP"), BOTH)
+    assert events == [("DOWN", 0), ("UP", 0, 0)]
+    chip.release(UP)
+    dev.interrupt_event()
+    assert events == [("DOWN", 0), ("UP", 0, 0), ("UP", 1, 1)]
+
+
+def test_handler_exception_does_not_block_later_events(drv, dev, chip):
+    events = []
+    btn = dpad_pin(drv, dev, UP)
+
+    def handler(pin):
+        events.append(pin.irq_level())
+        if len(events) == 1:
+            raise RuntimeError("handler")
+
+    btn.irq(handler, BOTH)
+    chip.press(UP)
+    with pytest.raises(RuntimeError):
+        dev.interrupt_event()
+    chip.release(UP)
+    dev.interrupt_event()
+    assert events == [0, 1]
+
+
+def test_many_services_during_a_slow_handler_lose_no_level(drv, dev, chip):
+    """More nested services than the queue holds: the changes that found no
+    room are read again from GPIO once the queue is empty, so the last
+    reported level is the real one."""
+    events = []
+    up = dpad_pin(drv, dev, UP)
+    down = dpad_pin(drv, dev, DOWN)
+    taps = []
+
+    def on_up(pin):
+        events.append(("UP", pin.irq_level()))
+        if not taps:
+            for _ in range(20):
+                taps.append(1)
+                chip.press(DOWN)
+                dev.interrupt_event()
+                chip.release(DOWN)
+                dev.interrupt_event()
+            chip.press(DOWN)
+            dev.interrupt_event()
+
+    up.irq(on_up, BOTH)
+    down.irq(recorder(events, "DOWN"), BOTH)
+    chip.press(UP)
+    dev.interrupt_event()
+    downs = [e[1] for e in events if e[0] == "DOWN"]
+    # Levels alternate and the last one is the real level: pressed.
+    assert all(a != b for a, b in pairwise(downs))
+    assert downs[0] == 0
+    assert downs[-1] == 0
+    assert dev._overflow == 0
+    chip.release(DOWN)
+    dev.interrupt_event()
+    downs = [e[1] for e in events if e[0] == "DOWN"]
+    assert all(a != b for a, b in pairwise(downs))
+    assert downs[-1] == 1
+
+
+# ----- Re-registration and reset -----
+
+
+def test_switch_from_both_edges_to_falling_only(drv, dev, chip):
+    events = []
+    btn = dpad_pin(drv, dev, UP)
+    btn.irq(recorder(events, "UP"), BOTH)
+    btn.irq(recorder(events, "UP"), btn.IRQ_FALLING)
+    chip.press(UP)
+    dev.interrupt_event()
+    chip.release(UP)
+    dev.interrupt_event()
+    assert events == [("UP", 0, 0)]
+
+
+def test_active_low_irq_defaults_to_both_edges(drv, dev, chip):
+    pin_cls = drv.active_low_pin.MCP23009ActiveLowPin
+    btn = pin_cls(dev, UP, pin_cls.IN, pin_cls.PULL_UP)
+    events = []
+    btn.irq(recorder(events, "UP"))
+    chip.press(UP)
+    dev.interrupt_event()
+    chip.release(UP)
+    dev.interrupt_event()
+    assert events == [("UP", 1, 1), ("UP", 0, 0)]
+
+
+def test_soft_reset_forgets_enabled_pins(drv, dev, chip):
+    events = []
+    up = dpad_pin(drv, dev, UP)
+    up.irq(recorder(events, "UP"), BOTH)
+    dev._soft_reset()
+    down = dpad_pin(drv, dev, DOWN)
+    down.irq(recorder(events, "DOWN"), BOTH)
+    chip.press(DOWN)
+    chip.press(UP)  # no longer watched
+    dev.interrupt_event()
+    assert events == [("DOWN", 0, 0)]
+
+
+def test_hardware_reset_forgets_enabled_pins(drv, dev, chip):
+    events = []
+    up = dpad_pin(drv, dev, UP)
+    up.irq(recorder(events, "UP"), BOTH)
+    dev.reset()
+    chip.regs[GPINTEN] = 0  # what the reset pulse does to the chip
+    down = dpad_pin(drv, dev, DOWN)
+    down.irq(recorder(events, "DOWN"), BOTH)
+    chip.press(DOWN)
+    chip.press(UP)  # no longer watched
+    dev.interrupt_event()
+    assert events == [("DOWN", 0, 0)]

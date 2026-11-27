@@ -144,9 +144,11 @@ class MCP23009Pin:
         niveau actuel. Un appui bref donne deux événements : l'appui, puis
         le relâchement.
 
-        L'enregistrement efface l'interruption en attente et prend le
-        niveau actuel de la pin comme dernier niveau connu : un changement
-        antérieur à l'appel de irq() n'appelle pas le handler.
+        L'enregistrement remplace le précédent, efface l'interruption en
+        attente et prend le niveau actuel de la pin comme dernier niveau
+        connu : un changement antérieur à l'appel de irq() n'appelle pas le
+        handler, même s'il est encore en file pendant qu'un autre handler
+        s'exécute.
 
         Args:
             handler: Fonction appelée lors de l'interruption (reçoit la pin en paramètre)
@@ -170,6 +172,12 @@ class MCP23009Pin:
             self._irq_level = level
             if self._irq_handler is not None:
                 self._irq_handler(self)
+
+        # Retirer les callbacks d'un enregistrement précédent, qui peut avoir
+        # utilisé un autre trigger
+        self._mcp.events_change[self._pin_number] = None
+        self._mcp.events_fall[self._pin_number] = None
+        self._mcp.events_rise[self._pin_number] = None
 
         # Enregistrer les callbacks appropriés selon le trigger
         if trigger & self.IRQ_FALLING:

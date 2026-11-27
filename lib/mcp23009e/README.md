@@ -126,12 +126,21 @@ Remaining limit: a press and its release that both happen while an
 interrupt is pending (between the capture and the read) cancel out and
 are not seen.
 
+Events are delivered one handler at a time, in the order the driver read
+them. If the driver reads the chip again while a handler runs (a soft IRQ,
+or a handler that registers another pin), the new events are queued and
+delivered after the ones still waiting, so each pin's press and release
+always come in order. The queue holds 8 reads; changes that find no room
+are read again from GPIO once the queue is empty (the edges in between are
+lost, the last reported level stays right).
+
 Registering a handler (`irq()`, or `interrupt_on_change()`,
 `interrupt_on_falling()` and `interrupt_on_raising()`) stores the callback,
 then clears a pending interrupt before it enables the pin. A change that
-happened before the registration does not call the new handler. If another
-pin has a pending event at that moment, its handler is called during the
-registration, so the event is not lost.
+happened before the registration does not call the new handler, even if
+its event is still queued. If another pin has a pending event at that
+moment, its handler is called during the registration, so the event is not
+lost. Calling `irq()` again replaces the previous handler and trigger.
 
 ## API Reference
 
@@ -220,7 +229,8 @@ The driver provides simple hardware power management helpers through the reset p
 mcp.power_off()
 ```
 
-Holds the reset pin low.
+Holds the reset pin low. The chip loses its configuration: register the
+interrupt handlers again after `power_on()`.
 
 ### Power on
 
@@ -235,7 +245,8 @@ Releases the reset pin.
 ```python
 mcp.reset()
 ```
-Toggles the reset pin to perform a hardware reset.
+Toggles the reset pin to perform a hardware reset. Interrupts are disabled
+afterwards: register the handlers again.
 
 ## Examples
 

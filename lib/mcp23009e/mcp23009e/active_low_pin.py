@@ -123,7 +123,7 @@ class MCP23009ActiveLowPin:
         """Inverse l'état de la pin"""
         self._pin.toggle()
 
-    def irq(self, handler=None, trigger=None, hard=False):
+    def irq(self, handler=None, trigger=IRQ_FALLING | IRQ_RISING, hard=False):
         """
         Configure une interruption sur la pin
 
@@ -133,7 +133,8 @@ class MCP23009ActiveLowPin:
 
         Args:
             handler: Fonction appelée lors de l'interruption
-            trigger: Type de déclenchement (inversé automatiquement)
+            trigger: Type de déclenchement (inversé automatiquement ; par
+                défaut les deux fronts)
             hard: Non utilisé (pour compatibilité)
 
         Returns:
