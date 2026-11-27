@@ -171,6 +171,12 @@ Measured by the controller on the V1c (STM32WB55 at 64 MHz, MicroPython 1.29, re
   micropython stub views ptr16 arguments as little-endian words), and the host unix MicroPython ran the
   real viper function with the same output.
 
+The SPI clock goes from 16 to 32 MHz (`BAUDRATE` in `gc9a01/const.py`, the SPI1 maximum: 64 MHz PCLK2 / 2),
+measured by the controller at 2.0 ms per strip instead of 3.9 ms, so `show()` should take about
+15 x (3.6 + 2.0) = 85 ms. The maintainer's rule: if the panel does not hold 32 MHz, keep 16 MHz. The
+controller checks it on the board under the webcam; the change is one constant in its own commit, easy to
+revert.
+
 **`Screen` (device.py).** When k > 1:
 - `_fit` and `_put` take an ink. The face is judged once from the whole text, and `_fit` returns it with
   the fit, so a cut prefix is drawn in the face of the whole text. The prefix masks, the replication and

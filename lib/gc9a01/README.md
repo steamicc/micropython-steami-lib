@@ -12,7 +12,7 @@ The init sequence, the reset timing and the V1c orientation come from the Arduin
 | Resolution  | 240 × 240 pixels (round)                |
 | Panel colour | RGB565 (65 536 colours)                |
 | Frame colour | 16-colour palette (4 bits per pixel)   |
-| Interface   | SPI, mode 0 at 16 MHz                   |
+| Interface   | SPI, mode 0 at 32 MHz                   |
 
 ## Features
 
@@ -97,9 +97,12 @@ The conversion is a `@micropython.viper` function that looks up the RGB565 word 
 | --------------------------------- | ------ |
 | Conversion, viper                 | 3.6 ms |
 | Conversion, palette blit (before) | 7.1 ms |
-| SPI write at 16 MHz               | 3.9 ms |
+| SPI write at 16 MHz (before)      | 3.9 ms |
+| SPI write at 32 MHz               | 2.0 ms |
 
-A whole `show()` took 167 ms with the blit; with the viper conversion it should take about 15 x (3.6 + 3.9) = 112 ms.
+A whole `show()` took 167 ms with the blit at 16 MHz; with the viper conversion at 32 MHz it should take about 15 x (3.6 + 2.0) = 85 ms.
+
+The SPI clock is `BAUDRATE` in `gc9a01/const.py`: 32 MHz, the SPI1 maximum on the STeaMi (64 MHz PCLK2 / 2). If the panel shows errors at that speed, set it back to 16 MHz (`16_000_000`), the speed used before.
 
 ## API Reference
 

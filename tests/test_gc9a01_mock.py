@@ -269,12 +269,17 @@ def test_init_clears_what_was_drawn_before(rig):
     assert rig.frame() == bytes(FRAME_BYTES)
 
 
-def test_spi_is_mode0_at_16mhz(rig):
+def test_spi_is_mode0_at_32mhz(rig):
+    # 32 MHz is the SPI1 maximum on the STeaMi (64 MHz PCLK2 / 2).
+    const = importlib.import_module("gc9a01.const")
+    assert const.BAUDRATE == 32_000_000
     rig.dev.init()
     rig.dev.show()
-    assert rig.spi.inits
+    rig.dev.power_off()
+    rig.dev.power_on()
+    assert len(rig.spi.inits) == 5  # init() and its show(), show(), power_off(), power_on()
     for kwargs in rig.spi.inits:
-        assert kwargs == {"baudrate": 16_000_000, "polarity": 0, "phase": 0}
+        assert kwargs == {"baudrate": 32_000_000, "polarity": 0, "phase": 0}
 
 
 # ----- show() -----

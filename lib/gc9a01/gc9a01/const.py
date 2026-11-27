@@ -14,8 +14,10 @@ CASET = const(0x2A)
 RASET = const(0x2B)
 RAMWR = const(0x2C)
 
-# SPI mode 0 at 16 MHz, the SPI1 maximum on the STeaMi (PCLK2 / 2)
-BAUDRATE = const(16_000_000)
+# SPI mode 0 at 32 MHz, the SPI1 maximum on the STeaMi (64 MHz PCLK2 / 2):
+# a 7 680-byte strip takes 2.0 ms instead of 3.9 ms at 16 MHz. If the panel
+# does not hold 32 MHz, set 16_000_000 here (the earlier, proven speed).
+BAUDRATE = const(32_000_000)
 
 # rows converted to RGB565 per SPI write in show(): 16 rows of 240 pixels
 # take 7680 bytes, well below the 65535-byte DMA limit
