@@ -636,6 +636,33 @@ def test_mock_bar_at_240(panel):
     assert count(raw, DARK) == 47 * 15
 
 
+@pytest.mark.parametrize("y_offset", (0, 12, 25, 40, 60, -80))
+@pytest.mark.parametrize("size", (240, 128))
+def test_mock_bar_is_clipped_to_the_circle_per_row(panel, size, y_offset):
+    # Arduino rule 7 and barRows(): each row of the track and of the fill is
+    # cut to the chord of that row, so a bar far from the centre stays inside
+    # the circle (#456). 240, y_offset 25: rows 203..217, the bottom row's
+    # chord 50..190 against the bar's 38..202. y_offset 60 is below the panel
+    # on 240 (top 269): nothing is drawn. 0 and 12 fit whole (one rect).
+    s, raw = panel(size)
+    s.bar(50, y_offset=y_offset, color=(119, 255, 119))
+    w = size - s.u(40)
+    x = size // 2 - w // 2
+    top = size // 2 + s.u(20) + s.u(y_offset)
+    fill = w // 2
+    expected = {}
+    for y in range(max(top, 0), min(top + s.u(8), size)):
+        c = s._chord(y, y)
+        if c is None:
+            continue
+        for px in range(max(x, c[0]), min(x + w - 1, c[1], size - 1) + 1):
+            expected[(px, y)] = GREEN if px < x + fill else DARK
+    assert lit(raw) == expected
+    assert not outside(raw, slack=0)
+    if y_offset in (25, 40):
+        assert expected, "the bar is still drawn where the circle leaves room"
+
+
 def test_mock_gauge_ring_at_240(panel):
     # Arduino test_gauge_ring: outer radius radius - u(4) = 113, thickness
     # max(5, radius // 9) = 13: rows 7..19 at the top of the centre column.
@@ -910,6 +937,51 @@ def test_mock_graph_labels_clear_the_axes_at_240(panel, max_val):
     # colour only, and no label pixel touches the row next to them.
     assert {px[(x, 119)] for x in range(41, 76) if (x, 119) in px} == {GRID_DARK}
     assert not [y for y in rows if y in (118, 120, 167)]
+
+
+# int(1e30) and int(-1e38) are 31 and 39 digits: wider than the chord.
+LONG_GRAPHS = (
+    ([0, 123456789], 0, 100),
+    ([0, -1e9], 0, 100),
+    ([1, 2], -99999, 99999),
+    ([1, 2], -123456789, 123456789),
+    ([0, 1e30], 0, 100),
+    ([0, -1e38], 0, 100),
+    ([1, 2], -1e30, 1e30),
+    ([1, 2], -1e38, 1e38),
+)
+
+
+@pytest.mark.parametrize(("data", "lo", "hi"), LONG_GRAPHS)
+def test_mock_graph_fits_long_numbers_to_the_circle_at_240(panel, data, lo, hi):
+    # Rule 7 (#456): the current value and the axis labels keep the longest
+    # prefix that fits the chord at their ink rows. The value stays centred
+    # on cx when it fits and is clamped into the chord when cut; the labels
+    # keep their left edge (Arduino drawGraphLabel(): the room runs to the
+    # chord's right edge less k).
+    s, raw = panel()
+    s.graph(data, lo, hi, color=(119, 255, 119))
+    assert not outside(raw, slack=0)
+    # The value's digits, ink rows 60..69 (cell 58, rows 2..11): chord 17..223.
+    white = box(raw, WHITE)
+    assert white is not None and white[1] == 60 and white[3] <= 69
+    assert white[0] >= 17 and white[2] <= 223
+    text = str(int(data[-1]))
+    if len(text) * 8 > 207:
+        # Cut to 25 cells (200 px), not to nothing.
+        assert white[2] - white[0] >= 24 * 8
+    else:
+        # Centred: the ink lies in the cells from 120 - width // 2.
+        cell = 120 - len(text) * 4
+        assert cell <= white[0] and white[2] < cell + len(text) * 8
+    # The three labels keep their bands and their left edge, x 44.
+    rows = sorted({y for (x, y), c in lit(raw).items() if c == DARK and x >= 44 and y < 168})
+    bands = [(74, 81), (107, 114), (156, 163)]
+    assert set(rows) <= {y for a, b in bands for y in range(a, b + 1)}
+    for a, b in bands:
+        xs = [x for (x, y), c in lit(raw).items() if c == DARK and x >= 42 and a <= y <= b]
+        # The first ink column lies in the first 6 px cell, which starts at 44.
+        assert xs and min(xs) < 44 + 6, (a, b)
 
 
 NAN = float("nan")

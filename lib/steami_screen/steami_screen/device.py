@@ -441,7 +441,11 @@ class Screen:
                 self._txt(line, cx - len(line) * 4, y, color, 1, "draw_small_text")
 
     def bar(self, val, max_val=100, y_offset=0, color=LIGHT):
-        """Draw a horizontal progress bar below center."""
+        """Draw a horizontal progress bar below center.
+
+        A bar moved far from the centre by y_offset is cut to the circle on
+        each of its rows (Arduino rule 7).
+        """
         cx, cy = self.center
         bar_w = self.width - self.u(40)
         bar_h = self.u(8)
@@ -449,9 +453,27 @@ class Screen:
         by = cy + self.u(20) + self.u(y_offset)
         fill_w = int(bar_w * min(val, max_val) / max_val) if max_val else 0
 
-        self._fill_rect(bx, by, bar_w, bar_h, DARK)
+        self._bar_rows(bx, bx + bar_w - 1, by, bar_h, DARK)
         if fill_w > 0:
-            self._fill_rect(bx, by, fill_w, bar_h, color)
+            self._bar_rows(bx, bx + fill_w - 1, by, bar_h, color)
+
+    def _bar_rows(self, left, right, top, h, c):
+        """Fill columns left..right of rows top..top + h - 1 inside the circle.
+
+        One rect when the chord of the end rows (the narrower) holds the
+        span, else one span per row, cut to that row's chord.
+        """
+        ch = self._chord(top, top + h - 1)
+        if ch and ch[0] <= left and right <= ch[1]:
+            self._fill_rect(left, top, right - left + 1, h, c)
+            return
+        for y in range(max(top, 0), min(top + h, self.height)):
+            ch = self._chord(y, y)
+            if ch:
+                x0 = max(left, ch[0])
+                x1 = min(right, ch[1], self.width - 1)
+                if x0 <= x1:
+                    self._fill_rect(x0, y, x1 - x0 + 1, 1, c)
 
     def gauge(self, val, min_val=0, max_val=100, color=LIGHT, arc_width=None):
         """Draw a circular arc gauge (270 deg, gap at bottom).
@@ -507,7 +529,8 @@ class Screen:
         5.9). An infinite point is clamped to the box like any other. With 0
         or 1 point only the frame and the value are drawn. A NaN point is
         skipped and leaves a gap: no segment reaches it, and the other
-        points keep their x.
+        points keep their x. When k > 1 the value and the axis labels keep
+        the longest prefix that fits the circle at their ink rows.
         """
         k = self.k
         u = self.u
@@ -521,10 +544,12 @@ class Screen:
         text = "--"
         if data and math.isfinite(data[-1]):
             text = str(int(data[-1]))
-        tw = self._tw(text, TEXT, k)
-        self._txt(
-            text, cx - tw // 2, u(STEAMI_GRAPH_VALUE_Y), WHITE, k, "draw_medium_text", ink=TEXT
-        )
+        if k > 1:
+            # Centred on cx, cut to the chord at its ink rows (rule 7).
+            self._put(text, cx, u(STEAMI_GRAPH_VALUE_Y), WHITE, TEXT, k)
+        else:
+            tw = self._tw(text, TEXT, k)
+            self._txt(text, cx - tw // 2, u(STEAMI_GRAPH_VALUE_Y), WHITE, k, "draw_medium_text")
 
         def _fmt(v):
             if v >= 1000 and v % 1000 == 0:
@@ -543,11 +568,14 @@ class Screen:
             # Inside the box, where the circle leaves room (Arduino 5.9), in
             # the 6x12 LABEL face: the max label's first ink row u(2) below
             # the top, the others' last ink row k + u(2) above their line.
+            # Left edge gx + k + u(2), cut to the chord at its ink rows less
+            # k (Arduino drawGraphLabel(), rule 7).
             # Kept MicroPython difference: three labels, with "k" formatting.
             fc = fonts.face(label, LABEL, k)[0]
             a, b = fonts.ink_rows(fonts.masks(fc, label)[-1])
             y = gy + u(2) - a if yp == gy else yp - k - u(2) - b
-            self._txt(label, gx + k + u(2), y, DARK, k, ink=LABEL)
+            lx = gx + k + u(2)
+            self._put(label, lx, y, DARK, LABEL, k, 0, lx, None, k)
 
         dash, gap = u(STEAMI_GRAPH_DASH), u(STEAMI_GRAPH_GAP)
         x = gx + k
