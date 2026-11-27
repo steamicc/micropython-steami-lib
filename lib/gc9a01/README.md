@@ -113,7 +113,7 @@ Coordinates are in pixels; drawing outside the screen is clipped.
 * `rect(x, y, w, h, i)` — draw a rectangle outline
 * `line(x1, y1, x2, y2, i)` — draw a line
 * `text(s, x, y, i)` — draw text with the 8x8 framebuf font
-* `blit(fb, x, y, key=-1)` — copy a FrameBuffer; pixels equal to `key` are skipped
+* `blit(fb, x, y, key=-1, palette=None)` — copy a FrameBuffer, or a read-only `(buffer, w, h, format)` tuple; with a palette each source pixel is mapped through it before the key test; pixels equal to `key` are skipped
 
 The GS4_HMSB FrameBuffer itself is `display.framebuf`, for the other FrameBuffer methods (`ellipse()`, `poly()`, `scroll()`...).
 
