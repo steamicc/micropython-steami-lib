@@ -25,7 +25,7 @@ from tests.test_steami_screen_scaling_mock import (  # noqa: F401 (mods and pane
 
 ROOT = Path(__file__).parent.parent
 SPLEEN_PATH = ROOT / "lib" / "steami_screen" / "steami_screen" / "spleen.py"
-SPLEEN_SHA256 = "c550418ca14a68ca0cb18bdbce2e3eeafb544830d77ce41c601df8a00303ae30"
+SPLEEN_SHA256 = "7be9abda43166a012bd7d2adadb1bf89f617b74aa498c6c5bd72d66d1adf47c7"
 
 
 @pytest.fixture

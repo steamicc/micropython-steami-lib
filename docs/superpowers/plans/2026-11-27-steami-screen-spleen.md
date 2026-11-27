@@ -46,6 +46,7 @@
 - Copy it byte for byte from `/tmp/claude-1000/-home-nedjar-sandbox-wiki-steami/1346e80f-1de2-4e4c-bae2-38b41b348575/scratchpad/spleen-mp/spleen.py`:
   - sha256 `c550418ca14a68ca0cb18bdbce2e3eeafb544830d77ce41c601df8a00303ae30`, 33 479 B, 718 lines;
   - destination `lib/steami_screen/steami_screen/spleen.py`.
+  - Its header named arduino-steami-lib `3aae3af`, a commit that was never pushed. The fix wave regenerated it with `scripts/gen-spleen-fonts.py --micropython --commit 64b8db6` (byte-identical generator on main, #277): only header line 12 changes, and the committed file now has sha256 `7be9abda43166a012bd7d2adadb1bf89f617b74aa498c6c5bd72d66d1adf47c7`.
 - Never hand-edit it, never run `ruff format` on it.
 - Facts: `VERSION = "2.1.0"`, `VALUE_KEY = " +-.:0123456789"`.
 - `EXTRA = "°ÀÂÄÇÈÉÊËÎÏÔÖÙÛÜàâäçèéêëîïôöùûüÿŸ"` (codes 127..159). `FOLD = "°AAACEEEEIIOOUUUaaaceeeeiioouuuyY"`.
@@ -706,7 +707,7 @@ Widget changes (240 only; the k == 1 branches are untouched):
   - Accents: drawn on 240 px; on 128 px folded to the base letter, and '°' drawn as an 8x8 degree. Other characters (control characters, "€", emoji): one '?' cell on 240 px; on 128 px unchanged from v0.30 (framebuf's checkerboard per UTF-8 byte).
   - The kept MicroPython differences (list of the spec).
   - Properties: `screen.max_chars   # 16 on 128 px, 30 on 240 px` and `screen.text_height(scale=1)   # 8 * scale on 128 px, 16 * scale on 240 px`.
-  - A "Fonts and licence" section with the Spleen copyright line and the full BSD-2 notice, copied from `spleen.py` lines 15-40, plus the generator and commit (`scripts/gen-spleen-fonts.py --micropython`, arduino-steami-lib `3aae3af`).
+  - A "Fonts and licence" section with the Spleen copyright line and the full BSD-2 notice, copied from `spleen.py` lines 15-40, plus the generator and commit (`scripts/gen-spleen-fonts.py --micropython`, arduino-steami-lib `64b8db6`).
 - [ ] **Step 2: `lib/gc9a01/README.md` L116** →
   - `` `blit(fb, x, y, key=-1, palette=None)` — copy a FrameBuffer, or a read-only `(buffer, w, h, format)` tuple; ``
   - `` with a palette each source pixel is mapped through it before the key test; pixels equal to `key` are skipped ``.
