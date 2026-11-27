@@ -102,7 +102,9 @@ long `show()` call. By then the button may already be released:
 
 The MCP23009 captures only the first change until the interrupt is read.
 If a press and its release both happen before the driver reads it, they
-can be reported as a single event, the press.
+can be reported as a single event, the press. A change that happens while
+the driver reads and clears the interrupt (three I2C reads) can also be
+missed.
 
 Registering a handler (`irq()`, or `interrupt_on_change()`,
 `interrupt_on_falling()` and `interrupt_on_raising()`) stores the callback,

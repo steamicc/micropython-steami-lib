@@ -61,9 +61,11 @@ class FakeMCP23009:
         self.pins = pins
         self.reference = pins if reference is None else reference
         self.log = []
-        # Called as on_write(reg, value) once a write is applied, to run
-        # code where a scheduled IRQ could run on the board.
+        # Called as on_write(reg, value) once a write is applied, and as
+        # on_read(reg) once a read is applied, to run code where a
+        # scheduled IRQ could run on the board.
         self.on_write = None
+        self.on_read = None
 
     # ----- Chip side -----
 
@@ -74,11 +76,6 @@ class FakeMCP23009:
     def release(self, gp):
         self.pins |= 1 << gp
         self._update()
-
-    def latch(self, gp):
-        """Leave a pending interrupt on gp, as a change before registration."""
-        self.regs[INTF] = 1 << gp
-        self.regs[INTCAP] = self.pins
 
     def _update(self):
         if self.regs[INTF]:
@@ -106,6 +103,8 @@ class FakeMCP23009:
         clearing = INTCAP if self.regs[IOCON] & 0x01 else GPIO
         if reg == clearing:
             self._clear()
+        if self.on_read is not None:
+            self.on_read(reg)
         return bytes([value])
 
     def writeto_mem(self, addr, reg, buf, *, addrsize=8):
@@ -207,7 +206,7 @@ def test_change_callback_gets_level_from_intcap(drv, dev, chip):
     assert levels == [0]
 
 
-def test_intcc_set_reads_intcap_only(drv, dev, chip):
+def test_intcc_set_clears_on_intcap_read(drv, dev, chip):
     dev.set_iocon(0x01)  # INTCC: reading INTCAP clears the interrupt
     events = []
     btn = dpad_pin(drv, dev, UP)
@@ -216,11 +215,11 @@ def test_intcc_set_reads_intcap_only(drv, dev, chip):
     chip.release(UP)
     chip.log.clear()
     dev.interrupt_event()
-    assert ("r", INTCAP) in chip.log[:4]
-    service_reads = chip.log[: chip.log.index(("r", INTCAP)) + 1]
-    assert ("r", GPIO) not in service_reads
+    assert chip.log[:3] == [("r", INTF), ("r", INTCAP), ("r", GPIO)]
     assert events == [("UP", 0, 1)]
     assert chip.regs[INTF] == 0
+    dev.interrupt_event()
+    assert events == [("UP", 0, 1)]
 
 
 def test_active_low_pin_inverts_captured_level(drv, dev, chip):
@@ -303,25 +302,27 @@ def test_registering_dpad_handlers_fires_no_event(drv, dev, chip):
     assert chip.regs[INTF] == 0
 
 
-def test_registration_clears_pending_interrupt(drv, dev, chip):
-    events = []
+def _reregister_with_pending_press(drv, dev, chip):
+    first = []
+    second = []
     btn = dpad_pin(drv, dev, UP)
-    chip.latch(UP)
-    btn.irq(recorder(events, "UP"), BOTH)
+    btn.irq(recorder(first, "first"), BOTH)
+    chip.press(UP)  # the soft IRQ has not run yet
+    assert chip.regs[INTF] == 1 << UP
+    btn.irq(recorder(second, "second"), BOTH)
     assert chip.regs[INTF] == 0
     dev.interrupt_event()
-    assert events == []
+    assert first == []
+    assert second == []
 
 
-def test_registration_clears_pending_interrupt_with_intcc(drv, dev, chip):
+def test_reregistration_clears_pending_interrupt(drv, dev, chip):
+    _reregister_with_pending_press(drv, dev, chip)
+
+
+def test_reregistration_clears_pending_interrupt_with_intcc(drv, dev, chip):
     dev.set_iocon(0x01)
-    events = []
-    btn = dpad_pin(drv, dev, UP)
-    chip.latch(UP)
-    btn.irq(recorder(events, "UP"), BOTH)
-    assert chip.regs[INTF] == 0
-    dev.interrupt_event()
-    assert events == []
+    _reregister_with_pending_press(drv, dev, chip)
 
 
 def test_callback_stored_and_interrupt_cleared_before_gpinten(drv, dev, chip):
@@ -374,6 +375,95 @@ def test_pending_event_on_other_pin_is_kept(drv, dev, chip):
     up.irq(recorder(events, "UP"), BOTH)
     dev.interrupt_event()
     assert events == [("DOWN", 0, 0)]
+
+
+def test_handler_run_at_registration_can_enable_another_pin(drv, dev, chip):
+    """A handler called during a registration enables DOWN: the
+    registration must not write back an older GPINTEN without DOWN."""
+    events = []
+    left = dpad_pin(drv, dev, LEFT)
+    down = dpad_pin(drv, dev, DOWN)
+    right = dpad_pin(drv, dev, RIGHT)
+
+    def on_left(pin):
+        events.append(("LEFT", pin.irq_level()))
+        down.irq(recorder(events, "DOWN"), BOTH)
+
+    left.irq(on_left, BOTH)
+    chip.press(LEFT)  # pending when RIGHT is registered
+    right.irq(recorder(events, "RIGHT"), BOTH)
+    assert events == [("LEFT", 0)]
+    assert chip.regs[GPINTEN] == (1 << LEFT) | (1 << DOWN) | (1 << RIGHT)
+    chip.press(DOWN)
+    dev.interrupt_event()
+    assert events == [("LEFT", 0), ("DOWN", 0, 0)]
+
+
+def test_handler_run_at_registration_can_disable_its_pin(drv, dev, chip):
+    """A one-shot handler, called during a registration, disables its own
+    pin: the registration must not enable it again."""
+    events = []
+    left = dpad_pin(drv, dev, LEFT)
+    right = dpad_pin(drv, dev, RIGHT)
+
+    def once(pin):
+        events.append("LEFT")
+        dev.disable_interrupt(LEFT)
+
+    left.irq(once, BOTH)
+    chip.press(LEFT)
+    right.irq(recorder(events, "RIGHT"), BOTH)
+    assert events == ["LEFT"]
+    assert chip.regs[GPINTEN] == 1 << RIGHT
+
+
+def test_soft_irq_after_registration_read_reports_event_once(drv, dev, chip):
+    """The soft IRQ of a DOWN press runs at the first scheduler point after
+    the interrupt is read during the registration of UP: one DOWN event."""
+    events = []
+    down = dpad_pin(drv, dev, DOWN)
+    up = dpad_pin(drv, dev, UP)
+    down.irq(recorder(events, "DOWN"), BOTH)
+    chip.press(DOWN)
+    ran = []
+
+    def on_read(reg):
+        if reg == GPIO and not ran:
+            ran.append(reg)
+            dev.interrupt_event()
+
+    chip.on_read = on_read
+    up.irq(recorder(events, "UP"), BOTH)
+    assert ran == [GPIO]
+    assert events == [("DOWN", 0, 0)]
+
+
+def test_interrupt_read_and_clear_have_no_scheduler_point():
+    """MicroPython runs scheduled soft IRQs at jumps (if, loops, and, or).
+    None may sit between the INTF read and the read that clears the
+    interrupt, or a soft IRQ could report the same event a second time."""
+    import ast
+    from pathlib import Path
+
+    path = Path(__file__).parents[1] / "lib/mcp23009e/mcp23009e/device.py"
+    tree = ast.parse(path.read_text())
+    func = next(
+        node
+        for node in ast.walk(tree)
+        if isinstance(node, ast.FunctionDef) and node.name == "_service_interrupt"
+    )
+
+    def reads(node, name):
+        return any(isinstance(sub, ast.Name) and sub.id == name for sub in ast.walk(node))
+
+    body = func.body
+    start = next(i for i, st in enumerate(body) if reads(st, "MCP23009_INTF"))
+    end = next(i for i, st in enumerate(body) if reads(st, "MCP23009_GPIO"))
+    assert start < end
+    for statement in body[start : end + 1]:
+        assert isinstance(statement, (ast.Assign, ast.Expr))
+        for sub in ast.walk(statement):
+            assert not isinstance(sub, (ast.If, ast.IfExp, ast.BoolOp, ast.For, ast.While))
 
 
 def test_disable_interrupt_stops_callbacks(drv, dev, chip):

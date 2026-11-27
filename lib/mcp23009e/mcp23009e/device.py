@@ -15,7 +15,6 @@ from mcp23009e.const import (
     MCP23009_INTEN_ENABLE,
     MCP23009_INTF,
     MCP23009_IOCON,
-    MCP23009_IOCON_INTCC,
     MCP23009_IODIR,
     MCP23009_IPOL,
     MCP23009_LOGIC_HIGH,
@@ -283,20 +282,19 @@ class MCP23009E(object):
         Args:
             gpx: Numéro de GPIO (0 à 7)
         """
-        # Lire les registres actuels
-        gpinten = self._read_reg(MCP23009_GPINTEN)
+        # INTCON d'abord, pour comparer avec l'état précédent : en mode
+        # DEFVAL, activer GPINTEN déclencherait une interruption tout de suite
         intcon = self._read_reg(MCP23009_INTCON)
-
-        # Activer l'interruption sur changement pour ce GPIO
-        gpinten = _set_bit(gpinten, gpx, MCP23009_INTEN_ENABLE)
-        # Configurer pour comparer avec l'état précédent
         intcon = _set_bit(intcon, gpx, MCP23009_INTCON_PREVIOUS_STATE)
-
-        # INTCON d'abord : en mode DEFVAL, activer GPINTEN déclencherait
-        # une interruption tout de suite
         self._write_reg(MCP23009_INTCON, intcon)
+
         # Effacer l'interruption en attente, sans appeler le callback de gpx
         self._service_interrupt(1 << gpx)
+
+        # Lire GPINTEN seulement maintenant : un callback appelé ci-dessus
+        # a pu activer ou désactiver un autre GPIO
+        gpinten = self._read_reg(MCP23009_GPINTEN)
+        gpinten = _set_bit(gpinten, gpx, MCP23009_INTEN_ENABLE)
         self._write_reg(MCP23009_GPINTEN, gpinten)
 
     def _send_disable_interrupt(self, gpx):
@@ -393,9 +391,9 @@ class MCP23009E(object):
         Traite les événements d'interruption du MCP23009E
 
         Lit INTF, puis INTCAP : le niveau de chaque GPIO au moment de
-        l'interruption. Si IOCON.INTCC n'est pas activé, lit ensuite GPIO
-        pour effacer l'interruption. Appelle les callbacks avec ce niveau
-        capturé, même si la broche a changé depuis (bouton déjà relâché).
+        l'interruption, puis GPIO. L'interruption est effacée quel que soit
+        IOCON.INTCC. Appelle les callbacks avec ce niveau capturé, même si
+        la broche a changé depuis (bouton déjà relâché).
 
         Le MCP23009 ne capture que le premier changement : un appui et son
         relâchement survenus tous deux avant cette lecture peuvent ne
@@ -410,17 +408,16 @@ class MCP23009E(object):
         Args:
             skip_mask: masque des GPIO dont l'événement est ignoré
         """
-        intcc = self._read_reg(MCP23009_IOCON) & MCP23009_IOCON_INTCC
-
-        # Lire les flags d'interruption
+        # Lire INTF, puis INTCAP (niveau des GPIO capturé au moment de
+        # l'interruption), puis GPIO. Selon IOCON.INTCC, la lecture de
+        # INTCAP ou celle de GPIO efface l'interruption : lire les deux
+        # l'efface dans tous les cas. MicroPython n'exécute les IRQ
+        # logicielles qu'aux sauts (if, boucle, and, or) : il n'y en a
+        # aucun entre ces lectures, pour qu'une IRQ logicielle ne traite
+        # pas une seconde fois l'événement lu ici.
         intf = self._read_reg(MCP23009_INTF)
-
-        # Niveau des GPIO capturé au moment de l'interruption
-        # (si INTCC est activé, cette lecture efface l'interruption)
         state = self._read_reg(MCP23009_INTCAP)
-        if not intcc:
-            # Sinon, lire GPIO efface l'interruption
-            self._read_reg(MCP23009_GPIO)
+        self._read_reg(MCP23009_GPIO)
 
         intf &= ~skip_mask
 
