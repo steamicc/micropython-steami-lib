@@ -110,27 +110,44 @@ class GC9A01(object):
         self.cs.value(1)
 
     def reset(self):
-        """Hardware reset with the reset pin, or SWRESET without one."""
-        if self.rst is None:
-            self._command(SWRESET)
-        else:
-            self.rst.init(self.rst.OUT, value=1)
-            sleep_ms(RESET_PULSE_MS)
-            self.rst.value(0)
-            sleep_ms(RESET_PULSE_MS)
-            self.rst.value(1)
+        """Hardware reset: pulse the rst pin. ValueError without one.
+
+        Without an rst pin, soft_reset() resets the panel instead. Either
+        leaves it asleep with its default registers: call init() again.
+        """
+        rst = self.rst
+        if rst is None:
+            raise ValueError("no rst pin: use soft_reset()")
+        rst.init(rst.OUT, value=1)
+        sleep_ms(RESET_PULSE_MS)
+        rst.value(0)
+        sleep_ms(RESET_PULSE_MS)
+        rst.value(1)
+        sleep_ms(RESET_DELAY_MS)
+
+    def soft_reset(self):
+        """Software reset: the SWRESET command, then its 120 ms wait.
+
+        Leaves the panel asleep with its default registers: call init() again.
+        """
+        self._begin()
+        self._command(SWRESET)
         sleep_ms(RESET_DELAY_MS)
 
     def init(self):
         """Reset and set up the panel, send a cleared frame, then DISPON.
 
-        The panel RAM is cleared before the display turns on, so its
-        power-on content never shows.
+        The reset is reset() with an rst pin, else soft_reset(). The panel
+        RAM is cleared before the display turns on, so its power-on content
+        never shows.
         """
         self.cs.init(self.cs.OUT, value=1)
         self.dc.init(self.dc.OUT, value=0)
-        self._begin()
-        self.reset()
+        if self.rst is None:
+            self.soft_reset()
+        else:
+            self._begin()
+            self.reset()
         seq = memoryview(INIT_SEQUENCE)
         i = 0
         while i < len(seq):
