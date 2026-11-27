@@ -835,7 +835,9 @@ class Screen:
         s is split at '°' before folding, so a literal "\\x7f" stays a framebuf
         glyph. Each segment goes to draw_scaled_text when alt is None or
         f > 1, else to the backend's `alt` method if any. The pen advances
-        8f per character. A text without '°' is one call, as before.
+        8f per cell the segment's drawer draws: one per character for
+        draw_scaled_text, one per UTF-8 byte for framebuf.text. A text
+        without '°' is one call, as before.
         """
         if "°" not in s:
             self._seg8(fonts.fold8(s), x, y, c, f, alt)
@@ -847,8 +849,12 @@ class Screen:
                 x += 8 * f
             first = False
             if seg:
-                self._seg8(fonts.fold8(seg), x, y, c, f, alt)
-                x += len(seg) * 8 * f
+                seg = fonts.fold8(seg)
+                self._seg8(seg, x, y, c, f, alt)
+                if alt is None or f > 1:
+                    x += len(seg) * 8 * f
+                else:
+                    x += len(seg.encode()) * 8
 
     def _seg8(self, s, x, y, c, f, alt):
         if alt is None or f > 1:

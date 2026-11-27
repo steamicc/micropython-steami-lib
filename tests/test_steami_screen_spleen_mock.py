@@ -602,3 +602,22 @@ def test_mock_128_leaves_other_characters_to_framebuf(s128):
     rec.calls.clear()
     s.text("a\x7fb\n", at=(0, 0))
     assert rec.calls == [("text", "a\x7fb\n", 0, 0, w)]
+
+
+def test_mock_128_degree_after_a_multibyte_character(s128):
+    # framebuf.text draws one cell per UTF-8 byte: "€" takes 3 cells.
+    s, rec, const = s128
+    w = const.WHITE
+    s.text("€°A", at=(0, 0))
+    assert rec.calls == [
+        ("text", "€", 0, 0, w),
+        *degree_runs(24, 0, 1, w),
+        ("text", "A", 32, 0, w),
+    ]
+    rec.calls.clear()
+    s.text("€°A", at=(0, 0), scale=2)
+    assert rec.calls == [
+        ("scaled", "€", 0, 0, w, 2),
+        *degree_runs(16, 0, 2, w),
+        ("scaled", "A", 32, 0, w, 2),
+    ]
