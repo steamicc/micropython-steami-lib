@@ -9,6 +9,11 @@ name: "steami_screen_v1c"
 # Most tests only check that nothing raises; look at the screen (or film it)
 # to check the drawing itself. The Spleen tests also read pixels back and
 # print the widget text timings (minimum of 3 runs, in us).
+# The Spleen tests (the last four) need a firmware built from this lib with
+# the STeaMi linker script of steamicc/micropython-steami (FLASH_FS at
+# 0x08084000). On an older firmware, run only the timing script, with
+# mpremote run, for its printed numbers: its result is expected to be False
+# there.
 #
 # Run with a terminal (hardware_script tests are skipped without one):
 #   python -m pytest tests/ -v -k steami_screen_v1c --port /dev/ttyACM0 -s
