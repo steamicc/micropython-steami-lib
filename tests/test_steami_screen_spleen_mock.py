@@ -170,7 +170,14 @@ def test_mock_masks_and_ink_rows(sp, fonts):
     assert fonts.masks(sp.F8X16, "É")[-1] & 1 == 1
     assert fonts.masks(sp.F8X16, " ") == [0]
     assert fonts.masks(sp.F8X16, "") == []
-    assert fonts.masks(sp.F16X32, "8") == fonts.masks(sp.F16X32, "8")
+
+
+def test_mock_masks_row_cache(sp, fonts):
+    first = fonts.masks(sp.F16X32, "8")
+    assert ((32 << 16) | fonts.offset(sp.F16X32, "8")) in fonts._rows
+    # Same height, so same cache key, but no ink: a rescan would give 0.
+    blank = (16, 32, 26, sp.VALUE_KEY, bytes(len(sp.F16X32[4])))
+    assert fonts.masks(blank, "8") == first != [0]
 
 
 def test_mock_draw_runs_one_call_per_run(fonts):
