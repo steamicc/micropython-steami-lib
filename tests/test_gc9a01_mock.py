@@ -419,6 +419,24 @@ def test_blit_with_key(rig):
     assert rig.dev.pixel(51, 60) == 2
 
 
+def test_blit_with_palette_maps_then_keys(rig):
+    import framebuf
+
+    rig.dev.fill(2)
+    glyph = (memoryview(bytes([0b10100000]))[0:1], 3, 1, framebuf.MONO_HLSB)
+
+    # Palette pixel 0 (high nibble) = 0, pixel 1 (low nibble) = 9, key 0:
+    # set bits become 9, clear bits map to the key and are skipped.
+    palette = framebuf.FrameBuffer(bytearray([(0 << 4) | 9]), 2, 1, framebuf.GS4_HMSB)
+    rig.dev.blit(glyph, 50, 60, 0, palette)
+    assert [rig.dev.pixel(x, 60) for x in range(50, 53)] == [9, 2, 9]
+
+    # Colour 0 (BLACK) on set bits: the key moves to 1, so black is drawn.
+    palette = framebuf.FrameBuffer(bytearray([(1 << 4) | 0]), 2, 1, framebuf.GS4_HMSB)
+    rig.dev.blit(glyph, 50, 61, 1, palette)
+    assert [rig.dev.pixel(x, 61) for x in range(50, 53)] == [0, 2, 0]
+
+
 # ----- Power -----
 
 

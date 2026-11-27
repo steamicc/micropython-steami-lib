@@ -172,5 +172,11 @@ class GC9A01(object):
     def text(self, s, x, y, i):
         self.framebuf.text(s, x, y, i)
 
-    def blit(self, fb, x, y, key=-1):
-        self.framebuf.blit(fb, x, y, key)
+    def blit(self, fb, x, y, key=-1, palette=None):
+        """Copy fb (a FrameBuffer or a (buf, w, h, fmt[, stride]) tuple) at x, y.
+
+        With a palette, each source pixel value is looked up in it first:
+        palette is applied before the key test, so a pixel whose mapped
+        colour equals key is skipped.
+        """
+        self.framebuf.blit(fb, x, y, key, palette)
