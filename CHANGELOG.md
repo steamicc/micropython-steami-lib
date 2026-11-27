@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [0.31.2](https://github.com/steamicc/micropython-steami-lib/compare/v0.31.1...v0.31.2) (2026-11-27)
+
+
+### Bug Fixes
+
+* **mcp23009e:** Report every D-pad edge in order, with its level. ([#466](https://github.com/steamicc/micropython-steami-lib/issues/466)) ([3d295d4](https://github.com/steamicc/micropython-steami-lib/commit/3d295d429e7c851964275270734e584dd39f4dc7)), closes [#465](https://github.com/steamicc/micropython-steami-lib/issues/465) [#465](https://github.com/steamicc/micropython-steami-lib/issues/465) [#465](https://github.com/steamicc/micropython-steami-lib/issues/465)
+
 ## [0.31.1](https://github.com/steamicc/micropython-steami-lib/compare/v0.31.0...v0.31.1) (2026-11-27)
 
 
