@@ -912,6 +912,85 @@ def test_mock_graph_labels_clear_the_axes_at_240(panel, max_val):
     assert not [y for y in rows if y in (118, 120, 167)]
 
 
+NAN = float("nan")
+# "--" in the current-value place (#463, Arduino 5.9: "-- if NAN", "0 or 1
+# point draws the frame and the value only"): the 16 px wide text centred on
+# cx at row u(31), as a two-digit value. 240: Spleen 8x16 (TEXT at k = 2),
+# cell x 112..127, rows 58..73, the '-' ink is row 7 of the cell, columns
+# 1..6 of each glyph. 128: the 8x8 framebuf path, cell x 56..71 from row 31.
+DASHES = {240: (113, 65, 126, 65), 128: (57, 34, 70, 34)}
+# Box left x, step base and width: x u(21) + 0, w W - u(15) - u(21).
+GRAPH_X = {240: (39, 173), 128: (21, 92)}
+# On 128 the three 8x8 axis labels sit left of the axis and are clipped by
+# the circle (kept MicroPython difference), so only 240 checks the circle.
+
+
+@pytest.mark.parametrize("size", (240, 128))
+def test_mock_graph_empty_history_shows_dashes(panel, size):
+    s, raw = panel(size)
+    s.graph([], min_val=0, max_val=100, color=(119, 255, 119))
+    assert box(raw, WHITE) == DASHES[size]
+    gx, _gw = GRAPH_X[size]
+    # The frame: the left axis at the box's left column, DARK.
+    assert lit(raw)[(gx, s.u(38))] == DARK
+    # No line.
+    assert box(raw, GREEN) is None
+    if size == 240:
+        assert not outside(raw, slack=0)
+
+
+@pytest.mark.parametrize("size", (240, 128))
+def test_mock_graph_nan_last_value_shows_dashes(panel, size):
+    s, raw = panel(size)
+    s.graph([10, 30, NAN], color=(119, 255, 119))
+    assert box(raw, WHITE) == DASHES[size]
+    # The line joins the two numbers, from the box's left edge to the middle
+    # point: the NaN point at the right edge has no segment.
+    gx, gw = GRAPH_X[size]
+    green = box(raw, GREEN)
+    assert green is not None
+    assert green[0] == gx and green[2] <= gx + gw // 2 + s.k
+    if size == 240:
+        assert not outside(raw, slack=0)
+
+
+@pytest.mark.parametrize("size", (240, 128))
+def test_mock_graph_all_nan_shows_dashes_and_no_line(panel, size):
+    s, raw = panel(size)
+    s.graph([NAN, NAN, NAN], color=(119, 255, 119))
+    assert box(raw, WHITE) == DASHES[size]
+    assert box(raw, GREEN) is None
+
+
+@pytest.mark.parametrize("size", (240, 128))
+def test_mock_graph_skips_a_nan_point_in_the_middle(panel, size):
+    # A NaN point is skipped and leaves a gap (Arduino 5.9: "NAN points are
+    # skipped (gap in the curve)"): no segment reaches it, the points keep
+    # their x, and the value is the last number.
+    s, raw = panel(size)
+    s.graph([10, NAN, 30, 70], color=(119, 255, 119))
+    gx, gw = GRAPH_X[size]
+    x2 = int(gx + 2 * gw / 3)
+    green = box(raw, GREEN)
+    assert green is not None
+    # Only the segment from point 2 to point 3 is drawn.
+    assert green[0] == x2 and green[2] >= gx + gw - 1
+    ref, ref_raw = panel(size)
+    ref.graph([10, 70])
+    assert box(raw, WHITE) == box(ref_raw, WHITE)
+    if size == 240:
+        assert not outside(raw, slack=0)
+
+
+@pytest.mark.parametrize("size", (240, 128))
+def test_mock_graph_one_point_draws_the_frame_and_its_value(panel, size):
+    s, raw = panel(size)
+    s.graph([5], min_val=0, max_val=10, color=(119, 255, 119))
+    white = box(raw, WHITE)
+    assert white is not None and white != DASHES[size]
+    assert box(raw, GREEN) is None
+
+
 # ----- everything stays inside at default arguments -----
 
 

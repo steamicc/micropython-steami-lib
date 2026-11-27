@@ -10,7 +10,9 @@ was re-recorded when the arc became a scanline ring sector (solid rings, about
 60 edge pixels per call changed). The accents entry was added when accented
 letters were folded to one 8x8 cell (they were two checkerboards, 16 px, for
 one counted cell) and '°' drawn with the Arduino 8x8 degree glyph (it was two
-checkerboards); no other entry changed.
+checkerboards); no other entry changed. The graph_empty_nan entry was added
+when graph() drew "--" for an empty history or a NaN last value (#463); the
+graph entry gained only that "--" call for its graph([]) case.
 
 Regenerate (only on purpose): STEAMI_GOLDEN_WRITE=1 python3 -m pytest <this file>
 The writer rewrites every entry the same way, so `git diff` must show only the
@@ -86,6 +88,7 @@ class _GlyphFrameBuffer:
 
 AT_POSITIONS = ("N", "NE", "E", "SE", "S", "SW", "W", "NW", "CENTER")
 FACES = ("happy", "sad", "surprised", "sleeping", "angry", "love")
+NAN = float("nan")
 
 # Each script receives a Screen and draws with fixed arguments.
 SCRIPTS = {
@@ -126,6 +129,12 @@ SCRIPTS = {
         s.graph([5], min_val=0, max_val=10),
         s.graph([], min_val=0, max_val=2000),
         s.graph([0, 1000, 2000], min_val=0, max_val=2000, color=5),
+    ),
+    "graph_empty_nan": lambda s: (
+        s.graph([], min_val=0, max_val=100, color=5),
+        s.graph([10, 30, NAN], color=5),
+        s.graph([10, NAN, 30, 70], color=5),
+        s.graph([NAN, NAN, NAN], color=5),
     ),
     "menu": lambda s: (
         s.menu(["Temperature", "Humidity", "Pressure"], selected=1),
@@ -183,6 +192,11 @@ def _jsonable(value):
 
 def record_calls(widget_name):
     """Replay the scripted calls of one widget on a 128x128 raw display behind SSD1327Display."""
+    return record(SCRIPTS[widget_name])
+
+
+def record(script):
+    """Replay script(screen) on a 128x128 raw display behind SSD1327Display."""
     module, _ = load_driver_mock("steami_screen", None)
     try:
         fake_framebuf = types.ModuleType("framebuf")
@@ -191,7 +205,7 @@ def record_calls(widget_name):
         sys.modules["framebuf"] = fake_framebuf
         raw = RawDisplay()
         display = sys.modules["steami_screen"].SSD1327Display(raw)
-        SCRIPTS[widget_name](module.Screen(display))
+        script(module.Screen(display))
         return [_jsonable(call) for call in raw.calls]
     finally:
         cleanup_driver("steami_screen")
@@ -221,3 +235,58 @@ def test_mock_ssd1327_output_unchanged(widget):
 
 def test_mock_golden_covers_every_script():
     assert set(json.loads(GOLDEN.read_text())) == set(SCRIPTS)
+
+
+# graph() with an empty history or NaN values (#463, Arduino 5.9: "-- if NAN",
+# "0 or 1 point draws the frame and the value only", "NAN points are skipped
+# (gap in the curve)"). Box x 21, y 38, w 92, h 52 on 128; the value text
+# WHITE (15) centred on cx 64 at row 31, so a 2-character text at x 56, as
+# "90" in the graph entry. The curve is drawn in colour 5.
+FRAME_128 = (["line", 21, 38, 21, 90, 6], ["line", 21, 90, 112, 90, 6])
+
+
+def _values(calls):
+    return [c for c in calls if c[0] == "text" and c[4] == 15]
+
+
+def _curve(calls):
+    return [c for c in calls if c[0] == "line" and c[5] == 5]
+
+
+def test_mock_graph_empty_history_draws_frame_and_dashes_at_128():
+    calls = record(lambda s: s.graph([], min_val=0, max_val=100, color=5))
+    assert _values(calls) == [["text", "--", 56, 31, 15]]
+    for line in FRAME_128:
+        assert line in calls
+    assert _curve(calls) == []
+
+
+def test_mock_graph_nan_last_value_shows_dashes_at_128():
+    # Points x 21, 67, 113 (step 46); 10 -> row int(90 - 5.2) = 84, 30 -> 74.
+    calls = record(lambda s: s.graph([10, 30, NAN], color=5))
+    assert _values(calls) == [["text", "--", 56, 31, 15]]
+    assert _curve(calls) == [["line", 21, 84, 67, 74, 5]]
+
+
+def test_mock_graph_nan_in_the_middle_leaves_a_gap_at_128():
+    # Points x 21, 51, 82, 113 (step 92 / 3); the NaN point 1 is skipped and
+    # point 0 has no neighbour left: only 30 (row 74) -> 70 (row 53) is drawn.
+    calls = record(lambda s: s.graph([10, NAN, 30, 70], color=5))
+    assert _values(calls) == [["text", "70", 56, 31, 15]]
+    assert _curve(calls) == [["line", 82, 74, 113, 53, 5]]
+
+
+def test_mock_graph_all_nan_draws_frame_and_dashes_at_128():
+    calls = record(lambda s: s.graph([NAN, NAN, NAN], color=5))
+    assert _values(calls) == [["text", "--", 56, 31, 15]]
+    for line in FRAME_128:
+        assert line in calls
+    assert _curve(calls) == []
+
+
+def test_mock_graph_one_point_draws_frame_and_value_at_128():
+    calls = record(lambda s: s.graph([5], min_val=0, max_val=10, color=5))
+    assert _values(calls) == [["text", "5", 60, 31, 15]]
+    for line in FRAME_128:
+        assert line in calls
+    assert _curve(calls) == []

@@ -500,7 +500,14 @@ class Screen:
                 self._txt(t, px - len(t) * 4, py, GRAY, 1, "draw_small_text")
 
     def graph(self, data, min_val=0, max_val=100, color=LIGHT):
-        """Draw a scrolling line graph with the current value above."""
+        """Draw a scrolling line graph with the current value above.
+
+        The current value is the integer part of the last point, or "--"
+        when data is empty or its last point is NaN (Arduino 5.9). With 0
+        or 1 point only the frame and the value are drawn. A NaN point is
+        skipped and leaves a gap: no segment reaches it, and the other
+        points keep their x.
+        """
         k = self.k
         u = self.u
         cx, _cy = self.center
@@ -510,12 +517,13 @@ class Screen:
         gw = self.width - margin - gx
         gh = u(STEAMI_GRAPH_HEIGHT)
 
-        if data:
+        text = "--"
+        if data and not math.isnan(data[-1]):
             text = str(int(data[-1]))
-            tw = self._tw(text, TEXT, k)
-            self._txt(
-                text, cx - tw // 2, u(STEAMI_GRAPH_VALUE_Y), WHITE, k, "draw_medium_text", ink=TEXT
-            )
+        tw = self._tw(text, TEXT, k)
+        self._txt(
+            text, cx - tw // 2, u(STEAMI_GRAPH_VALUE_Y), WHITE, k, "draw_medium_text", ink=TEXT
+        )
 
         def _fmt(v):
             if v >= 1000 and v % 1000 == 0:
@@ -560,6 +568,9 @@ class Screen:
 
         prev_px, prev_py = None, None
         for i, v in enumerate(data):
+            if math.isnan(v):
+                prev_px = None
+                continue
             px = int(gx + i * step)
             ratio = (v - min_val) / span
             ratio = max(0.0, min(1.0, ratio))
