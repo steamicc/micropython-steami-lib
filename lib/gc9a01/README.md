@@ -112,9 +112,18 @@ The SPI clock is `BAUDRATE` in `gc9a01/const.py`: 32 MHz, the SPI1 maximum on th
 display = GC9A01(spi, dc, cs, rst=None, width=240, height=240)
 ```
 
-Creating the object touches no pin and no bus. Without `rst`, `init()` sends a software reset (SWRESET).
+Creating the object touches no pin and no bus.
 
-* `init()` — reset the panel, send the init sequence, clear the screen, then turn the display on
+* `init()` — reset the panel (`reset()` with `rst`, `soft_reset()` without), send the init sequence, clear the screen, then turn the display on
+
+### Reset
+
+As for the other drivers of this library, `reset()` is the hardware reset and `soft_reset()` the software one:
+
+* `reset()` — pulse the `rst` pin (10 ms high, 10 ms low, then high), then wait 120 ms; raises `ValueError` when the object has no `rst` pin
+* `soft_reset()` — send the software reset command (SWRESET), then wait 120 ms
+
+Both leave the controller asleep with its default registers: call `init()` to use the screen again.
 
 ### Drawing
 
@@ -133,6 +142,8 @@ The GS4_HMSB FrameBuffer itself is `display.framebuf`, for the other FrameBuffer
 ### Display Control
 
 * `show()` — send the frame to the screen (required after drawing)
+
+`show()` takes about 74 ms (see Memory) and is not synchronised with the panel refresh: the tearing-effect (TE) output of the GC9A01 is not wired on the STeaMi V1c, so a fast animation can tear.
 
 ### Power Management
 

@@ -72,7 +72,24 @@ box_w = screen.u(56)  # 56 on 128 px, 105 on 240 px
 screen.rect(screen.center[0] - box_w // 2, 10, box_w, screen.u(10), BLACK, fill=True)
 ```
 
-Text grows by `k`, not by `u()`: at scale 1 a cell is 8x8 on 128 px and 8x16 on 240 px (see Fonts). Size a box that must hold text from the glyphs: `len(text) * 8 * screen.k` wide holds it on both sizes (on 240 px the text takes half of that width), and `screen.text_height()` (`8 * screen.k`) high.
+Text does not grow by `u()`: a character of `text()` is 8 px wide at scale 1 on both sizes, 8x8 on 128 px and 8x16 on 240 px (see Fonts), and `scale` multiplies both. Size a box that must hold `text(s, at, color, scale)`, at `(x, y)` or at a cardinal position, from its cells:
+
+* width: `len(s) * 8 * scale` (there is no public text-width method). On 240 px each character is one cell, accented or not. On 128 px a French accented letter or `°` is one cell too (folded to its base letter, or drawn as the 8x8 degree sign), but any other non-ASCII character, such as `€`, takes one cell per UTF-8 byte at scale 1;
+* height: `screen.text_height(scale)`, that is `8 * scale` on 128 px and `16 * scale` on 240 px;
+* `screen.max_chars` is the number of characters that fit the width at scale 1 (16 on 128 px, 30 on 240 px); at scale `s` it is `screen.max_chars // s`.
+
+```python
+from steami_screen import DARK
+
+s = "Été"
+scale = 2
+w = len(s) * 8 * scale  # 48 on both sizes
+h = screen.text_height(scale)  # 16 on 128 px, 32 on 240 px
+screen.rect(10, 10, w + 4, h + 4, DARK, fill=True)
+screen.text(s, at=(12, 12), scale=scale)
+```
+
+On the round 240 px screen, text at a cardinal position is also kept inside the circle: a text too wide there keeps only the characters that fit. Widget text (value, labels, menu) uses its own faces (see Fonts).
 
 ---
 
@@ -189,6 +206,8 @@ Displays a large centered value with optional label above and unit below.
 screen.bar(75, max_val=100)
 ```
 
+`y_offset` (in 128 px units) moves the bar down, or up when negative. A bar moved far from the centre is cut to the round screen, row by row.
+
 ---
 
 #### Gauge
@@ -198,6 +217,10 @@ screen.gauge(60, min_val=0, max_val=100)
 ```
 
 Draws a 270-degree arc gauge near the screen border.
+
+The fill covers `int(270 * ratio)` degrees, where `ratio = (val - min_val) / (max_val - min_val)` is clamped to 0..1. A value with `0 < ratio < 1/270` (less than one degree) therefore shows an empty gauge, as on Arduino: `gauge(0.3)` draws no fill, `gauge(0.4)` a 1-degree one.
+
+The arc is drawn row by row with integer arithmetic and its colour converted once: a gauge allocates only a few small objects per call, most of them for its two labels.
 
 ---
 
@@ -210,6 +233,8 @@ screen.graph([10, 20, 15, 30], min_val=0, max_val=100)
 Draws a scrolling line graph with the last value displayed above.
 
 With an empty list, or when the last value is NaN or infinite, the frame is drawn and the value shows `--`. With a single value, only the frame and that value are drawn. A NaN value elsewhere leaves a gap in the line: no segment reaches it, and the other points keep their place.
+
+On the 240 px screen, a value or an axis label too long for the round screen keeps only the characters that fit (for example `graph(data, -1e38, 1e38)`).
 
 ---
 
@@ -257,6 +282,8 @@ Draws a pixel-art expression. Available: `"happy"`, `"sad"`, `"surprised"`, `"sl
 screen.clear()
 screen.show()
 ```
+
+`show()` sends the whole frame. On the V1c (240 px GC9A01) it takes about 74 ms, measured on the board (167 ms before v0.31.0), so an animation redrawn at every frame runs at about 13 frames per second at best, less the drawing time. It is not synchronised with the panel refresh: the panel's tearing-effect (TE) signal is not wired on the STeaMi, so a frame can show partly old and partly new content (tearing) on fast animations.
 
 ---
 
@@ -306,6 +333,8 @@ screen = Screen(GC9A01Display(raw))
 ```
 
 `GC9A01Display` is 240 x 240 and has the same methods as `SSD1327Display`, including `draw_scaled_text()` for true pixel-scale 8x8 text.
+
+`native_fill(color)` returns the driver's `fill_rect` and the colour's palette index, for many rects of one colour (`Screen` draws the gauge arcs with it). `SSD1327Display` has it too, with the grey4 level.
 
 It also has `draw_glyphs(fc, glyphs, n, bold, color)`, which `Screen` uses to draw the Spleen faces (see Fonts). Only the set bits of each glyph are painted, so black text and text over a coloured background (the selected menu bar, a gauge ring) keep their background. The colour is looked up once per string.
 

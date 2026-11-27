@@ -100,6 +100,20 @@ def test_mock_k_and_u_at_128_and_240(panel):
     assert (s240.width, s240.height, s240.center, s240.radius) == (240, 240, (120, 120), 120)
 
 
+def test_mock_layout_lengths_are_named_constants(mods):
+    # The u(2) and u(4) lengths of the widgets are named in const.py (#456).
+    const = sys.modules["steami_screen.const"]
+    assert const.STEAMI_VALUE_LABEL_GAP == 4
+    assert const.STEAMI_GAUGE_RING_INSET == 4
+    assert const.STEAMI_GRAPH_LABEL_PAD == 2
+    assert const.STEAMI_MENU_BAR_PAD == 2
+    assert (const.STEAMI_WATCH_HOUR_HALF_W, const.STEAMI_WATCH_MINUTE_HALF_W) == (3, 2)
+    source = sys.modules["steami_screen.device"].__file__
+    with open(source, encoding="utf-8") as f:
+        code = [line.split("#")[0] for line in f]
+    assert not [line for line in code if "u(2)" in line or "u(4)" in line]
+
+
 def test_mock_resolve_every_anchor_at_240(panel):
     s, _ = panel()
     # Arduino test_resolve_every_anchor: resolve(at, tw 32, f 2).
@@ -201,6 +215,31 @@ def test_mock_text_scale_0_counts_as_1(panel, size):
         s.text("Hi", at=at, scale=1)
         assert zero, at
         assert zero == lit(raw), at
+
+
+@pytest.mark.parametrize("size", (128, 240))
+@pytest.mark.parametrize("scale", (1, 2, 3))
+@pytest.mark.parametrize("text", ("MWM", "Été", "Hi"))
+def test_mock_text_box_is_8_px_per_character_times_scale(panel, size, scale, text):
+    # The README "Units and Scale" rule: n characters at a given scale take
+    # n * 8 * scale px by text_height(scale), on both panels (8x8 x scale on
+    # 128 px, Spleen 8x16 x scale on 240 px), at (x, y) and at a cardinal
+    # position. The last cell starts (n - 1) * 8 * scale px after the first.
+    n = len(text)
+    w = n * 8 * scale
+    s, raw = panel(size)
+    h = s.text_height(scale)
+    assert h == (8 if size == 128 else 16) * scale
+    s.text(text, at=(10, 20), scale=scale)
+    x0, y0, x1, y1 = box(raw)
+    assert x0 >= 10 and x1 < 10 + w
+    assert y0 >= 20 and y1 < 20 + h
+    assert x1 >= 10 + (n - 1) * 8 * scale
+    s, raw = panel(size)
+    s.text(text, at="CENTER", scale=scale)
+    x0, y0, x1, y1 = box(raw)
+    assert (n - 1) * 8 * scale < x1 - x0 + 1 <= w
+    assert y1 - y0 + 1 <= h
 
 
 def test_mock_title_at_scale_2_sits_at_its_floor(panel):
@@ -636,6 +675,33 @@ def test_mock_bar_at_240(panel):
     assert count(raw, DARK) == 47 * 15
 
 
+@pytest.mark.parametrize("y_offset", (0, 12, 25, 40, 60, -80))
+@pytest.mark.parametrize("size", (240, 128))
+def test_mock_bar_is_clipped_to_the_circle_per_row(panel, size, y_offset):
+    # Arduino rule 7 and barRows(): each row of the track and of the fill is
+    # cut to the chord of that row, so a bar far from the centre stays inside
+    # the circle (#456). 240, y_offset 25: rows 203..217, the bottom row's
+    # chord 50..190 against the bar's 38..202. y_offset 60 is below the panel
+    # on 240 (top 269): nothing is drawn. 0 and 12 fit whole (one rect).
+    s, raw = panel(size)
+    s.bar(50, y_offset=y_offset, color=(119, 255, 119))
+    w = size - s.u(40)
+    x = size // 2 - w // 2
+    top = size // 2 + s.u(20) + s.u(y_offset)
+    fill = w // 2
+    expected = {}
+    for y in range(max(top, 0), min(top + s.u(8), size)):
+        c = s._chord(y, y)
+        if c is None:
+            continue
+        for px in range(max(x, c[0]), min(x + w - 1, c[1], size - 1) + 1):
+            expected[(px, y)] = GREEN if px < x + fill else DARK
+    assert lit(raw) == expected
+    assert not outside(raw, slack=0)
+    if y_offset in (25, 40):
+        assert expected, "the bar is still drawn where the circle leaves room"
+
+
 def test_mock_gauge_ring_at_240(panel):
     # Arduino test_gauge_ring: outer radius radius - u(4) = 113, thickness
     # max(5, radius // 9) = 13: rows 7..19 at the top of the centre column.
@@ -910,6 +976,51 @@ def test_mock_graph_labels_clear_the_axes_at_240(panel, max_val):
     # colour only, and no label pixel touches the row next to them.
     assert {px[(x, 119)] for x in range(41, 76) if (x, 119) in px} == {GRID_DARK}
     assert not [y for y in rows if y in (118, 120, 167)]
+
+
+# int(1e30) and int(-1e38) are 31 and 39 digits: wider than the chord.
+LONG_GRAPHS = (
+    ([0, 123456789], 0, 100),
+    ([0, -1e9], 0, 100),
+    ([1, 2], -99999, 99999),
+    ([1, 2], -123456789, 123456789),
+    ([0, 1e30], 0, 100),
+    ([0, -1e38], 0, 100),
+    ([1, 2], -1e30, 1e30),
+    ([1, 2], -1e38, 1e38),
+)
+
+
+@pytest.mark.parametrize(("data", "lo", "hi"), LONG_GRAPHS)
+def test_mock_graph_fits_long_numbers_to_the_circle_at_240(panel, data, lo, hi):
+    # Rule 7 (#456): the current value and the axis labels keep the longest
+    # prefix that fits the chord at their ink rows. The value stays centred
+    # on cx when it fits and is clamped into the chord when cut; the labels
+    # keep their left edge (Arduino drawGraphLabel(): the room runs to the
+    # chord's right edge less k).
+    s, raw = panel()
+    s.graph(data, lo, hi, color=(119, 255, 119))
+    assert not outside(raw, slack=0)
+    # The value's digits, ink rows 60..69 (cell 58, rows 2..11): chord 17..223.
+    white = box(raw, WHITE)
+    assert white is not None and white[1] == 60 and white[3] <= 69
+    assert white[0] >= 17 and white[2] <= 223
+    text = str(int(data[-1]))
+    if len(text) * 8 > 207:
+        # Cut to 25 cells (200 px), not to nothing.
+        assert white[2] - white[0] >= 24 * 8
+    else:
+        # Centred: the ink lies in the cells from 120 - width // 2.
+        cell = 120 - len(text) * 4
+        assert cell <= white[0] and white[2] < cell + len(text) * 8
+    # The three labels keep their bands and their left edge, x 44.
+    rows = sorted({y for (x, y), c in lit(raw).items() if c == DARK and x >= 44 and y < 168})
+    bands = [(74, 81), (107, 114), (156, 163)]
+    assert set(rows) <= {y for a, b in bands for y in range(a, b + 1)}
+    for a, b in bands:
+        xs = [x for (x, y), c in lit(raw).items() if c == DARK and x >= 42 and a <= y <= b]
+        # The first ink column lies in the first 6 px cell, which starts at 44.
+        assert xs and min(xs) < 44 + 6, (a, b)
 
 
 NAN = float("nan")

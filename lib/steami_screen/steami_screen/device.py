@@ -39,17 +39,23 @@ from steami_screen.const import (
     STEAMI_CHAR_W,
     STEAMI_DEFAULT_HEIGHT,
     STEAMI_DEFAULT_WIDTH,
+    STEAMI_GAUGE_RING_INSET,
     STEAMI_GRAPH_DASH,
     STEAMI_GRAPH_GAP,
     STEAMI_GRAPH_HEIGHT,
+    STEAMI_GRAPH_LABEL_PAD,
     STEAMI_GRAPH_MARGIN,
     STEAMI_GRAPH_VALUE_Y,
     STEAMI_GRAPH_X_OFFSET,
     STEAMI_GRAPH_Y,
+    STEAMI_MENU_BAR_PAD,
     STEAMI_MENU_ROW_CELLS,
     STEAMI_TITLE_CAP_CELLS,
     STEAMI_VALUE_FIT_MARGIN,
+    STEAMI_VALUE_LABEL_GAP,
     STEAMI_VALUE_SIDE_GAP,
+    STEAMI_WATCH_HOUR_HALF_W,
+    STEAMI_WATCH_MINUTE_HALF_W,
     WHITE,
 )
 from steami_screen.fonts import LABEL, TEXT, VALUE
@@ -374,8 +380,9 @@ class Screen:
         sh = k if side or corner else 0
         align = 3 if side else 1
         if label:
-            # Label 6x12 at top - u(4) - 12 (its cell height is 12 on 240).
-            ly, fit = self._label_fit(label, y - self.u(4) - 12, y, lo, hi, sh)
+            # Label 6x12 at top - u(LABEL_GAP) - 12 (its cell is 12 px tall on 240).
+            ly0 = y - self.u(STEAMI_VALUE_LABEL_GAP) - 12
+            ly, fit = self._label_fit(label, ly0, y, lo, hi, sh)
             self._place(label, ax, ly, GRAY, LABEL, k, align, fit)
         if unit:
             self._put(unit, ax, y + 8 * f, LIGHT, TEXT, k, align, lo, hi, sh)
@@ -441,7 +448,11 @@ class Screen:
                 self._txt(line, cx - len(line) * 4, y, color, 1, "draw_small_text")
 
     def bar(self, val, max_val=100, y_offset=0, color=LIGHT):
-        """Draw a horizontal progress bar below center."""
+        """Draw a horizontal progress bar below center.
+
+        A bar moved far from the centre by y_offset is cut to the circle on
+        each of its rows (Arduino rule 7).
+        """
         cx, cy = self.center
         bar_w = self.width - self.u(40)
         bar_h = self.u(8)
@@ -449,15 +460,37 @@ class Screen:
         by = cy + self.u(20) + self.u(y_offset)
         fill_w = int(bar_w * min(val, max_val) / max_val) if max_val else 0
 
-        self._fill_rect(bx, by, bar_w, bar_h, DARK)
+        self._bar_rows(bx, bx + bar_w - 1, by, bar_h, DARK)
         if fill_w > 0:
-            self._fill_rect(bx, by, fill_w, bar_h, color)
+            self._bar_rows(bx, bx + fill_w - 1, by, bar_h, color)
+
+    def _bar_rows(self, left, right, top, h, c):
+        """Fill columns left..right of rows top..top + h - 1 inside the circle.
+
+        One rect when the chord of the end rows (the narrower) holds the
+        span, else one span per row, cut to that row's chord.
+        """
+        ch = self._chord(top, top + h - 1)
+        if ch and ch[0] <= left and right <= ch[1]:
+            self._fill_rect(left, top, right - left + 1, h, c)
+            return
+        for y in range(max(top, 0), min(top + h, self.height)):
+            ch = self._chord(y, y)
+            if ch:
+                x0 = max(left, ch[0])
+                x1 = min(right, ch[1], self.width - 1)
+                if x0 <= x1:
+                    self._fill_rect(x0, y, x1 - x0 + 1, 1, c)
 
     def gauge(self, val, min_val=0, max_val=100, color=LIGHT, arc_width=None):
         """Draw a circular arc gauge (270 deg, gap at bottom).
 
         The arc is drawn close to the screen border. Call gauge() before
         title() so that text layers on top of the arc.
+
+        The fill sweeps int(270 * ratio) degrees, ratio = (val - min_val) /
+        (max_val - min_val) clamped to 0..1, so a value with 0 < ratio <
+        1/270 shows an empty gauge, as the Arduino gauge does.
 
         Args:
             val: Current value to display.
@@ -470,8 +503,8 @@ class Screen:
         k = self.k
         cx, cy = self.center
         arc_w = arc_width if arc_width is not None else max(5, self.radius // 9)
-        # Centre line of the ring; when k > 1 its outer edge is radius - u(4).
-        r = self.radius - arc_w // 2 - (1 if k == 1 else self.u(4))
+        # Centre line of the ring; when k > 1 its outer edge is radius - u(RING_INSET).
+        r = self.radius - arc_w // 2 - (1 if k == 1 else self.u(STEAMI_GAUGE_RING_INSET))
         start_angle = 135
         sweep = 270
         ratio = (val - min_val) / (max_val - min_val) if max_val != min_val else 0
@@ -507,7 +540,8 @@ class Screen:
         5.9). An infinite point is clamped to the box like any other. With 0
         or 1 point only the frame and the value are drawn. A NaN point is
         skipped and leaves a gap: no segment reaches it, and the other
-        points keep their x.
+        points keep their x. When k > 1 the value and the axis labels keep
+        the longest prefix that fits the circle at their ink rows.
         """
         k = self.k
         u = self.u
@@ -521,10 +555,12 @@ class Screen:
         text = "--"
         if data and math.isfinite(data[-1]):
             text = str(int(data[-1]))
-        tw = self._tw(text, TEXT, k)
-        self._txt(
-            text, cx - tw // 2, u(STEAMI_GRAPH_VALUE_Y), WHITE, k, "draw_medium_text", ink=TEXT
-        )
+        if k > 1:
+            # Centred on cx, cut to the chord at its ink rows (rule 7).
+            self._put(text, cx, u(STEAMI_GRAPH_VALUE_Y), WHITE, TEXT, k)
+        else:
+            tw = self._tw(text, TEXT, k)
+            self._txt(text, cx - tw // 2, u(STEAMI_GRAPH_VALUE_Y), WHITE, k, "draw_medium_text")
 
         def _fmt(v):
             if v >= 1000 and v % 1000 == 0:
@@ -533,6 +569,7 @@ class Screen:
 
         mid_y = gy + gh // 2
         mid_val = (min_val + max_val) / 2
+        pad = u(STEAMI_GRAPH_LABEL_PAD)
         for val, yp in ((max_val, gy), (mid_val, mid_y), (min_val, gy + gh)):
             label = _fmt(val)
             if k == 1:
@@ -541,13 +578,16 @@ class Screen:
                 self._txt(label, gx - len(label) * cw - 1, yp - 4, DARK, 1, "draw_small_text")
                 continue
             # Inside the box, where the circle leaves room (Arduino 5.9), in
-            # the 6x12 LABEL face: the max label's first ink row u(2) below
-            # the top, the others' last ink row k + u(2) above their line.
+            # the 6x12 LABEL face: the max label's first ink row pad below
+            # the top, the others' last ink row k + pad above their line.
+            # Left edge gx + k + pad, cut to the chord at its ink rows less
+            # k (Arduino drawGraphLabel(), rule 7).
             # Kept MicroPython difference: three labels, with "k" formatting.
             fc = fonts.face(label, LABEL, k)[0]
             a, b = fonts.ink_rows(fonts.masks(fc, label)[-1])
-            y = gy + u(2) - a if yp == gy else yp - k - u(2) - b
-            self._txt(label, gx + k + u(2), y, DARK, k, ink=LABEL)
+            y = gy + pad - a if yp == gy else yp - k - pad - b
+            lx = gx + k + pad
+            self._put(label, lx, y, DARK, LABEL, k, 0, lx, None, k)
 
         dash, gap = u(STEAMI_GRAPH_DASH), u(STEAMI_GRAPH_GAP)
         x = gx + k
@@ -603,7 +643,8 @@ class Screen:
         for i in range(start, min(start + visible, len(items))):
             iy = u(35 + 14 * (i - start))
             if i == selected:
-                self._fill_rect(u(15), iy - u(2), self.width - u(30), item_h, DARK)
+                by = iy - u(STEAMI_MENU_BAR_PAD)
+                self._fill_rect(u(15), by, self.width - u(30), item_h, DARK)
                 text, c = "> " + items[i], color
             else:
                 text, c = "  " + items[i], GRAY
@@ -693,8 +734,8 @@ class Screen:
 
         # Hands: (angle in degrees, length, half width), then the second hand.
         for deg, length, half in (
-            ((hours % 12 + minutes / 60) * 30, int(r * 0.50), u(3)),
-            ((minutes + seconds / 60) * 6, int(r * 0.75), u(2)),
+            ((hours % 12 + minutes / 60) * 30, int(r * 0.50), u(STEAMI_WATCH_HOUR_HALF_W)),
+            ((minutes + seconds / 60) * 6, int(r * 0.75), u(STEAMI_WATCH_MINUTE_HALF_W)),
         ):
             rad = math.radians(deg)
             hx = cx + q(length * math.sin(rad))
@@ -943,6 +984,11 @@ class Screen:
         As the Arduino arc(), each row of the ring is clipped to the sector
         with two integer cross products, then drawn as horizontal spans:
         every pixel is decided once, so the ring has no holes.
+
+        The rows allocate nothing: the colour is converted once and each span
+        goes straight to the driver's fill_rect (native_fill() of the
+        adapter), and the square roots are integers, moved one step at a
+        time from the previous row.
         """
         if hasattr(self._d, "draw_arc"):
             self._d.draw_arc(cx, cy, r, start_deg, sweep_deg, color, width)
@@ -959,22 +1005,36 @@ class Screen:
             if sweep_deg > 180:
                 secs += (_ray(m) + _ray(start_deg + sweep_deg),)
         o2, i2 = (2 * ro + 1) ** 2, (2 * ri - 1) ** 2
-        fr = self._fill_rect
+        if hasattr(self._d, "native_fill"):
+            fr, color = self._d.native_fill(color)
+        else:
+            fr = self._fill_rect
+        xo = si = 0
         for dy in range(max(-ro, -cy), min(ro, self.height - 1 - cy) + 1):
             d4 = 4 * dy * dy
-            xo = int(math.sqrt((o2 - d4) // 4))
+            # xo = floor(sqrt(n)) and xi = ceil(sqrt(q)), q > 0: the outer
+            # and inner edges of the ring on this row.
+            n = (o2 - d4) // 4
+            while xo * xo > n:
+                xo -= 1
+            while (xo + 1) * (xo + 1) <= n:
+                xo += 1
             xi = 0
             q = (i2 - d4 + 3) // 4
             if ri and q > 0:
-                xi = int(math.sqrt(q))
-                xi += xi * xi < q
+                while si * si > q:
+                    si -= 1
+                while (si + 1) * (si + 1) <= q:
+                    si += 1
+                xi = si + (si * si < q)
             if xi > xo:
                 continue
             y = cy + dy
-            for lo, hi in ((-xo, -xi), (xi, xo)) if xi else ((-xo, xo),):
+            # One span -xo..xo, or two: -xo..-xi, then xi..xo.
+            lo, hi = -xo, -xi if xi else xo
+            while True:
                 if not secs:
                     fr(cx + lo, y, hi - lo + 1, 1, color)
-                    continue
                 # On row dy each half-plane cross(S, p) >= 0, cross(p, E) >= 0
                 # is a half-line in dx: clip the span to both.
                 for sx, sy, ex, ey in secs:
@@ -995,6 +1055,9 @@ class Screen:
                         continue
                     if a <= b:
                         fr(cx + a, y, b - a + 1, 1, color)
+                if lo > 0 or not xi:
+                    break
+                lo, hi = xi, xo
 
     def _draw_circle(self, cx, cy, r, color):
         """Bresenham circle."""

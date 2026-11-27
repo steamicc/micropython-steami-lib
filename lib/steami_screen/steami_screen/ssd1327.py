@@ -41,6 +41,14 @@ class SSD1327Display:
     def fill_rect(self, x, y, w, h, color):
         self._fill_rect_raw(x, y, w, h, rgb_to_gray4(color))
 
+    def native_fill(self, color):
+        """(fill_rect, value): the raw driver's fill_rect and the grey4 level of color.
+
+        For many rects of one colour (the gauge arc spans): fill_rect(x, y,
+        w, h, value) draws on the driver with no conversion per call.
+        """
+        return self._fill_rect_raw, rgb_to_gray4(color)
+
     def rect(self, x, y, w, h, color):
         gray = rgb_to_gray4(color)
         if hasattr(self._raw, "rect"):

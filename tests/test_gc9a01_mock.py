@@ -233,6 +233,45 @@ def test_init_without_reset_pin_sends_swreset(device):
     r.dev.init()
     assert r.spi.commands()[0] == (SWRESET, b"")
     assert device.sleeps[0] == 120
+    assert len(r.spi.inits) == 2  # init() (through soft_reset()) and its show()
+
+
+# ----- reset() and soft_reset() (CONTRIBUTING: pin toggle / register write) -----
+
+
+def test_reset_is_the_pin_pulse_only(rig):
+    rig.dev.reset()
+    assert rig.spi.writes == []
+    assert rig.log == [
+        ("rst", 1),
+        ("sleep", 10),
+        ("rst", 0),
+        ("sleep", 10),
+        ("rst", 1),
+        ("sleep", 120),
+    ]
+
+
+def test_reset_without_reset_pin_raises(device):
+    r = Rig(device, rst=False)
+    with pytest.raises(ValueError, match="soft_reset"):
+        r.dev.reset()
+    assert r.spi.writes == []
+    assert device.sleeps == []
+
+
+def test_soft_reset_sends_swreset_then_waits(rig):
+    rig.dev.soft_reset()
+    assert rig.spi.commands() == [(SWRESET, b"")]
+    assert [e for e in rig.log if e[0] in ("rst", "sleep")] == [("sleep", 120)]
+    assert rig.spi.inits == [{"baudrate": 32_000_000, "polarity": 0, "phase": 0}]
+
+
+def test_soft_reset_without_reset_pin(device):
+    r = Rig(device, rst=False)
+    r.dev.soft_reset()
+    assert r.spi.commands() == [(SWRESET, b"")]
+    assert device.sleeps == [120]
 
 
 def test_init_sends_the_arduino_sequence_then_clear_then_dispon(rig):

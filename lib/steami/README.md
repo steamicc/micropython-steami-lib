@@ -130,11 +130,16 @@ even if another release is forced.
 ### Diagnostics
 
 ```python
-Steami.print_info()     # the board line, then one line per chip of the release
+Steami.print_info()     # the board line, one line per chip, then the screen line
 Steami.set_logger(fn)   # messages go to fn(line); None silences them
 Steami.last_error()     # the last message, even when it was not printed
 Steami.end()            # forget everything (release, drivers, messages, logger)
 ```
+
+The screen line is `<chip> screen <state>`, as in Arduino: for example
+`GC9A01 screen OK` on a V1c. The state is `not started` until the screen is
+first used (`print_info()` does not start it), then `OK`, or `no memory` when
+its frame did not fit in RAM. An unknown release has no screen line.
 
 ## Function classes
 

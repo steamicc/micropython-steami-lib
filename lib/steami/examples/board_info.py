@@ -9,6 +9,10 @@ print_info() lists the chips of the release with OK, "not responding" or
 "not tried". "Not tried" means no function used that chip yet, so this program
 first claims every chip of the release: each line then shows whether the chip
 really answers.
+
+The last line is the screen, "<chip> screen <state>": "GC9A01 screen" on a
+V1c, "SSD1327 screen" on a V1a/V1b. It stays "not started" until a program
+uses the screen: print_info() does not start it, and neither does this program.
 """
 
 from steami import Chip, Steami

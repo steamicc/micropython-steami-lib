@@ -44,12 +44,16 @@ STEAMI_TITLE_CAP_CELLS = const(13)
 # keep off the available width.
 STEAMI_VALUE_SIDE_GAP = const(3)
 STEAMI_VALUE_FIT_MARGIN = const(4)
+# value(): gap between the label cell (12 px tall on 240) and the value top.
+STEAMI_VALUE_LABEL_GAP = const(4)
 # menu(): a row is shown when the chord at its cells holds this many cells.
 STEAMI_MENU_ROW_CELLS = const(12)
 
 # --- Gauge widget ---
 STEAMI_GAUGE_START_ANGLE = const(135)
 STEAMI_GAUGE_SWEEP = const(270)
+# When k > 1, the outer edge of the ring is radius - u(this).
+STEAMI_GAUGE_RING_INSET = const(4)
 
 # --- Graph widget layout ---
 STEAMI_GRAPH_MARGIN = const(15)
@@ -59,3 +63,13 @@ STEAMI_GRAPH_HEIGHT = const(52)
 STEAMI_GRAPH_VALUE_Y = const(31)
 STEAMI_GRAPH_DASH = const(3)
 STEAMI_GRAPH_GAP = const(3)
+# When k > 1, the axis labels' gap to the top, their line and the axis.
+STEAMI_GRAPH_LABEL_PAD = const(2)
+
+# --- Menu widget ---
+# The bar of the selected item starts this far above its row.
+STEAMI_MENU_BAR_PAD = const(2)
+
+# --- Watch widget: half width of the hand bases ---
+STEAMI_WATCH_HOUR_HALF_W = const(3)
+STEAMI_WATCH_MINUTE_HALF_W = const(2)
