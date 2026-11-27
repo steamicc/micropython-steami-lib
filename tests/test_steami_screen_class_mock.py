@@ -73,7 +73,7 @@ def screen_env(board_module, monkeypatch):  # noqa: F811 (the imported fixture)
     _forget_screen_packages()
 
 
-def setup(env, release="V1c"):
+def board_for(env, release="V1c"):
     """A board whose release is forced, or unknown with release=None."""
     module, _, _ = env
     if release is None:
@@ -120,7 +120,7 @@ def draw_everything(screen):
 
 def test_mock_screen_v1c_is_the_gc9a01(screen_env):
     (_, const), screen_cls, hardware = screen_env
-    s = setup(screen_env, "V1c")
+    s = board_for(screen_env, "V1c")
     screen = screen_cls()
     assert screen.begin() is True
     assert screen.chip() == "GC9A01"
@@ -144,7 +144,7 @@ def test_mock_screen_v1c_is_the_gc9a01(screen_env):
 @pytest.mark.parametrize("release", ["V1a", "V1b"])
 def test_mock_screen_v1ab_is_the_ssd1327(screen_env, release):
     (_, const), screen_cls, _ = screen_env
-    s = setup(screen_env, release)
+    s = board_for(screen_env, release)
     screen = screen_cls()
     assert screen.begin() is True
     assert screen.chip() == "SSD1327"
@@ -166,13 +166,13 @@ def test_mock_screen_route_and_has(screen_env):
     assert const.route(r.UNKNOWN, f.SCREEN) == ()
     assert (const.E_SCREEN_UNKNOWN_BOARD, const.E_NO_MEMORY) == ("E30", "E31")
     assert const.Status.NO_MEMORY == "no memory"
-    s = setup(screen_env, "V1c")
+    s = board_for(screen_env, "V1c")
     assert s.steami.has(f.SCREEN) is True
 
 
 def test_mock_screen_draws_on_the_v1c_panel(screen_env):
     _, screen_cls, hardware = screen_env
-    s = setup(screen_env, "V1c")
+    s = board_for(screen_env, "V1c")
     screen = screen_cls()
     screen.title("Hello")
     raw = s.steami.display()._raw
@@ -184,7 +184,7 @@ def test_mock_screen_draws_on_the_v1c_panel(screen_env):
 
 def test_mock_first_use_begins(screen_env):
     _, screen_cls, _ = screen_env
-    s = setup(screen_env, "V1c")
+    s = board_for(screen_env, "V1c")
     screen = screen_cls()
     assert screen.width == 240  # the first use starts the screen
     assert screen.is_available() is True
@@ -205,7 +205,7 @@ def test_mock_display_is_shared(screen_env, monkeypatch):
     inits = []
     init = gc9a01.device.GC9A01.init
     monkeypatch.setattr(gc9a01.device.GC9A01, "init", lambda raw: inits.append(init(raw)))
-    s = setup(screen_env, "V1c")
+    s = board_for(screen_env, "V1c")
     first = s.steami.display()
     assert first is not None
     assert s.steami.display() is first
@@ -219,14 +219,14 @@ def test_mock_display_is_shared(screen_env, monkeypatch):
 
 
 def test_mock_display_kept_after_a_forced_release(screen_env):
-    s = setup(screen_env, "V1c")
+    s = board_for(screen_env, "V1c")
     first = s.steami.display()
     s.steami.begin("V1b")
     assert s.steami.display() is first
 
 
 def test_mock_end_forgets_the_display(screen_env):
-    s = setup(screen_env, "V1c")
+    s = board_for(screen_env, "V1c")
     first = s.steami.display()
     s.steami.end()
     s.steami.begin("V1c")
@@ -279,7 +279,7 @@ def test_mock_import_steami_loads_no_screen(board_module):  # noqa: F811
 
 def test_mock_unknown_release_e30(screen_env):
     (_, const), screen_cls, hardware = screen_env
-    s = setup(screen_env, None)
+    s = board_for(screen_env, None)
     screen = screen_cls()
     assert screen.begin() is False
     assert screen.status() == const.Status.UNKNOWN_BOARD
@@ -316,7 +316,7 @@ def test_mock_no_memory_e31_v1c(screen_env, monkeypatch):
     (_, const), screen_cls, _ = screen_env
     import gc9a01.device
 
-    s = setup(screen_env, "V1c")
+    s = board_for(screen_env, "V1c")
     _fail_allocation(monkeypatch, gc9a01.device, 28800)
     screen = screen_cls()
     assert screen.begin() is False
@@ -341,7 +341,7 @@ def test_mock_no_memory_e31_v1ab(screen_env, monkeypatch):
     (_, const), screen_cls, _ = screen_env
     import ssd1327.device
 
-    s = setup(screen_env, "V1b")
+    s = board_for(screen_env, "V1b")
     _fail_allocation(monkeypatch, ssd1327.device, 8192)
     screen = screen_cls()
     assert screen.begin() is False
@@ -360,7 +360,7 @@ def test_mock_other_memory_error_propagates(screen_env, monkeypatch):
         def __init__(self, raw):
             raise MemoryError
 
-    s = setup(screen_env, "V1c")
+    s = board_for(screen_env, "V1c")
     monkeypatch.setattr(steami_screen, "GC9A01Display", Boom)
     with pytest.raises(MemoryError):
         s.steami.display()
@@ -370,7 +370,7 @@ def test_mock_other_memory_error_propagates(screen_env, monkeypatch):
 
 def test_mock_unknown_attribute_raises(screen_env):
     _, screen_cls, _ = screen_env
-    setup(screen_env, "V1c")
+    board_for(screen_env, "V1c")
     screen = screen_cls()
     with pytest.raises(AttributeError):
         screen.nothing  # noqa: B018
