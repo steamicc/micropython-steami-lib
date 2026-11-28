@@ -61,8 +61,17 @@ class FakeMCP23009:
         # scheduled IRQ could run on the board.
         self.on_write = None
         self.on_read = None
+        # Held in reset (power_off()): every transfer is NACKed.
+        self.held = False
 
     # ----- Chip side -----
+
+    def power_on_reset(self):
+        """Back to the power-on registers (no pull-up, no interrupt)."""
+        self.regs = [0] * 11
+        self.regs[IODIR] = 0xFF
+        self.reference = self.pins
+        self.held = False
 
     def press(self, gp):
         self.pins &= ~(1 << gp)
@@ -97,6 +106,8 @@ class FakeMCP23009:
 
     def readfrom_mem(self, addr, reg, nbytes, *, addrsize=8):
         assert addr == ADDR
+        if self.held:
+            raise OSError(19, "ENODEV")
         self.log.append(("r", reg))
         value = self.pins if reg == GPIO else self.regs[reg]
         clearing = INTCAP if self.regs[IOCON] & 0x01 else GPIO
@@ -108,6 +119,8 @@ class FakeMCP23009:
 
     def writeto_mem(self, addr, reg, buf, *, addrsize=8):
         assert addr == ADDR
+        if self.held:
+            raise OSError(19, "ENODEV")
         self.log.append(("w", reg))
         self.regs[reg] = buf[0]
         self._update()

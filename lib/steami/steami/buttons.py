@@ -21,6 +21,12 @@ _NAMES = ("A", "B", "MENU", "UP", "DOWN", "LEFT", "RIGHT")
 _PINS = ("A_BUTTON", "B_BUTTON", "MENU_BUTTON")
 # Expander bit of UP, DOWN, LEFT and RIGHT.
 _DPAD_BITS = (MCP23009_BTN_UP, MCP23009_BTN_DOWN, MCP23009_BTN_LEFT, MCP23009_BTN_RIGHT)
+_DPAD_MASK = (
+    (1 << MCP23009_BTN_UP)
+    | (1 << MCP23009_BTN_DOWN)
+    | (1 << MCP23009_BTN_LEFT)
+    | (1 << MCP23009_BTN_RIGHT)
+)
 # After a read that found a whole D-pad tap: a button pressed again before this
 # time is taken for a bounce of the press of that tap, after it for a second tap.
 _BOUNCE_MS = const(5)
@@ -48,23 +54,20 @@ def _edge(i):
     return handler
 
 
-def _dpad(d):
-    # Run by MCP23009E.interrupt_event(), once per event, in order: the level
-    # captured at the interrupt, then the current one.
+def _dpad_change(gpx, level):
+    # The D-pad watch, run by MCP23009E.interrupt_event(), once per event, in
+    # order: the level captured at the interrupt, then the current one.
+    global _dpad_level
+    d = _DPAD_BITS.index(gpx)
     bit = 1 << d
-
-    def callback(level):
-        global _dpad_level
-        if level == MCP23009_LOGIC_LOW:
-            _dpad_level |= bit
-            if _active is not None:
-                _active._dpad_down |= bit
-        else:
-            _dpad_level &= ~bit
-            if _active is not None:
-                _active._dpad_up |= bit
-
-    return callback
+    if level == MCP23009_LOGIC_LOW:
+        _dpad_level |= bit
+        if _active is not None:
+            _active._dpad_down |= bit
+    else:
+        _dpad_level &= ~bit
+        if _active is not None:
+            _active._dpad_up |= bit
 
 
 def _attach(pin, i):
@@ -84,20 +87,46 @@ def _dispatch(driver):
         sys.print_exception(e)
 
 
-def _setup_dpad(driver):
-    # A pad event pending since before begin() is held while the arrows are
-    # registered (interrupt_on_change() would dispatch it), then dispatched.
+def _setup_dpad(driver, lost):
+    # Set the D-pad buttons of lost (bit d for _DPAD_BITS[d]) up. The watch
+    # follows the four: the callbacks of the program do not replace it. A pad
+    # event pending before is held while the watch is registered (enabling a
+    # button would dispatch it), then dispatched.
     driver._dispatching = True
     try:
         for d, bit in enumerate(_DPAD_BITS):
-            driver.setup(bit, MCP23009_DIR_INPUT, MCP23009_PULLUP)
-            # No event for the level at registration: it is read below.
-            driver.interrupt_on_change(bit, _dpad(d))
+            if lost >> d & 1:
+                driver.setup(bit, MCP23009_DIR_INPUT, MCP23009_PULLUP)
+        # No event for the level at registration: it is read below.
+        driver.watch_changes(_DPAD_MASK, _dpad_change)
     finally:
         driver._dispatching = False
     port = driver.get_gpio()
     _dispatch(driver)
     return port
+
+
+def _take_levels(port, lost):
+    # The level of the D-pad buttons of lost, read in port (None: released).
+    global _dpad_level
+    if port is None:
+        port = 0xFF  # on an error the D-pad reads released
+    for d, bit in enumerate(_DPAD_BITS):
+        if lost >> d & 1:
+            _dpad_level &= ~(1 << d)
+            if not port & (1 << bit):
+                _dpad_level |= 1 << d
+
+
+def _lost(driver):
+    # The D-pad buttons whose watch a reset() or power_off() of the program
+    # removed.
+    watched = driver.watched()
+    lost = 0
+    for d, bit in enumerate(_DPAD_BITS):
+        if not watched >> bit & 1:
+            lost |= 1 << d
+    return lost
 
 
 def _read_latch(driver):
@@ -153,7 +182,12 @@ class Buttons(Handle):
     pending leaves no trace. Buttons uses EXTI lines 0, 7
     and 8: a line already taken (MCP23009E(interrupt_pin=Pin("INT_EXPANDER"))
     takes line 0) leaves that button sampled at each call only, and a later
-    Pin.irq() on such a line raises OSError. With several Buttons objects, the
+    Pin.irq() on such a line raises OSError. The D-pad is followed with
+    MCP23009E.watch_changes(): the program can register its own callbacks on
+    the D-pad bits of Steami.mcp23009e(), or disable them, and both keep
+    working; after a reset() of the expander, or after power_on() following
+    a power_off(), the next call sets the D-pad up again (while the expander
+    is off, the D-pad reads released). With several Buttons objects, the
     taps made between two calls go to the one started or called last only;
     every object follows the levels of all the buttons. A pad callback set
     with Steami.mcp23009e().interrupt_on_*() runs during the calls; an error
@@ -184,7 +218,7 @@ class Buttons(Handle):
 
         True when it answered. A, B and MENU work whatever the answer.
         """
-        global _active, _dpad_level
+        global _active
         if self._pins is None:
             self._pins = [Pin(name, Pin.IN, Pin.PULL_UP) for name in _PINS]
             _active = self
@@ -194,13 +228,7 @@ class Buttons(Handle):
             return super().begin()
         ok = super().begin()
         if ok:
-            port = self._read(None, _setup_dpad)
-            if port is None:
-                port = 0xFF  # on an error the D-pad reads released
-            _dpad_level = 0
-            for d, bit in enumerate(_DPAD_BITS):
-                if not port & (1 << bit):
-                    _dpad_level |= 1 << d
+            _take_levels(self._read(None, _setup_dpad, 0x0F), 0x0F)
         return ok
 
     def is_pressed(self, name):
@@ -340,6 +368,9 @@ class Buttons(Handle):
         if self._status == Status.NOT_STARTED:
             self.begin()
         _active = self
+        lost = self._read(0, _lost)
+        if lost:
+            _take_levels(self._read(None, _setup_dpad, lost), lost)
         # The D-pad first, IRQs enabled: the read uses the I2C bus.
         dpad, down, up, ok = self._read_dpad()
 

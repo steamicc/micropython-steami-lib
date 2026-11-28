@@ -11,7 +11,17 @@ import pytest
 from tests.fake_machine import FakePin, steami_chips
 from tests.fake_machine.i2c_bus import FakeI2CBus
 from tests.fake_machine.mcp23009 import ADDR as MCP_ADDR
-from tests.fake_machine.mcp23009 import DOWN, GPIO, GPPU, IODIR, LEFT, RIGHT, UP, FakeMCP23009
+from tests.fake_machine.mcp23009 import (
+    DOWN,
+    GPINTEN,
+    GPIO,
+    GPPU,
+    IODIR,
+    LEFT,
+    RIGHT,
+    UP,
+    FakeMCP23009,
+)
 from tests.test_steami_board_mock import (  # noqa: F401 (board_module is a fixture)
     Setup,
     board_module,
@@ -1957,6 +1967,156 @@ def test_mock_buttons_deliver_the_pad_callbacks_of_the_program(rig, steami):
     assert rig.buttons.is_pressed("A") is False
     assert falls == [1]
     assert rig.buttons.was_pressed("UP") is False
+    expander.disable_interrupt(0)
+
+
+def test_mock_buttons_dpad_survives_the_pad_callbacks_of_the_program(rig, steami):
+    # A program that registers its own callback on a D-pad bit, or disables
+    # its interrupt, does not stop the D-pad of Buttons: both keep working.
+    assert rig.buttons.is_pressed("UP") is False
+    expander = rig.board.steami.mcp23009e()
+    levels = []
+    expander.interrupt_on_change(UP, levels.append)
+    expander.disable_interrupt(DOWN)
+    rig.advance(50)
+    rig.chip.press(UP)
+    rig.advance(60)
+    rig.chip.release(UP)
+    rig.advance(60)
+    assert rig.buttons.was_pressed("UP") is True
+    rig.chip.press(DOWN)
+    rig.advance(60)
+    rig.chip.release(DOWN)
+    rig.advance(60)
+    assert rig.buttons.was_pressed("DOWN") is True
+    assert levels == [0, 1]  # the press, then the release
+    rig.advance(30)
+    assert rig.buttons.is_pressed("UP") is False
+    assert rig.buttons.was_released("UP") is True
+    assert rig.buttons.was_released("DOWN") is True
+    expander.disable_interrupt(UP)
+    assert expander.watched() & (1 << UP)
+
+
+def test_mock_buttons_dpad_follows_again_after_a_reset_of_the_expander(rig, steami):
+    # A reset of the expander by the program removes the watch of Buttons:
+    # the next call sets the D-pad up again.
+    assert rig.buttons.is_pressed("LEFT") is False
+    expander = rig.board.steami.mcp23009e()
+    expander.reset()
+    assert expander.watched() == 0
+    assert rig.buttons.is_pressed("LEFT") is False
+    assert expander.watched() == 0xF0
+    rig.advance(50)
+    rig.chip.press(LEFT)
+    rig.advance(60)
+    rig.chip.release(LEFT)
+    rig.advance(60)
+    assert rig.buttons.was_pressed("LEFT") is True
+
+
+def test_mock_buttons_dpad_follows_again_after_calls_during_a_power_off(rig, steami):
+    # The loop keeps calling Buttons while the expander is held in reset by
+    # power_off(): the call after power_on() still sets the D-pad up again
+    # (pull-ups and interrupts back on the chip). Same as arduino-steami-lib.
+    assert rig.buttons.begin() is True
+    expander = rig.board.steami.mcp23009e()
+    expander.power_off()
+    rig.chip.held = True
+    assert rig.buttons.is_pressed("LEFT") is False
+    assert rig.buttons.was_pressed("LEFT") is False
+    assert expander.watched() == 0
+    expander.power_on()
+    rig.chip.power_on_reset()  # no pull-up, no interrupt
+    assert rig.buttons.is_pressed("LEFT") is False
+    assert expander.watched() == 0xF0
+    assert rig.chip.regs[GPPU] & 0xF0 == 0xF0
+    assert rig.chip.regs[GPINTEN] & 0xF0 == 0xF0
+    rig.advance(50)
+    rig.chip.press(LEFT)
+    rig.chip.release(LEFT)  # a tap between two calls: in the latch
+    assert rig.buttons.was_pressed("LEFT") is True
+
+
+def test_mock_buttons_dpad_taps_all_counted_beside_a_program_callback_and_a_reset(rig):
+    # The quick taps of a slow loop (#341) are all counted while the program
+    # has its own callback on UP, and after it resets the expander halfway
+    # and registers that callback again.
+    t0 = rig.start_timeline()
+    expander = rig.board.steami.mcp23009e()
+    levels = []
+    expander.interrupt_on_change(UP, levels.append)
+    for k in range(10):
+        rig.dpad_tap_at(t0 + 100 + k * 450 + 40 * (k % 3), UP, 80)
+    first = rig.slow_loop(t0 + 2000, 300)  # ends between the 5th and the 6th tap
+    assert rig.buttons.is_pressed("UP") is False  # the 5th one read
+    expander.reset()
+    expander.interrupt_on_change(UP, levels.append)
+    second = rig.slow_loop(t0 + 100 + 10 * 450 + 1500, 300)
+    counts = tuple([a + b for a, b in zip(x, y)] for x, y in zip(first, second))
+    assert_only_on(counts, 3, 10)
+    assert levels == [0, 1] * 10
+    assert expander.watched() == 0xF0
+
+
+def test_mock_buttons_dpad_taps_all_counted_beside_a_program_callback_that_raises(
+    rig, monkeypatch
+):
+    # #502 meets #512: the program callback on UP raises at every edge, and
+    # Buttons still counts every quick tap, before and after a reset().
+    import sys
+
+    printed = []
+    monkeypatch.setattr(sys, "print_exception", printed.append, raising=False)
+    t0 = rig.start_timeline()
+    expander = rig.board.steami.mcp23009e()
+
+    def bad(_level):
+        raise ValueError("bug in the program")
+
+    expander.interrupt_on_change(UP, bad)
+    for k in range(10):
+        rig.dpad_tap_at(t0 + 100 + k * 450 + 40 * (k % 3), UP, 80)
+    first = rig.slow_loop(t0 + 2000, 300)  # ends between the 5th and the 6th tap
+    assert rig.buttons.is_pressed("UP") is False  # the 5th one read
+    expander.reset()
+    expander.interrupt_on_change(UP, bad)
+    second = rig.slow_loop(t0 + 100 + 10 * 450 + 1500, 300)
+    counts = tuple([a + b for a, b in zip(x, y)] for x, y in zip(first, second))
+    assert_only_on(counts, 3, 10)
+    assert len(printed) >= 10
+    assert rig.buttons.status() == "ok"
+
+
+def test_mock_buttons_dpad_set_up_again_beside_a_pad_callback_that_raises(rig, monkeypatch):
+    # After a reset() of the expander, the call that sets the D-pad up again
+    # meets a pending pad event whose callback raises: the error is printed,
+    # the D-pad is followed again and the call goes on.
+    import sys
+
+    printed = []
+    monkeypatch.setattr(sys, "print_exception", printed.append, raising=False)
+    rig.chip.release(0)
+    assert rig.buttons.is_pressed("UP") is False
+    expander = rig.board.steami.mcp23009e()
+    expander.reset()
+    mcp = pytest.importorskip("mcp23009e.const")
+    expander.setup(0, mcp.MCP23009_DIR_INPUT, mcp.MCP23009_PULLUP)
+
+    def callback():
+        raise ValueError("bug in the program")
+
+    expander.interrupt_on_falling(0, callback)
+    rig.chip.press(0)  # pending until Buttons reads the expander
+    assert rig.buttons.is_pressed("RIGHT") is False
+    assert expander.watched() == 0xF0
+    assert [type(e) for e in printed] == [ValueError]
+    rig.advance(50)
+    rig.chip.press(RIGHT)
+    rig.chip.release(RIGHT)
+    rig.advance(30)
+    assert rig.buttons.was_pressed("RIGHT") is True
+    assert rig.buttons.status() == "ok"
     expander.disable_interrupt(0)
 
 

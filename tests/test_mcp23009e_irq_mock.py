@@ -1033,3 +1033,136 @@ def test_hardware_reset_forgets_enabled_pins(drv, dev, chip):
     chip.press(UP)  # no longer watched
     dev.interrupt_event()
     assert events == [("DOWN", 0, 0)]
+
+
+# ----- watch_changes(): a callback the program does not replace -----
+
+
+def dpad_input(dev, gp):
+    const = importlib.import_module("mcp23009e.const")
+    dev.setup(gp, const.MCP23009_DIR_INPUT, const.MCP23009_PULLUP)
+
+
+def watched_chip(drv, dev, mask):
+    """Set the pins of mask up as D-pad inputs and follow them with a watch."""
+    events = []
+    for gp in range(8):
+        if mask >> gp & 1:
+            dpad_input(dev, gp)
+    dev.watch_changes(mask, lambda gpx, level: events.append((gpx, level)))
+    return events
+
+
+def test_watch_gets_events_beside_the_program_callbacks(drv, dev, chip):
+    watched = watched_chip(drv, dev, (1 << UP) | (1 << DOWN))
+    assert dev.watched() == (1 << UP) | (1 << DOWN)
+    assert chip.regs[GPINTEN] == (1 << UP) | (1 << DOWN)
+    levels = []
+    dev.interrupt_on_change(UP, levels.append)  # does not replace the watch
+    chip.press(UP)
+    chip.release(UP)
+    dev.interrupt_event()
+    chip.press(DOWN)
+    dev.interrupt_event()
+    assert watched == [(UP, 0), (UP, 1), (DOWN, 0)]
+    assert levels == [0, 1]
+
+
+def test_program_registration_leaves_the_pending_event_to_the_watch(drv, dev, chip):
+    watched = watched_chip(drv, dev, 1 << UP)
+    falls = []
+    chip.press(UP)  # pending when the program registers
+    dev.interrupt_on_falling(UP, lambda: falls.append(1))
+    dev.interrupt_event()
+    assert watched == [(UP, 0)]
+    assert falls == []  # a change made before the registration
+    chip.release(UP)
+    dev.interrupt_event()
+    chip.press(UP)
+    dev.interrupt_event()
+    assert watched == [(UP, 0), (UP, 1), (UP, 0)]
+    assert falls == [1]
+
+
+def test_disable_keeps_a_watched_pin_enabled(drv, dev, chip):
+    watched = watched_chip(drv, dev, 1 << DOWN)
+    levels = []
+    dev.interrupt_on_change(DOWN, levels.append)
+    dev.disable_interrupt(DOWN)
+    assert dev.watched() == 1 << DOWN
+    assert chip.regs[GPINTEN] == 1 << DOWN
+    chip.press(DOWN)
+    dev.interrupt_event()
+    assert watched == [(DOWN, 0)]
+    assert levels == []
+
+
+def test_watch_on_a_pin_of_the_program_keeps_its_callbacks(drv, dev, chip):
+    events = []
+    watched = []
+    left = dpad_pin(drv, dev, LEFT)
+    left.irq(recorder(events, "LEFT"), BOTH)
+    chip.press(LEFT)  # pending when the watch starts: for the program only
+    dev.watch_changes(1 << LEFT, lambda gpx, level: watched.append((gpx, level)))
+    chip.release(LEFT)
+    dev.interrupt_event()
+    assert events == [("LEFT", 0, 1), ("LEFT", 1, 1)]
+    assert watched == [(LEFT, 0), (LEFT, 1)]
+
+
+def test_watch_removed_by_none_and_by_reset(drv, dev, chip):
+    watched = watched_chip(drv, dev, 1 << RIGHT)
+    dev.watch_changes(1 << RIGHT, None)
+    assert dev.watched() == 0
+    assert chip.regs[GPINTEN] == 1 << RIGHT  # stays enabled
+    chip.press(RIGHT)
+    dev.interrupt_event()
+    assert watched == []
+    dev.watch_changes(1 << RIGHT, lambda gpx, level: None)
+    assert dev.watched() == 1 << RIGHT
+    dev.reset()
+    assert dev.watched() == 0
+    dev.watch_changes(1 << RIGHT, lambda gpx, level: None)
+    dev.power_off()
+    assert dev.watched() == 0
+    dev.watch_changes(1 << RIGHT, lambda gpx, level: None)
+    dev._soft_reset()
+    assert dev.watched() == 0
+
+
+def test_watch_on_a_chip_held_in_reset_enables_nothing(drv, dev, chip):
+    # A pin is enabled only when the chip answered: on a chip held in reset
+    # by power_off(), watched() stays 0, so the owner of the watch sees it
+    # is lost. Same as arduino-steami-lib.
+    watched = []
+    dev.power_off()
+    chip.held = True
+    with pytest.raises(OSError):
+        dev.watch_changes(1 << LEFT, lambda gpx, level: watched.append((gpx, level)))
+    assert dev.watched() == 0
+    levels = []
+    with pytest.raises(OSError):
+        dev.interrupt_on_change(UP, levels.append)
+    dev.power_on()
+    chip.power_on_reset()
+    chip.press(UP)
+    dev.interrupt_event()
+    assert levels == []  # UP was not enabled either
+    dev.watch_changes(1 << LEFT, lambda gpx, level: watched.append((gpx, level)))
+    assert dev.watched() == 1 << LEFT
+    assert chip.regs[GPINTEN] == 1 << LEFT
+
+
+def test_watch_error_is_raised_after_all_events(drv, dev, chip):
+    def fail(gpx, level):
+        raise ValueError("watch")
+
+    levels = []
+    dpad_input(dev, UP)
+    dev.watch_changes(1 << UP, fail)
+    dev.interrupt_on_change(UP, levels.append)
+    chip.press(UP)
+    chip.release(UP)
+    with pytest.raises(ValueError, match="watch"):
+        dev.interrupt_event()
+    assert levels == [0, 1]
