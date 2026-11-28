@@ -874,30 +874,81 @@ def test_mock_watch_hands_at_240(panel):
 def test_mock_circles_are_k_wide_strokes(panel):
     # rule: the compass inner circle int(R * 0.7) = 68 (R = 120 - u(12) = 98) is a
     # ring k = 2 px wide, radii 67 and 68: rows 52 and 53 of the centre column
-    # (the needle at 90 leaves that column free).
+    # (at heading 90 the needle points west and leaves that column free).
     s, raw = panel()
     s.compass(90)
     px = lit(raw)
     assert [y for y in range(40, 100) if px.get((120, y)) == DARK] == [52, 53]
 
 
-@pytest.mark.parametrize(
-    "heading,tip",
-    # Arduino kCompassCases at 0 and 180 (the MicroPython rose does not turn);
-    # rule at 90 and 270: needle R * 0.85 = 83 toward the heading, R = 120 - u(12).
-    ((0, (120, 37)), (180, (120, 203)), (90, (203, 120)), (270, (37, 120))),
+# Arduino kCompassCases (test_compass_needle_and_north): compass(heading, RED)
+# on 128 and 240, the needle tip and the box of the N letter, the only WHITE
+# ink. The rose turns by -heading (#436): the needle and the N show north.
+COMPASS_CASES = (
+    (128, 0, (64, 20), (61, 3, 66, 9)),
+    (128, 90, (20, 64), (4, 60, 9, 66)),
+    (128, 180, (64, 108), (61, 117, 66, 123)),
+    (128, 270, (108, 64), (118, 60, 123, 66)),
+    (240, 0, (120, 37), (116, 7, 122, 16)),
+    (240, 90, (37, 120), (9, 114, 15, 123)),
+    (240, 180, (120, 203), (116, 221, 122, 230)),
+    (240, 270, (203, 120), (223, 114, 229, 123)),
 )
-def test_mock_compass_at_240(panel, heading, tip):
-    s, raw = panel()
+
+
+@pytest.mark.parametrize("size,heading,tip,north", COMPASS_CASES)
+def test_mock_compass_needle_and_north(panel, size, heading, tip, north):
+    s, raw = panel(size)
     s.compass(heading, color=(255, 85, 85))
     px = lit(raw)
+    assert box(raw, WHITE) == north
     assert px[tip] == RED
-    assert px[(120, 120)] == GRAY
-    # Arduino kCompassCases at heading 0: the N 8x16 cell centred at R + u(5) =
-    # 107 above the centre, cell (116, 5); the MicroPython rose does not turn,
-    # so the N box is the same at every heading.
-    assert box(raw, WHITE) == (116, 7, 122, 16)
+    # The north half ends at the tip: the RED box reaches it on the tip's side.
+    red = box(raw, RED)
+    side = (red[1], red[0], red[3], red[2])[heading // 90]
+    assert side == (tip[1] if heading % 180 == 0 else tip[0])
+    if heading == 90:
+        assert north[2] < s.center[0]  # at 90 the N is on the left
+    assert px[s.center] == GRAY
     assert not outside(raw, slack=0)
+
+
+@pytest.mark.parametrize("size,ticks", ((128, (31, 18)), (240, (58, 33))))
+def test_mock_compass_rose_turns(panel, size, ticks):
+    # Arduino test_compass_rose_turns: at heading 45 the whole rose turns by
+    # -45. At the tick start R - u(6), the N tick lies at 315 and the NE
+    # diagonal at the top; the needle (R * 0.85 long) reaches neither point.
+    s, raw = panel(size)
+    s.compass(45, color=(255, 85, 85))
+    px = lit(raw)
+    r = s.radius - s.u(12)
+    assert int(r * 0.85) < r - s.u(6)
+    x315, top = ticks
+    assert px[(x315, x315)] == LIGHT  # N tick at 315
+    assert px[(s.center[0], top)] == DARK  # NE tick at the top
+
+
+@pytest.mark.parametrize("size", (128, 240))
+def test_mock_compass_heading_rounding(panel, size):
+    # Arduino test_compass_heading_rounding: the heading is rounded to a whole
+    # degree after fmod, and wraps.
+    def frame(heading):
+        s, raw = panel(size)
+        s.compass(heading)
+        return bytes(raw.buffer)
+
+    north = frame(0)
+    assert frame(359.6) == north
+    assert frame(0.4) == north
+    assert frame(-90.4) == frame(270)
+    east = frame(90)
+    assert frame(450) == east
+    assert east != north
+    # A finite huge heading still draws a needle: fmod first.
+    for heading in (1e30, -1e30):
+        s, raw = panel(size)
+        s.compass(heading, color=(255, 85, 85))
+        assert box(raw, RED) is not None
 
 
 # ----- menu, graph -----

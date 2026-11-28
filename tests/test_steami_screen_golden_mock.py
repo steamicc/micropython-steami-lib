@@ -18,7 +18,10 @@ draw_scaled_text has been a true zoom since #398, but value() still halved
 the width, so the value was 2 * scale px per character right of its anchor.
 Only the x of the value glyphs changed, by that amount (4 px per character at
 scale 2; at="N" did not move); the label and unit calls are unchanged and no
-other entry changed.
+other entry changed. The compass entry was re-recorded when the rose turned
+by -heading so that the needle shows north (#436, as Arduino): its compass(0)
+calls are unchanged, compass(45) and compass(200) moved their letters, ticks
+and needle; no other entry changed.
 
 Regenerate (only on purpose): STEAMI_GOLDEN_WRITE=1 python3 -m pytest <this file>
 The writer rewrites every entry the same way, so `git diff` must show only the
@@ -329,3 +332,22 @@ def test_mock_value_is_centred_at_128(val):
     x0, _, x1, _ = _ink_box(record(lambda s: s.value(val)))
     assert x1 - x0 + 1 == len(str(val)) * 16
     assert x0 + x1 == 127
+
+
+# compass() turns the whole rose by -heading (#436, Arduino compass(): "every
+# element at angle a is drawn at a - h"): the needle and the N show north. At
+# heading 90 the top of the screen points east, so the N is on the left and
+# the E at the top. The 8x8 letter cells are those of Arduino kCompassCases.
+@pytest.mark.parametrize(
+    "heading,letters",
+    (
+        (0, {"N": (60, 3), "E": (117, 60), "S": (60, 117), "W": (3, 60)}),
+        (90, {"N": (3, 60), "E": (60, 3), "S": (117, 60), "W": (60, 117)}),
+        (180, {"N": (60, 117), "E": (3, 60), "S": (60, 3), "W": (117, 60)}),
+        (270, {"N": (117, 60), "E": (60, 117), "S": (3, 60), "W": (60, 3)}),
+        (45, {"N": (20, 20), "E": (100, 20), "S": (100, 100), "W": (20, 100)}),
+    ),
+)
+def test_mock_compass_rose_turns_by_minus_heading_at_128(heading, letters):
+    calls = record(lambda s: s.compass(heading))
+    assert {c[1]: (c[2], c[3]) for c in calls if c[0] == "text"} == letters
