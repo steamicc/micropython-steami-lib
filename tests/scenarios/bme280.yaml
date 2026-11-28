@@ -242,6 +242,40 @@ tests:
     expect_true: true
     mode: [mock]
 
+  - name: "Humidity matches the datasheet integer formula (Bosch calibration)"
+    action: script
+    script: |
+      # Expected Q22.10 values come from the Bosch datasheet formula
+      # (section 4.2.3) compiled verbatim in C with int32, which is also
+      # what the Arduino library computes, with the Bosch example
+      # calibration (H1=75 H2=362 H3=0 H4=312 H5=50 H6=30).
+      dev.dig_H1 = 75
+      dev.dig_H2 = 362
+      dev.dig_H3 = 0
+      dev.dig_H4 = 312
+      dev.dig_H5 = 50
+      dev.dig_H6 = 30
+      dev._compensate_temperature(519888)
+      result = [
+          dev._compensate_humidity(28000),
+          dev._compensate_humidity(28680),
+          dev._compensate_humidity(30000),
+      ]
+    expect: [45274, 49157, 56682]
+    mode: [mock]
+
+  - name: "Humidity matches the datasheet integer formula (mock calibration)"
+    action: script
+    script: |
+      # Same C reference, with the calibration of the mock registers above.
+      dev._compensate_temperature(519888)
+      result = [
+          dev._compensate_humidity(raw)
+          for raw in (20000, 28000, 28680, 30000, 35000)
+      ]
+    expect: [1380, 47862, 51784, 59386, 88031]
+    mode: [mock]
+
   - name: "t_fine updated after temperature read"
     action: script
     script: |

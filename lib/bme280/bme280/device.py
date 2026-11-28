@@ -351,20 +351,18 @@ class BME280(object):
     def _compensate_humidity(self, raw_hum):
         """Compute compensated humidity in Q22.10 fixed point."""
         h = self.t_fine - 76800
-        h = (
-            (((raw_hum << 14) - (self.dig_H4 << 20) - (self.dig_H5 * h)) + 16384)
-            >> 15
-        ) * (
+        # The ">> 14" applies to the second factor only, as in the datasheet.
+        h = ((((raw_hum << 14) - (self.dig_H4 << 20) - (self.dig_H5 * h)) + 16384) >> 15) * (
             (
                 (
-                    (((h * self.dig_H6) >> 10) * (((h * self.dig_H3) >> 11) + 32768))
-                    >> 10
+                    ((((h * self.dig_H6) >> 10) * (((h * self.dig_H3) >> 11) + 32768)) >> 10)
+                    + 2097152
                 )
-                + 2097152
+                * self.dig_H2
+                + 8192
             )
-            * self.dig_H2
-            + 8192
-        ) >> 14
+            >> 14
+        )
         h = h - (((((h >> 15) * (h >> 15)) >> 7) * self.dig_H1) >> 4)
         h = max(h, 0)
         h = min(h, 419430400)
