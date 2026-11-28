@@ -259,7 +259,7 @@ DAPLink is the firmware running on the STM32F103 interface chip. It provides the
 DAPLink consists of **two parts**:
 
 - **Bootloader** (first stage, flashed at `0x08000000`) — installed once at the factory, rarely updated. It provides the MAINTENANCE mode used to update the interface firmware. Updating it requires an external SWD probe.
-- **Interface firmware** (second stage, flashed at `0x08002000`) — contains the I2C bridge, mass-storage, debug interface. Updated routinely, either via the MAINTENANCE USB volume or via an external SWD probe for recovery.
+- **Interface firmware** (second stage, flashed at `0x0800C000`, `DAPLINK_ROM_IF_START` of the DAPLink sources; anything lower overwrites the bootloader) — contains the I2C bridge, mass-storage, debug interface. Updated routinely, either via the MAINTENANCE USB volume or via an external SWD probe for recovery.
 
 ```bash
 make daplink-firmware                    # Build the interface firmware (stm32f103xb_steami32_if)
