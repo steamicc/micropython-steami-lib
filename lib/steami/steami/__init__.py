@@ -13,6 +13,10 @@ _SUBMODULES = {
     "Status": "const",
     "Origin": "const",
     "Vector": "const",
+    "PAD_P24": "const",
+    "PAD_P25": "const",
+    "PAD_P28": "const",
+    "PAD_P29": "const",
     "Temperature": "temperature",
     "Humidity": "humidity",
     "Pressure": "pressure",
@@ -27,6 +31,8 @@ _SUBMODULES = {
     "Gesture": "gesture",
     "Buttons": "buttons",
     "Screen": "screen",
+    "tone": "buzzer",
+    "no_tone": "buzzer",
 }
 
 

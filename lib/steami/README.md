@@ -234,6 +234,35 @@ older versions of `steami_config/examples/calibrate_temperature.py` wrote,
 through the removed HTS221 driver; the current tool removes it). Arduino reads
 it the same way (steamicc/arduino-steami-lib#301).
 
+## Buzzer
+
+```python
+from steami import tone, no_tone
+
+tone(440)        # A4 until no_tone() or the next tone()
+tone(880, 200)   # stops by itself after 200 ms, without blocking
+no_tone()
+```
+
+`tone(frequency, duration_ms=0)` and `no_tone()` mirror Arduino `tone()` and
+`noTone()`: a 50 % square wave on `SPEAKER` (PA11), Timer 1 channel 4, created
+on first call. A frequency of 0 or less silences the buzzer. The timed stop
+uses a one-shot soft `machine.Timer`.
+
+## Pads on the expander
+
+The crocodile pads P28, P29, P24 and P25 are GPIO 0 to 3 of the MCP23009E, not
+pins of the MCU. `PAD_P28`, `PAD_P29`, `PAD_P24` and `PAD_P25` give their GPIO
+number, for `MCP23009Pin`:
+
+```python
+from mcp23009e import MCP23009Pin
+from steami import PAD_P24, Steami
+
+pad = MCP23009Pin(Steami.mcp23009e(), PAD_P24, MCP23009Pin.IN, MCP23009Pin.PULL_UP)
+pad.value()
+```
+
 ---
 
 # Messages
@@ -290,6 +319,9 @@ silences them, and `Steami.last_error()` returns the last one.
   bounces of the next 20 ms are ignored. Buttons are polled, with no
   interrupts: call a method on every loop turn.
 * `Steami.end()` also resets the logger to `print`; Arduino keeps it.
+* `tone(frequency, duration_ms)` takes no pin: the board has one buzzer.
+  Arduino calls `tone(SPEAKER, frequency, duration)`.
+* The pad constants are `PAD_P24`... where Arduino has `STEAMI_PAD_P24`...
 * `Steami.begin()` returns the release text (truthy when the release is
   known) where Arduino returns a bool.
 * Statuses are class constants (`Status.OK`, ...).
@@ -323,6 +355,7 @@ silences them, and `Steami.last_error()` returns the last one.
 | `light.py`, `color.py`, `gesture.py` | APDS-9960, V1a and V1b only |
 | `buttons.py` | Press and release of the seven buttons |
 | `weather_station.py` | Temperature, humidity, pressure graph and compass on four screen pages, changed with the buttons (and a swipe on V1a/V1b) |
+| `pads.py` | Read a crocodile pad and drive another one, on the expander |
 
 ---
 
