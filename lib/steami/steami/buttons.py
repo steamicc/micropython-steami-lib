@@ -1,3 +1,4 @@
+import sys
 from time import sleep_ms, ticks_diff, ticks_ms
 
 from machine import Pin, disable_irq, enable_irq
@@ -79,7 +80,14 @@ def _setup_dpad(driver):
 
 
 def _read_latch(driver):
-    driver.interrupt_event()
+    # MCP23009E.interrupt_event() in two steps. A bus error in the read makes
+    # the D-pad read released. An error of a pad callback of the program, run
+    # by the dispatch, is printed and the call goes on, as for an IRQ handler.
+    driver._read_interrupt(0)
+    try:
+        driver._dispatch_queued()
+    except Exception as e:
+        sys.print_exception(e)
     return True
 
 
@@ -115,7 +123,9 @@ class Buttons(Handle):
     takes line 0) leaves that button sampled at each call only, and a later
     Pin.irq() on such a line raises OSError. With several Buttons objects, the
     taps made between two calls go to the one started or called last only;
-    every object follows the levels of all the buttons.
+    every object follows the levels of all the buttons. A pad callback set
+    with Steami.mcp23009e().interrupt_on_*() runs during the calls; an error
+    it raises is printed and does not stop the call.
     """
 
     _NOUN = "D-PAD expander"

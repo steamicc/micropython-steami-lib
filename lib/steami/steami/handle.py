@@ -137,8 +137,8 @@ class Handle(object):
         except (TypeError, AttributeError, NameError):
             raise  # a programming error, not a chip that stopped answering
         except Exception:
-            # Each driver raises its own error when the chip stops answering
-            # (OSError, or a class of its own such as WSENHIDSCommunicationError).
+            # A chip that stops answering raises OSError or a driver class
+            # derived from it (WSENHIDSCommunicationError...).
             return absent
 
     def _report(self, code, detail):

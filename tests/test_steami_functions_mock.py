@@ -1887,6 +1887,53 @@ def test_mock_buttons_deliver_the_pad_callbacks_of_the_program(rig, steami):
     expander.disable_interrupt(0)
 
 
+@pytest.mark.parametrize("error", [ValueError, TypeError, OSError])
+def test_mock_buttons_a_pad_callback_that_raises_does_not_stop_buttons(rig, monkeypatch, error):
+    # As in Arduino, a pad callback of the program cannot abort Buttons: the
+    # call returns, the D-pad keeps its state and the exception is printed.
+    import sys
+
+    printed = []
+    monkeypatch.setattr(sys, "print_exception", printed.append, raising=False)
+    rig.chip.release(0)
+    rig.chip.press(UP)
+    assert rig.buttons.begin() is True
+    assert rig.buttons.is_pressed("UP") is True
+    expander = rig.board.steami.mcp23009e()
+    mcp = pytest.importorskip("mcp23009e.const")
+    expander.setup(0, mcp.MCP23009_DIR_INPUT, mcp.MCP23009_PULLUP)
+
+    def callback():
+        raise error("bug in the program")
+
+    expander.interrupt_on_falling(0, callback)
+    rig.advance(50)
+    rig.chip.press(LEFT)  # captured by the interrupt
+    rig.chip.release(LEFT)
+    rig.chip.press(0)  # found in GPIO by the same read: the callback raises
+    rig.advance(30)
+    assert rig.buttons.is_pressed("UP") is True  # no false release
+    assert rig.buttons.was_pressed("LEFT") is True
+    rig.advance(30)
+    assert rig.buttons.was_released("UP") is False
+    assert rig.buttons.was_released("LEFT") is True
+    assert [type(e) for e in printed] == [error]
+    expander.disable_interrupt(0)
+
+
+def test_mock_buttons_wait_for_press_0_drops_what_came_before_and_does_not_wait(rig):
+    # wait_for_press(0) samples, drops the presses found, samples again: a
+    # press made before the call is not returned and the clock does not move.
+    assert rig.buttons.is_pressed("A") is False
+    rig.advance(50)
+    rig.tap("A", 60)
+    rig.chip.press(DOWN)
+    start = rig.now
+    assert rig.buttons.wait_for_press(0) is None
+    assert rig.now == start
+    assert rig.buttons.is_pressed("DOWN") is True
+
+
 def test_mock_buttons_called_last_get_the_interrupts(rig, steami):
     # Two objects: the IRQs and the D-pad events go to the one called last.
     outer = rig.buttons
