@@ -32,6 +32,21 @@ tests:
     expect_true: true
     mode: [hardware]
 
+  - name: "Steami.schematic_index() is the units digit of the revision"
+    action: hardware_script
+    script: |
+      import os, sys
+      for d in os.listdir('/remote'):
+        sys.path.insert(0, '/remote/' + d)
+      from steami import Steami
+      Steami.begin()
+      rev = Steami.revision()
+      index = Steami.schematic_index()
+      print("revision:", rev, "schematic index:", index)
+      result = index is None if rev is None else index == rev % 10
+    expect_true: true
+    mode: [hardware]
+
   - name: "Temperature uses the BME280"
     action: hardware_script
     script: |
