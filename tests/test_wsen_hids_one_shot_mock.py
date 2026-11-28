@@ -1,13 +1,23 @@
-"""Mock tests of the wsen-hids measurement path (issue #425).
+"""Mock tests of the wsen-hids measurement path (issue #425) and heater.
 
 On the STeaMi V1a/V1b, CTRL_2.ONE_SHOT stays latched at 1 and STATUS
 never reports new data, while continuous mode works. A small register
-model of the WSEN-HIDS stands for the chip on the I2C bus. It has the
-same behavior: a ONE_SHOT request is kept in CTRL_2 but starts no
-conversion, and a conversion only happens when CTRL_1 is in continuous
-mode (PD set and ODR not 00). The driver must get its data through
-continuous mode, as the Arduino driver does
+model of the WSEN-HIDS stands for the chip on the I2C bus. It has two
+behaviors:
+
+* latched (V1a/V1b, issue #425): a ONE_SHOT request is kept in CTRL_2
+  but starts no conversion;
+* healthy (datasheet): with PD set and ODR 00, a ONE_SHOT request starts
+  one conversion; when it ends, ONE_SHOT clears itself and STATUS
+  reports H_DA and T_DA.
+
+In both, a conversion also happens when CTRL_1 is in continuous mode (PD
+set and ODR not 00). The driver must get its data through continuous
+mode on both, as the Arduino driver does
 (https://github.com/steamicc/arduino-steami-lib/blob/main/lib/wsen-hids/src/SteamiWsenHids.cpp).
+
+CTRL_2 bits 2 to 6 are reserved and must stay at 0; the heater is bit 1
+(Wurth Elektronik WSEN-HIDS 2525020210001 user manual and SDK).
 """
 
 import pytest
@@ -27,9 +37,12 @@ BDU = 0x04
 ODR_MASK = 0x03
 ODR_1_HZ = 0x01
 ODR_12_5_HZ = 0x03
-HEATER = 0x08
+HEATER = 0x02
 ONE_SHOT = 0x01
-DATA_READY = 0x03  # H_DA | T_DA
+CTRL_2_RESERVED = 0x7C  # bits 2 to 6, must be 0
+H_DA = 0x02
+T_DA = 0x01
+DATA_READY = H_DA | T_DA
 
 # Calibration of tests/scenarios/wsen_hids.yaml: 30 %RH at 3000, 60 %RH
 # at 9000, 20 C at 2000 and 35 C at 5000.
@@ -65,9 +78,18 @@ class FakeHIDS:
             conversion ends.
         ctrl_1, ctrl_2: register values at start, as left by a previous
             program.
+        one_shot_works: False models the latched chip of the V1a/V1b
+            (ONE_SHOT converts nothing), True the datasheet behavior.
     """
 
-    def __init__(self, samples=(SAMPLE_50_25,), conversion_polls=3, ctrl_1=0x00, ctrl_2=0x00):
+    def __init__(
+        self,
+        samples=(SAMPLE_50_25,),
+        conversion_polls=3,
+        ctrl_1=0x00,
+        ctrl_2=0x00,
+        one_shot_works=False,
+    ):
         self.regs = bytearray(0x40)
         self.regs[0x0F] = 0xBC
         self.regs[AV_CONF] = 0x1B
@@ -78,7 +100,10 @@ class FakeHIDS:
         self.samples = list(samples)
         self.conversion_polls = conversion_polls
         self._polls = 0
+        self.one_shot_works = one_shot_works
+        self._one_shot_running = False
         self.ctrl_1_writes = []
+        self.ctrl_2_writes = []
 
     def _continuous(self):
         ctrl_1 = self.regs[CTRL_1]
@@ -102,11 +127,15 @@ class FakeHIDS:
 
     def _read(self, reg, nbytes):
         reg &= 0x7F
-        if reg == STATUS and self._continuous():
+        if reg == STATUS and (self._continuous() or self._one_shot_running):
             self._polls += 1
             if self._polls >= self.conversion_polls:
                 self._polls = 0
                 self._convert()
+                if self._one_shot_running:
+                    # End of a one-shot conversion: ONE_SHOT clears itself.
+                    self._one_shot_running = False
+                    self.regs[CTRL_2] &= ~ONE_SHOT
         data = bytes(self.regs[reg : reg + nbytes])
         if reg <= H_OUT_L < reg + nbytes:
             # The model drops the data-ready flags once the outputs are read.
@@ -127,12 +156,23 @@ class FakeHIDS:
 
     def writeto_mem(self, addr, reg, buf, *, addrsize=8):
         assert addr == ADDR
+        value = buf[0]
         if reg == CTRL_1:
-            self.ctrl_1_writes.append(buf[0])
+            self.ctrl_1_writes.append(value)
             self._polls = 0
-        # A ONE_SHOT request stays latched in CTRL_2 and converts nothing,
-        # as seen on the V1a/V1b (issue #425).
-        self.regs[reg] = buf[0]
+            if not value & PD:
+                # Power-down stops a running one-shot conversion.
+                self._one_shot_running = False
+        elif reg == CTRL_2:
+            self.ctrl_2_writes.append(value)
+            ctrl_1 = self.regs[CTRL_1]
+            one_shot_mode = bool(ctrl_1 & PD) and (ctrl_1 & ODR_MASK) == 0
+            if self.one_shot_works and value & ONE_SHOT and one_shot_mode:
+                self._one_shot_running = True
+                self._polls = 0
+        # On the latched chip (V1a/V1b, issue #425), a ONE_SHOT request
+        # stays in CTRL_2 and converts nothing.
+        self.regs[reg] = value
 
 
 @pytest.fixture
@@ -142,9 +182,14 @@ def drv():
     cleanup_driver("wsen-hids", "wsen_hids")
 
 
+@pytest.fixture(params=[False, True], ids=["latched", "healthy"])
+def chip(request):
+    return FakeHIDS(one_shot_works=request.param)
+
+
 @pytest.fixture
-def chip():
-    return FakeHIDS()
+def healthy():
+    return FakeHIDS(samples=[SAMPLE_50_25, SAMPLE_40_30], one_shot_works=True)
 
 
 @pytest.fixture
@@ -284,3 +329,116 @@ def test_mock_init_after_latched_one_shot_then_read(drv):
     chip = FakeHIDS(ctrl_1=PD | BDU, ctrl_2=ONE_SHOT)
     dev = drv.WSEN_HIDS(chip)
     assert dev.read_one_shot() == pytest.approx((50.0, 25.0))
+
+
+# ----- Heater (CTRL_2 bit 1) -----
+
+
+def test_mock_enable_heater_sets_ctrl_2_bit_1(dev, chip):
+    dev.enable_heater(True)
+    assert chip.regs[CTRL_2] == HEATER
+
+
+def test_mock_disable_heater_clears_ctrl_2(dev, chip):
+    dev.enable_heater(True)
+    dev.enable_heater(False)
+    assert chip.regs[CTRL_2] == 0x00
+
+
+def test_mock_enable_heater_keeps_one_shot_request(drv):
+    chip = FakeHIDS()
+    dev = drv.WSEN_HIDS(chip)
+    dev.trigger_one_shot()  # stays latched on this chip
+    dev.enable_heater(True)
+    assert chip.regs[CTRL_2] == HEATER | ONE_SHOT
+
+
+def test_mock_ctrl_2_reserved_bits_never_set(dev, chip):
+    dev.enable_heater(True)
+    dev.read_one_shot()
+    dev.read()
+    dev.trigger_one_shot()
+    dev.enable_heater(False)
+    dev.reboot()
+    assert chip.ctrl_2_writes
+    for value in chip.ctrl_2_writes:
+        assert value & CTRL_2_RESERVED == 0, hex(value)
+
+
+# ----- ONE_SHOT state machine (healthy chip) -----
+
+
+def _wait_data_ready(dev, polls=50):
+    return any(dev.data_ready() for _ in range(polls))
+
+
+def test_mock_healthy_trigger_one_shot_converts_and_self_clears(drv, healthy):
+    dev = drv.WSEN_HIDS(healthy)
+    dev.trigger_one_shot()
+    assert healthy.regs[CTRL_2] & ONE_SHOT
+    assert _wait_data_ready(dev)
+    assert healthy.regs[CTRL_2] & ONE_SHOT == 0
+    assert healthy.regs[STATUS] == DATA_READY
+    assert healthy.regs[H_OUT_L : H_OUT_L + 4] == bytes([0x58, 0x1B, 0xB8, 0x0B])
+
+
+def test_mock_latched_trigger_one_shot_never_converts(drv):
+    chip = FakeHIDS()
+    dev = drv.WSEN_HIDS(chip)
+    dev.trigger_one_shot()
+    assert not _wait_data_ready(dev)
+    assert chip.regs[CTRL_2] & ONE_SHOT
+
+
+def test_mock_healthy_trigger_keeps_one_shot_mode(drv, healthy):
+    dev = drv.WSEN_HIDS(healthy)
+    dev.trigger_one_shot()
+    _wait_data_ready(dev)
+    assert healthy.regs[CTRL_1] == PD | BDU
+
+
+def test_mock_healthy_power_off_stops_one_shot(drv, healthy):
+    dev = drv.WSEN_HIDS(healthy)
+    dev.trigger_one_shot()
+    dev.power_off()
+    assert not _wait_data_ready(dev)
+
+
+def test_mock_healthy_read_one_shot_from_power_down(drv, healthy):
+    dev = drv.WSEN_HIDS(healthy)
+    assert dev.read_one_shot() == pytest.approx((50.0, 25.0))
+    assert healthy.regs[CTRL_1] == BDU
+    for value in healthy.ctrl_2_writes:
+        assert value & ONE_SHOT == 0
+
+
+def test_mock_healthy_read_from_power_down(drv, healthy):
+    dev = drv.WSEN_HIDS(healthy)
+    assert dev.read() == pytest.approx((50.0, 25.0))
+    assert healthy.regs[CTRL_1] == BDU
+    for value in healthy.ctrl_2_writes:
+        assert value & ONE_SHOT == 0
+
+
+def test_mock_healthy_init_after_latched_one_shot_then_read(drv):
+    chip = FakeHIDS(ctrl_1=PD | BDU, ctrl_2=ONE_SHOT, one_shot_works=True)
+    dev = drv.WSEN_HIDS(chip)
+    assert chip.regs[CTRL_2] == 0x00
+    assert dev.read() == pytest.approx((50.0, 25.0))
+
+
+# ----- STATUS bits -----
+
+
+def test_mock_status_humidity_bit(dev, chip):
+    chip.regs[STATUS] = H_DA
+    assert dev.humidity_ready()
+    assert not dev.temperature_ready()
+    assert not dev.data_ready()
+
+
+def test_mock_status_temperature_bit(dev, chip):
+    chip.regs[STATUS] = T_DA
+    assert dev.temperature_ready()
+    assert not dev.humidity_ready()
+    assert not dev.data_ready()
