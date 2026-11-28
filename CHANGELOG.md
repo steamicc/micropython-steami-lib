@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [0.38.4](https://github.com/steamicc/micropython-steami-lib/compare/v0.38.3...v0.38.4) (2026-11-28)
+
+
+### Bug Fixes
+
+* **wsen-hids:** Drive the heater with CTRL_2 bit 1, not reserved bit 3. ([#508](https://github.com/steamicc/micropython-steami-lib/issues/508)) ([5feae21](https://github.com/steamicc/micropython-steami-lib/commit/5feae216476c86af204ee218da62cc4334413017)), closes [#507](https://github.com/steamicc/micropython-steami-lib/issues/507) [#507](https://github.com/steamicc/micropython-steami-lib/issues/507)
+
 ## [0.38.3](https://github.com/steamicc/micropython-steami-lib/compare/v0.38.2...v0.38.3) (2026-11-28)
 
 
