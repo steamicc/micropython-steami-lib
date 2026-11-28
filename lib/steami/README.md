@@ -263,6 +263,10 @@ pad = MCP23009Pin(Steami.mcp23009e(), PAD_P24, MCP23009Pin.IN, MCP23009Pin.PULL_
 pad.value()
 ```
 
+The expander outputs are open-drain: they sink current (25 mA at most per pin)
+but do not source it. Wire a load such as an LED from 3V3 to the pad and drive
+the pad to 0 to turn it on.
+
 ---
 
 # Messages
