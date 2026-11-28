@@ -189,7 +189,7 @@ class MCP23009Pin:
                 self._mcp.interrupt_on_falling(self._pin_number, lambda: wrapper(0))
         elif trigger & self.IRQ_RISING:
             # Seulement rising
-            self._mcp.interrupt_on_raising(self._pin_number, lambda: wrapper(1))
+            self._mcp.interrupt_on_rising(self._pin_number, lambda: wrapper(1))
 
         return self
 
