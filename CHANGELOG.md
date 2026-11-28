@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [0.38.0](https://github.com/steamicc/micropython-steami-lib/compare/v0.37.0...v0.38.0) (2026-11-28)
+
+
+### Features
+
+* **steami:** Catch button taps made between two calls, as in Arduino. ([#498](https://github.com/steamicc/micropython-steami-lib/issues/498)) ([ad9ab0a](https://github.com/steamicc/micropython-steami-lib/commit/ad9ab0adc234b607a25a93efc1919ac420e13a8a)), closes [#497](https://github.com/steamicc/micropython-steami-lib/issues/497)
+
 # [0.37.0](https://github.com/steamicc/micropython-steami-lib/compare/v0.36.1...v0.37.0) (2026-11-28)
 
 
