@@ -618,12 +618,13 @@ def test_mock_value_unknown_character(panel):
 
 def test_mock_value_face_follows_the_whole_text(mods):
     # Review Focus 5: str(val) forms that are not plain numbers take the TEXT
-    # ladder (8x16 x 2 at f 4, never bold); "-0.5" takes the value set.
+    # ladder (8x16 x 2 at f 4, never bold); "-0.5" takes the value set. A NaN
+    # float shows "--" (the value set), so the text "nan" stands for it here.
     steami_screen, _ = mods
     d = RecordingDisplay()
     s = steami_screen.Screen(d)
     for val, expected in (
-        (float("nan"), (8, 16, 3, 2, 0)),
+        ("nan", (8, 16, 3, 2, 0)),
         (1e-05, (8, 16, 5, 2, 0)),
         (-0.5, (16, 32, 4, 1, 1)),
     ):
@@ -978,7 +979,8 @@ def test_mock_graph_labels_clear_the_axes_at_240(panel, max_val):
     assert not [y for y in rows if y in (118, 120, 167)]
 
 
-# int(1e30) and int(-1e38) are 31 and 39 digits: wider than the chord.
+# int(1e30) and int(-1e38) would be 31 and 39 digits, wider than the chord:
+# from 1e9 up the value and the labels are "--" (Arduino integerText()).
 LONG_GRAPHS = (
     ([0, 123456789], 0, 100),
     ([0, -1e9], 0, 100),
@@ -1001,16 +1003,14 @@ def test_mock_graph_fits_long_numbers_to_the_circle_at_240(panel, data, lo, hi):
     s, raw = panel()
     s.graph(data, lo, hi, color=(119, 255, 119))
     assert not outside(raw, slack=0)
-    # The value's digits, ink rows 60..69 (cell 58, rows 2..11): chord 17..223.
     white = box(raw, WHITE)
-    assert white is not None and white[1] == 60 and white[3] <= 69
-    assert white[0] >= 17 and white[2] <= 223
-    text = str(int(data[-1]))
-    if len(text) * 8 > 207:
-        # Cut to 25 cells (200 px), not to nothing.
-        assert white[2] - white[0] >= 24 * 8
+    if abs(data[-1]) >= 10**9:
+        assert white == DASHES[240]
     else:
-        # Centred: the ink lies in the cells from 120 - width // 2.
+        # The value's digits, ink rows 60..69 (cell 58, rows 2..11), at most
+        # 10 cells: centred, the ink lies in the cells from 120 - width // 2.
+        text = str(int(data[-1]))
+        assert white is not None and white[1] == 60 and white[3] <= 69
         cell = 120 - len(text) * 4
         assert cell <= white[0] and white[2] < cell + len(text) * 8
     # The three labels keep their bands and their left edge, x 44.
@@ -1119,6 +1119,197 @@ def test_mock_graph_one_point_draws_the_frame_and_its_value(panel, size):
     ref.graph([0, 5], min_val=0, max_val=10)
     assert white == box(ref_raw, WHITE)
     assert box(raw, GREEN) is None
+
+
+# ----- NaN and infinity -----
+# The steami layer returns NaN by contract (Compass.heading(): "nan when
+# unavailable"), so no widget may raise on NaN or an infinity in any of its
+# data arguments. What is drawn follows Arduino's SteamiScreen (spec 5.11):
+# filledColumns(), gaugeSweep(), integerText(), curveRow(), compass().
+
+BAD = (float("nan"), float("inf"), float("-inf"))
+BAD_IDS = ("nan", "inf", "-inf")
+
+
+@pytest.mark.parametrize("bad", BAD, ids=BAD_IDS)
+@pytest.mark.parametrize("size", (240, 128))
+def test_mock_widgets_raise_nothing_on_nan_or_infinity(panel, size, bad):
+    calls = (
+        lambda s: s.value(bad),
+        lambda s: s.value(bad, unit="C", label="Temp"),
+        lambda s: s.value(bad, at="W"),
+        lambda s: s.bar(bad),
+        lambda s: s.bar(50, max_val=bad),
+        lambda s: s.gauge(bad),
+        lambda s: s.gauge(50, min_val=bad),
+        lambda s: s.gauge(50, max_val=bad),
+        lambda s: s.graph([10, bad, 30]),
+        lambda s: s.graph([10, 20, 30], min_val=bad),
+        lambda s: s.graph([10, 20, 30], max_val=bad),
+        lambda s: s.compass(bad),
+        lambda s: s.watch(bad, 10, 30),
+        lambda s: s.watch(10, bad, 30),
+        lambda s: s.watch(10, 10, bad),
+    )
+    for i, call in enumerate(calls):
+        s, raw = panel(size)
+        call(s)
+        assert lit(raw), i
+        if size == 240:
+            assert not outside(raw, slack=0), i
+
+
+@pytest.mark.parametrize("bad", (*BAD, 1e9, -2.5e12), ids=(*BAD_IDS, "1e9", "-2.5e12"))
+@pytest.mark.parametrize("size", (240, 128))
+def test_mock_value_shows_dashes_for_nan_infinity_and_huge_floats(panel, size, bad):
+    # Arduino SteamiValue::format(): "--" for NAN, +-INF and floats whose
+    # magnitude is not below 1e9 (it printed "nan" and "inf").
+    s, raw = panel(size)
+    s.value(bad, unit="C", label="Temp")
+    ref, ref_raw = panel(size)
+    ref.value("--", unit="C", label="Temp")
+    assert lit(raw) == lit(ref_raw)
+
+
+def test_mock_value_keeps_finite_floats_and_big_ints(panel):
+    # Only a float that is not finite or reaches 1e9 shows "--"; an int is
+    # written whole, as Arduino's SteamiValue(long).
+    for val, text in ((999999999.0 / 10, str(999999999.0 / 10)), (10**10, "10000000000")):
+        s, raw = panel()
+        s.value(val)
+        ref, ref_raw = panel()
+        ref.value(text)
+        assert lit(raw) == lit(ref_raw), val
+
+
+@pytest.mark.parametrize("size", (240, 128))
+def test_mock_bar_fill_follows_arduino_filled_columns(panel, size):
+    # filledColumns(): NaN, a value not above 0, or a max not above 0 (NaN
+    # included) leaves the bar empty; a value from max up (+inf included)
+    # fills it. bar(-50, max_val=-100) was full.
+    green = (119, 255, 119)
+    empty, empty_raw = panel(size)
+    empty.bar(0, color=green)
+    full, full_raw = panel(size)
+    full.bar(100, color=green)
+    assert box(empty_raw, GREEN) is None
+    assert box(full_raw, GREEN) is not None
+    for args, ref_raw in (
+        ((float("nan"),), empty_raw),
+        ((float("-inf"),), empty_raw),
+        ((-50, -100), empty_raw),
+        ((50, float("nan")), empty_raw),
+        ((50, float("inf")), empty_raw),
+        ((1e307, float("inf")), empty_raw),  # bar_w * 1e307 overflows to inf
+        ((float("inf"),), full_raw),
+        ((float("inf"), float("inf")), full_raw),
+    ):
+        s, raw = panel(size)
+        s.bar(*args, color=green)
+        assert lit(raw) == lit(ref_raw), args
+
+
+@pytest.mark.parametrize("size", (240, 128))
+def test_mock_gauge_nan_ratio_is_an_empty_gauge(panel, size):
+    # gaugeSweep(): a NaN ratio (a NaN value or bound, inf / inf) gives 0, an
+    # empty gauge; gauge(nan) drew a full one (min(1.0, nan) is 1.0).
+    green = (119, 255, 119)
+    for args in (
+        (float("nan"),),
+        (50, float("nan"), 100),
+        (50, 0, float("nan")),
+        (50, float("-inf"), float("inf")),
+    ):
+        s, raw = panel(size)
+        s.gauge(*args, color=green)
+        assert box(raw, GREEN) is None, args
+        assert box(raw, DARK) is not None, args
+    full, full_raw = panel(size)
+    full.gauge(100, color=green)
+    s, raw = panel(size)
+    s.gauge(float("inf"), color=green)
+    assert box(raw, GREEN) == box(full_raw, GREEN) is not None
+
+
+def test_mock_gauge_and_graph_labels_show_dashes_when_not_finite(mods):
+    # integerText(): the integer part, or "--" when |v| >= 1e9 (NaN and the
+    # infinities included). The graph keeps its "k" format below 1e9.
+    steami_screen, _ = mods
+    d = RecordingDisplay()
+    s = steami_screen.Screen(d)
+    for call in (
+        lambda: s.gauge(50, float("nan"), float("inf")),
+        lambda: s.gauge(50, -1e9, 1e12),
+    ):
+        d.calls.clear()
+        call()
+        labels = [c for c in d.calls if c[0] == "glyphs" and (c[1], c[2]) == (6, 12)]
+        assert [len(c[3]) for c in labels] == [2, 2]
+    assert steami_screen.device._int_text(2000.7) == "2000"
+    assert steami_screen.device._int_text(-0.5) == "0"
+    for v in (float("nan"), float("inf"), float("-inf"), 1e9, -1e9):
+        assert steami_screen.device._int_text(v) == "--", v
+
+
+@pytest.mark.parametrize("size", (240, 128))
+def test_mock_graph_skips_every_point_of_a_nan_ratio(panel, size):
+    # curveRow(): a NaN ratio (a NaN bound, inf - inf) skips the point, so a
+    # NaN min or max draws no curve; it was clamped to the top of the box.
+    green = (119, 255, 119)
+    for args in (
+        ([10, 20, 30], float("nan"), 100),
+        ([10, 20, 30], 0, float("nan")),
+        ([float("inf"), float("inf")], float("-inf"), float("inf")),
+    ):
+        s, raw = panel(size)
+        s.graph(*args, color=green)
+        assert box(raw, GREEN) is None, args
+        assert box(raw, WHITE) is not None, args
+
+
+@pytest.mark.parametrize("bad", BAD, ids=BAD_IDS)
+@pytest.mark.parametrize("size", (240, 128))
+def test_mock_compass_without_heading_draws_no_needle(panel, size, bad):
+    # Arduino compass(): a NaN or infinite heading points nowhere, so the rose
+    # and the pivot are drawn and the needle is not.
+    s, raw = panel(size)
+    s.compass(bad, color=(255, 85, 85))
+    px = lit(raw)
+    assert box(raw, RED) is None
+    c = size // 2
+    assert px[(c, c)] == GRAY
+    ref, ref_raw = panel(size)
+    ref.compass(0, color=(255, 85, 85))
+    assert box(raw, WHITE) == box(ref_raw, WHITE)
+    # Nothing on the needle's path (north and south halves) but the rings
+    # that the needle hid at heading 0.
+    assert (c, c - s.u(20)) not in px and (c, c + s.u(20)) not in px
+    r = c - s.u(12)
+    for p in set(px) - set(lit(ref_raw)):
+        d = math.hypot(p[0] - c, p[1] - c)
+        assert px[p] == DARK and min(abs(d - r), abs(d - int(r * 0.7))) <= s.k, p
+
+
+@pytest.mark.parametrize("bad", BAD, ids=BAD_IDS)
+def test_mock_watch_skips_a_hand_without_a_finite_angle(panel, bad):
+    # A hand whose angle is NaN or infinite (Arduino's watch() takes integers)
+    # is not drawn; the dial, the other hands and the pivot are. The minute
+    # angle includes the seconds, so bad seconds also drop the minute hand.
+    red = (255, 85, 85)
+    s, raw = panel()
+    s.watch(bad, 0, 0, color=red)
+    px = lit(raw)
+    assert box(raw, RED) == (117, 43, 122, 115)  # only the minute hand, toward 12
+    assert px[(120, 31)] == GRAY  # second hand toward 12
+    assert px[(120, 120)] == GRAY  # pivot
+    ref, ref_raw = panel()
+    ref.watch(3, 0, 0, color=red)
+    assert lit(ref_raw)[(172, 120)] == RED
+    assert px.get((172, 120)) != RED  # no hour hand toward 3
+    s, raw = panel()
+    s.watch(3, 0, bad, color=red)
+    assert box(raw, RED)[2] == 172  # hour hand
+    assert lit(raw).get((120, 31)) != GRAY  # no second hand
 
 
 # ----- everything stays inside at default arguments -----
