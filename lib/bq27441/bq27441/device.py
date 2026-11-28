@@ -411,7 +411,7 @@ class BQ27441(object):
 
     # Set the SOC_INT interval delta to a value between 1 and 100
     def set_soci_delta(self, delta):
-        soci = constrain(delta, 0, 100)
+        soci = [constrain(delta, 0, 100)]
         return self.write_extended_data(BQ27441_ID_STATE, 26, soci, 1)
 
     # Pulse the GPOUT pin - must be in SOC_INT mode
@@ -428,9 +428,6 @@ class BQ27441(object):
     # Enter configuration mode - set user_control if calling from user code
     # and you want control over when to exit_config
     def enter_config(self, user_control):
-        if user_control:
-            self._user_config_control = True
-
         if self.sealed():
             self._seal_flag = True
             self.unseal()  # be unsealed before making changes
@@ -446,11 +443,16 @@ class BQ27441(object):
                     break
 
             if not timeout:
+                # A user session only exists once the gauge is in CFGUPDATE
+                if user_control:
+                    self._user_config_control = True
                 return True
         return False
 
-    # Exit configuration mode with the option to perform a resimulation
+    # Exit configuration mode with the option to perform a resimulation.
+    # Leaving CFGUPDATE always ends the user session.
     def exit_config(self, resim=True):
+        self._user_config_control = False
         # There are two methods for exiting config mode:
         # 1. Execute the EXIT_CFGUPDATE command
         # 2. Execute the SOFT_RESET command

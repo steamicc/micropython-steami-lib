@@ -138,6 +138,57 @@ tests:
     expect_true: true
     mode: [mock]
 
+  - name: "Failed enter_config(True) opens no user session"
+    action: script
+    script: |
+      from bq27441.const import BQ27441_CONTROL_SET_CFGUPDATE
+      i2c.writeto_mem(0x55, 0x06, bytes([0x00, 0x00]))  # CFGUPMODE never rises
+      clock = [0]
+
+      def fast_clock():
+          clock[0] += 1000
+          return clock[0]
+
+      dev.get_time_ms = fast_clock
+      entered = dev.enter_config(True)
+      i2c.writeto_mem(0x55, 0x06, bytes([0x19, 0x00]))  # CFGUPMODE back
+      i2c.clear_write_log()
+      dev.set_socf_thresholds(2, 5)
+      log = i2c.get_write_log()
+      setter_entered = any(
+          reg == 0x00 and data[0] == BQ27441_CONTROL_SET_CFGUPDATE for reg, data in log
+      )
+      result = (not entered) and setter_entered
+    expect_true: true
+    mode: [mock]
+
+  - name: "exit_config() ends the user session"
+    action: script
+    script: |
+      from bq27441.const import BQ27441_CONTROL_SET_CFGUPDATE
+      dev.enter_config(True)
+      dev.exit_config(False)
+      i2c.clear_write_log()
+      dev.set_socf_thresholds(2, 5)
+      log = i2c.get_write_log()
+      result = any(reg == 0x00 and data[0] == BQ27441_CONTROL_SET_CFGUPDATE for reg, data in log)
+    expect_true: true
+    mode: [mock]
+
+  - name: "Percentage setters clamp negative values to 0"
+    action: script
+    script: |
+      # SOCF thresholds sit at offsets 2 and 3, SOCI_Delta at 26.
+      dev.set_socf_thresholds(-1, 150)
+      dev.set_soci_delta(-5)
+      result = [
+          i2c.readfrom_mem(0x55, 0x40 + 2, 1)[0],
+          i2c.readfrom_mem(0x55, 0x40 + 3, 1)[0],
+          i2c.readfrom_mem(0x55, 0x40 + 26, 1)[0],
+      ]
+    expect: [0, 100, 0]
+    mode: [mock]
+
   - name: "Battery connected check"
     action: manual
     prompt: "Une batterie est-elle connectée à la carte ?"
