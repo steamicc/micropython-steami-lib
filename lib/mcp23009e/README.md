@@ -137,7 +137,7 @@ exception, the other queued events are still delivered, then the first
 exception is raised again to the caller (the soft IRQ, or the `irq()` call).
 
 Registering a handler (`irq()`, or `interrupt_on_change()`,
-`interrupt_on_falling()` and `interrupt_on_raising()`) stores the callback,
+`interrupt_on_falling()` and `interrupt_on_rising()`) stores the callback,
 then clears a pending interrupt before it enables the pin. A change that
 happened before the registration does not call the new handler, even if
 its event is still queued. If another pin has a pending event at that
@@ -161,7 +161,8 @@ MCP23009E(i2c, address, reset_pin, interrupt_pin=None)
 * `get_level(gpx)` - Read input level
 * `interrupt_on_change(gpx, callback)` - Register change callback; `callback(level)` gets the level of the event (captured in INTCAP, or read in GPIO for a missed change)
 * `interrupt_on_falling(gpx, callback)` - Register falling edge callback
-* `interrupt_on_raising(gpx, callback)` - Register rising edge callback
+* `interrupt_on_rising(gpx, callback)` - Register rising edge callback
+* `interrupt_on_raising(gpx, callback)` - Deprecated alias of `interrupt_on_rising()`, kept for the whole 1.x series and removed in 2.0.0
 * `disable_interrupt(gpx)` - Disable interrupts on a GPIO
 
 ### MCP23009Pin Class

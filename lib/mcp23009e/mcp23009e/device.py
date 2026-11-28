@@ -399,7 +399,7 @@ class MCP23009E(object):
         self.events_fall[gpx] = callback
         self._send_enable_interrupt(gpx)
 
-    def interrupt_on_raising(self, gpx, callback):
+    def interrupt_on_rising(self, gpx, callback):
         """
         Active et enregistre un callback pour les fronts montants d'un GPIO
 
@@ -412,6 +412,10 @@ class MCP23009E(object):
 
         self.events_rise[gpx] = callback
         self._send_enable_interrupt(gpx)
+
+    # Deprecated: old spelling, kept for the whole 1.x series and removed in
+    # 2.0.0. Same as arduino-steami-lib interruptOnRaising().
+    interrupt_on_raising = interrupt_on_rising
 
     def disable_interrupt(self, gpx):
         """

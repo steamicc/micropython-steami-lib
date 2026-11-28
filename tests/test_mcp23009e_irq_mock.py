@@ -281,7 +281,7 @@ def test_device_falling_and_rising_callbacks(drv, dev, chip):
     dpad_pin(drv, dev, LEFT)
     dpad_pin(drv, dev, RIGHT)
     dev.interrupt_on_falling(LEFT, lambda: calls.append("fall"))
-    dev.interrupt_on_raising(RIGHT, lambda: calls.append("rise"))
+    dev.interrupt_on_rising(RIGHT, lambda: calls.append("rise"))
     chip.press(LEFT)
     dev.interrupt_event()
     chip.press(RIGHT)
@@ -291,6 +291,19 @@ def test_device_falling_and_rising_callbacks(drv, dev, chip):
     chip.release(RIGHT)
     dev.interrupt_event()
     assert calls == ["fall", "rise"]
+
+
+def test_interrupt_on_raising_is_a_deprecated_alias(drv, dev, chip):
+    # Old spelling kept for the whole 1.x series (arduino-steami-lib#183).
+    assert drv.MCP23009E.interrupt_on_raising is drv.MCP23009E.interrupt_on_rising
+    calls = []
+    dpad_pin(drv, dev, RIGHT)
+    dev.interrupt_on_raising(RIGHT, lambda: calls.append("rise"))
+    chip.press(RIGHT)
+    dev.interrupt_event()
+    chip.release(RIGHT)
+    dev.interrupt_event()
+    assert calls == ["rise"]
 
 
 # ----- Registration -----
@@ -660,7 +673,7 @@ def test_device_callbacks_get_changes_found_in_gpio(drv, dev, chip):
     dpad_pin(drv, dev, LEFT)
     dev.interrupt_on_change(UP, lambda level: calls.append(("UP", level)))
     dev.interrupt_on_falling(LEFT, lambda: calls.append("fall"))
-    dev.interrupt_on_raising(LEFT, lambda: calls.append("rise"))
+    dev.interrupt_on_rising(LEFT, lambda: calls.append("rise"))
     chip.press(UP)
     chip.press(LEFT)
     chip.release(LEFT)
