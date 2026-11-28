@@ -6,6 +6,8 @@ import pytest
 
 from tests.fake_machine import FakePin, steami_chips
 from tests.fake_machine.i2c_bus import FakeI2CBus
+from tests.fake_machine.mcp23009 import ADDR as MCP_ADDR
+from tests.fake_machine.mcp23009 import DOWN, GPPU, IODIR, LEFT, RIGHT, UP, FakeMCP23009
 from tests.test_steami_board_mock import (  # noqa: F401 (board_module is a fixture)
     Setup,
     board_module,
@@ -1382,39 +1384,96 @@ def test_mock_color_failing_channel_gives_all_zeros(steami):
 
 
 class ButtonsRig:
-    """A board, its fake button pins and a clock that only moves when told."""
+    """A board, its fake button pins, a model of the MCP23009 and a clock that only moves when told.
 
-    def __init__(self, steami, monkeypatch, release="V1c", **kwargs):
+    Pressing a button pin runs its IRQ handler, as the edge does on the board.
+    ``taken`` names pins whose EXTI line is already used: their ``irq()``
+    raises OSError, as the firmware does.
+    """
+
+    def __init__(self, steami, monkeypatch, release="V1c", taken=(), **kwargs):
         import steami.buttons as module
 
         self.pins = {}
         pins = self.pins
 
         class PinStub(FakePin):
+            # Pin("A_BUTTON") is the same object at every call, as on the board.
+            def __new__(cls, pin_id, *args, **kwargs):
+                return pins.get(pin_id) or super().__new__(cls)
+
             def __init__(self, pin_id, mode=FakePin.IN, pull=None):
+                if pin_id in pins:
+                    self.init(mode, pull)
+                    return
                 super().__init__(pin_id, mode, pull)
                 self._value = 1  # pulled up: released
                 pins[pin_id] = self
 
+            def irq(self, handler=None, trigger=3, *, hard=False):
+                if self._id in taken:
+                    raise OSError("IRQ resource already taken by Pin('INT_EXPANDER')")
+                super().irq(handler, trigger, hard=hard)
+
         self.now = 1000
+        self.later = []  # (time, action) run by advance()
         monkeypatch.setattr(module, "Pin", PinStub)
         monkeypatch.setattr(module, "ticks_ms", lambda: self.now)
         monkeypatch.setattr(module, "sleep_ms", self.advance)
         self.board = board(steami, release, **kwargs)
+        self.chip = None
+        self.fail_reads = False
+        if "MCP23009E" not in kwargs.get("missing", ()):
+            self.chip = FakeMCP23009()
+            self._attach(self.chip)
         self.buttons = steami["Buttons"]()
+
+    def _attach(self, chip):
+        bus = self.board.bus
+        read, write = bus.readfrom_mem, bus.writeto_mem
+
+        def readfrom_mem(addr, reg, nbytes, **kwargs):
+            if addr != MCP_ADDR:
+                return read(addr, reg, nbytes, **kwargs)
+            self.board.reads.append((addr, reg))
+            if self.fail_reads:
+                raise OSError(5, "bus")
+            return chip.readfrom_mem(addr, reg, nbytes, **kwargs)
+
+        def writeto_mem(addr, reg, buf, **kwargs):
+            if addr != MCP_ADDR:
+                return write(addr, reg, buf, **kwargs)
+            self.board.reads.append((addr, "writeto_mem"))
+            return chip.writeto_mem(addr, reg, buf, **kwargs)
+
+        bus.readfrom_mem = readfrom_mem
+        bus.writeto_mem = writeto_mem
 
     def advance(self, ms):
         self.now += ms
+        for item in [i for i in self.later if i[0] <= self.now]:
+            self.later.remove(item)
+            item[1]()
+
+    def at(self, delay, action):
+        """Run action once the clock has moved delay ms from now."""
+        self.later.append((self.now + delay, action))
 
     def press(self, name):
-        self.pins[name + "_BUTTON"].value(0)
+        self.pins[name + "_BUTTON"].drive(0)
 
     def release(self, name):
-        self.pins[name + "_BUTTON"].value(1)
+        self.pins[name + "_BUTTON"].drive(1)
+
+    def tap(self, name, ms):
+        self.press(name)
+        self.advance(ms)
+        self.release(name)
 
     def dpad(self, port):
-        """Set the MCP23009E GPIO port (a bit at 0 is a pressed button)."""
-        self.board.bus._devices[0x20][0x09] = bytes([port])
+        """Set the MCP23009 input port (a bit at 0 is a pressed button)."""
+        self.chip.pins = port
+        self.chip._update()
 
 
 @pytest.fixture
@@ -1434,8 +1493,8 @@ def test_mock_buttons_begin_sets_the_pins_up_with_pull_ups(rig):
     assert all(pin._pull == FakePin.PULL_UP for pin in rig.pins.values())
     assert all(pin._mode == FakePin.IN for pin in rig.pins.values())
     # The four D-pad bits of the MCP23009E are inputs with a pull-up.
-    assert rig.board.bus._devices[0x20][0x06] == bytes([0xF0])  # GPPU: bits 4 to 7
-    assert rig.board.bus._devices[0x20][0x00][0] & 0xF0 == 0xF0  # IODIR
+    assert rig.chip.regs[GPPU] == 0xF0  # bits 4 to 7
+    assert rig.chip.regs[IODIR] & 0xF0 == 0xF0
 
 
 def test_mock_buttons_press_gives_one_was_pressed(rig):
@@ -1522,18 +1581,15 @@ def test_mock_buttons_without_the_expander_the_dpad_stays_released(steami, monke
     rig.advance(30)
     assert rig.buttons.is_pressed("A") is True
     assert rig.buttons.was_pressed("A") is True
-    rig.press("MENU")
-    assert rig.buttons.wait_for_press(10) == "MENU"
+    rig.at(5, lambda: rig.press("MENU"))  # during the wait
+    assert rig.buttons.wait_for_press(20) == "MENU"
 
 
 def test_mock_buttons_work_without_begin_and_dpad_failures_read_released(rig):
     assert rig.buttons.is_pressed("A") is False  # calls begin() itself
     assert rig.buttons.is_available() is True
 
-    def fail():
-        raise OSError("bus")
-
-    rig.board.steami.mcp23009e().get_gpio = fail
+    rig.fail_reads = True
     rig.press("B")
     assert rig.buttons.is_pressed("B") is True
     assert rig.buttons.is_pressed("UP") is False
@@ -1543,17 +1599,7 @@ def test_mock_buttons_wait_for_press_returns_the_name(rig):
     rig.buttons.begin()
     rig.press("A")  # held at start: not a press
     rig.buttons.is_pressed("A")
-    presses = []
-
-    def press_later(ms):
-        rig.now += ms
-        if rig.now >= 1100 and not presses:
-            presses.append(1)
-            rig.dpad(0xFF & ~(1 << 5))
-
-    import steami.buttons as module
-
-    module.sleep_ms = press_later
+    rig.at(100, lambda: rig.dpad(0xFF & ~(1 << 5)))
     assert rig.buttons.wait_for_press() == "DOWN"
     assert rig.buttons.was_pressed("DOWN") is False  # consumed by the wait
 
@@ -1592,3 +1638,307 @@ def test_mock_buttons_a_change_after_the_clock_jumped_is_taken(rig, monkeypatch)
     rig.release("A")
     assert rig.buttons.is_pressed("A") is False
     assert rig.buttons.was_released("A") is True
+
+
+# Buttons: taps made between two calls (issue #497, Arduino #251)
+
+
+def test_mock_buttons_begin_attaches_hard_irqs_on_both_edges_of_a_b_menu(rig):
+    assert rig.buttons.begin() is True
+    for pin in rig.pins.values():
+        handler, trigger, hard = pin._irq
+        assert callable(handler)
+        assert trigger == FakePin.IRQ_FALLING | FakePin.IRQ_RISING
+        assert hard is True
+    # MENU (PA0) and INT_EXPANDER (PB0) share EXTI line 0: the line goes to MENU.
+    assert "INT_EXPANDER" not in rig.pins
+
+
+@pytest.mark.parametrize("name", ["A", "B", "MENU"])
+def test_mock_buttons_mcu_tap_between_two_calls_is_caught(rig, name):
+    assert rig.buttons.was_pressed(name) is False
+    rig.advance(150)
+    rig.tap(name, 100)  # a 100 ms tap between two calls 300 ms apart
+    rig.advance(50)
+    assert rig.buttons.is_pressed(name) is False
+    assert rig.buttons.was_pressed(name) is True
+    assert rig.buttons.was_released(name) is True
+    assert rig.buttons.was_pressed(name) is False
+    assert rig.buttons.was_released(name) is False
+
+
+def test_mock_buttons_mcu_bounces_between_two_calls_give_one_press(rig):
+    # Each edge of a bounce runs the IRQ: the lock-out keeps one press and one release.
+    assert rig.buttons.is_pressed("A") is False
+    rig.advance(50)
+    for level in (0, 1, 0, 1, 0):
+        rig.pins["A_BUTTON"].drive(level)
+        rig.advance(1)
+    rig.advance(100)
+    for level in (1, 0, 1, 0, 1):
+        rig.pins["A_BUTTON"].drive(level)
+        rig.advance(2)
+    rig.advance(200)
+    presses = releases = 0
+    for _ in range(5):
+        presses += rig.buttons.was_pressed("A")
+        releases += rig.buttons.was_released("A")
+        rig.advance(30)
+    assert (presses, releases) == (1, 1)
+    assert rig.buttons.is_pressed("A") is False
+
+
+def test_mock_buttons_mcu_bounce_after_a_release_is_not_a_press(rig):
+    assert rig.buttons.is_pressed("B") is False
+    rig.advance(50)
+    rig.press("B")
+    rig.advance(50)
+    assert rig.buttons.was_pressed("B") is True
+    rig.advance(100)
+    rig.release("B")
+    rig.advance(2)
+    rig.tap("B", 1)  # a bounce 2 ms after the release the IRQ took
+    rig.advance(100)
+    assert rig.buttons.was_released("B") is True
+    assert rig.buttons.was_pressed("B") is False
+    assert rig.buttons.is_pressed("B") is False
+
+
+def test_mock_buttons_two_mcu_taps_between_two_calls_give_one_press(rig):
+    # At most one press per button between two calls: a flag, not a counter.
+    assert rig.buttons.is_pressed("MENU") is False
+    rig.advance(50)
+    for _ in range(2):
+        rig.tap("MENU", 60)
+        rig.advance(60)
+    assert rig.buttons.was_pressed("MENU") is True
+    assert rig.buttons.was_pressed("MENU") is False
+    assert rig.buttons.was_released("MENU") is True
+    assert rig.buttons.was_released("MENU") is False
+
+
+def test_mock_buttons_mcu_release_then_tap_between_two_calls(rig):
+    # Held at one call, released and tapped again before the next one: both are reported.
+    assert rig.buttons.is_pressed("A") is False
+    rig.advance(50)
+    rig.press("A")
+    rig.advance(50)
+    assert rig.buttons.was_pressed("A") is True
+    rig.release("A")
+    rig.advance(80)
+    rig.tap("A", 80)
+    rig.advance(80)
+    assert rig.buttons.is_pressed("A") is False
+    assert rig.buttons.was_released("A") is True
+    assert rig.buttons.was_pressed("A") is True
+
+
+def test_mock_buttons_mcu_tap_shorter_than_the_lock_out(rig):
+    # The IRQ takes the press, ignores the release; the next call reads the pin released.
+    assert rig.buttons.is_pressed("A") is False
+    rig.advance(50)
+    rig.tap("A", 10)
+    rig.advance(200)
+    assert rig.buttons.is_pressed("A") is False
+    assert rig.buttons.was_pressed("A") is True
+    assert rig.buttons.was_released("A") is True
+
+
+def test_mock_buttons_mcu_irq_before_the_first_call_is_ignored(rig):
+    rig.buttons.begin()
+    rig.tap("B", 50)  # before the first sample: not a press
+    rig.advance(50)
+    assert rig.buttons.was_pressed("B") is False
+    assert rig.buttons.was_released("B") is False
+
+
+def test_mock_buttons_a_taken_exti_line_leaves_the_button_sampled(steami, monkeypatch):
+    # MCP23009E(interrupt_pin=Pin("INT_EXPANDER")) took EXTI line 0 before.
+    rig = ButtonsRig(steami, monkeypatch, taken=("MENU_BUTTON",))
+    assert rig.buttons.begin() is True
+    assert rig.pins["MENU_BUTTON"]._irq is None
+    assert rig.pins["A_BUTTON"]._irq is not None
+    assert rig.buttons.is_pressed("MENU") is False
+    rig.press("MENU")
+    assert rig.buttons.is_pressed("MENU") is True
+    assert rig.buttons.was_pressed("MENU") is True
+
+
+@pytest.mark.parametrize(
+    ("name", "bit"), [("UP", UP), ("DOWN", DOWN), ("LEFT", LEFT), ("RIGHT", RIGHT)]
+)
+def test_mock_buttons_dpad_tap_between_two_calls_is_caught(rig, name, bit):
+    # The expander latch keeps the tap: the next call finds the press, the
+    # release comes one call later and is_pressed() stays true until then.
+    assert rig.buttons.was_pressed(name) is False
+    rig.advance(150)
+    rig.chip.press(bit)
+    rig.advance(100)
+    rig.chip.release(bit)
+    rig.advance(50)
+    assert rig.buttons.was_pressed(name) is True
+    assert rig.buttons.is_pressed(name) is True
+    assert rig.buttons.was_released(name) is False
+    rig.advance(300)
+    assert rig.buttons.is_pressed(name) is False
+    assert rig.buttons.was_released(name) is True
+    assert rig.buttons.was_pressed(name) is False
+
+
+def test_mock_buttons_dpad_read_during_a_release_bounce_gives_no_false_press(rig):
+    # A call reads the D-pad in the middle of a release bounce and the next one
+    # finds the tail of the bounce: no release then false press.
+    assert rig.buttons.is_pressed("DOWN") is False
+    rig.advance(50)
+    rig.chip.press(DOWN)
+    rig.advance(30)
+    presses = rig.buttons.was_pressed("DOWN")
+    rig.advance(100)
+    rig.chip.release(DOWN)
+    presses += rig.buttons.was_pressed("DOWN")  # read in the bounce
+    releases = rig.buttons.was_released("DOWN")
+    rig.chip.press(DOWN)  # tail of the bounce
+    rig.chip.release(DOWN)
+    rig.advance(30)
+    for _ in range(4):
+        presses += rig.buttons.was_pressed("DOWN")
+        releases += rig.buttons.was_released("DOWN")
+        rig.advance(30)
+    assert (presses, releases) == (1, 1)
+    assert rig.buttons.is_pressed("DOWN") is False
+
+
+def test_mock_buttons_dpad_bus_error_gives_no_false_press(rig):
+    # A failed read must not read as 0, every active-low D-pad button pressed.
+    assert rig.buttons.is_pressed("UP") is False
+    rig.advance(50)
+    rig.fail_reads = True
+    presses = 0
+    for _ in range(5):
+        for name in ("UP", "DOWN", "LEFT", "RIGHT"):
+            presses += rig.buttons.was_pressed(name)
+            presses += rig.buttons.is_pressed(name)
+        rig.advance(30)
+    assert presses == 0
+    rig.fail_reads = False
+    rig.chip.press(LEFT)
+    rig.advance(30)
+    assert rig.buttons.was_pressed("LEFT") is True
+
+
+def test_mock_buttons_dpad_held_at_start_is_not_a_press(rig):
+    rig.chip.press(UP)
+    assert rig.buttons.begin() is True
+    assert rig.buttons.was_pressed("UP") is False
+    assert rig.buttons.is_pressed("UP") is True
+    rig.advance(50)
+    assert rig.buttons.was_pressed("UP") is False
+    rig.chip.release(UP)
+    rig.buttons.is_pressed("UP")
+    rig.advance(30)
+    assert rig.buttons.was_released("UP") is True
+    assert rig.buttons.was_pressed("UP") is False
+
+
+def test_mock_buttons_wait_for_press_drops_taps_made_before_the_call(rig):
+    # Taps latched by an IRQ or by the expander before the call are dropped.
+    assert rig.buttons.is_pressed("A") is False
+    rig.advance(50)
+    rig.tap("A", 60)
+    rig.advance(60)
+    rig.chip.press(LEFT)
+    rig.advance(60)
+    rig.chip.release(LEFT)
+    rig.advance(60)
+    assert rig.buttons.wait_for_press(100) is None
+
+
+def test_mock_buttons_wait_for_press_returns_a_dpad_press_made_during_the_wait(rig):
+    assert rig.buttons.is_pressed("RIGHT") is False
+    rig.advance(50)
+    rig.at(20, lambda: rig.chip.press(RIGHT))
+    start = rig.now
+    assert rig.buttons.wait_for_press(500) == "RIGHT"
+    assert rig.now - start < 500
+
+
+def test_mock_buttons_wait_for_press_returns_an_mcu_tap_made_during_the_wait(rig):
+    assert rig.buttons.is_pressed("B") is False
+    rig.advance(50)
+    rig.at(20, lambda: rig.tap("B", 1))  # shorter than one turn of the wait
+    assert rig.buttons.wait_for_press(500) == "B"
+
+
+def test_mock_buttons_deliver_the_pad_callbacks_of_the_program(rig, steami):
+    # The calls read the expander through interrupt_event(): the pad callbacks still run.
+    rig.chip.release(0)
+    assert rig.buttons.begin() is True
+    assert rig.buttons.is_pressed("A") is False
+    expander = rig.board.steami.mcp23009e()
+    falls = []
+    mcp = pytest.importorskip("mcp23009e.const")
+    expander.setup(0, mcp.MCP23009_DIR_INPUT, mcp.MCP23009_PULLUP)
+    expander.interrupt_on_falling(0, lambda: falls.append(1))
+    rig.chip.press(0)
+    rig.advance(30)
+    assert rig.buttons.is_pressed("A") is False
+    assert falls == [1]
+    assert rig.buttons.was_pressed("UP") is False
+    expander.disable_interrupt(0)
+
+
+def test_mock_buttons_called_last_get_the_interrupts(rig, steami):
+    # Two objects: the IRQs and the D-pad events go to the one called last.
+    outer = rig.buttons
+    assert outer.begin() is True
+    assert outer.is_pressed("A") is False
+    inner = steami["Buttons"]()
+    assert inner.begin() is True
+    assert inner.is_pressed("A") is False
+    assert outer.is_pressed("A") is False
+    rig.advance(50)
+    rig.tap("A", 60)
+    rig.chip.press(UP)
+    rig.chip.release(UP)
+    rig.advance(60)
+    assert outer.was_pressed("A") is True
+    assert outer.was_pressed("UP") is True
+    assert inner.was_pressed("A") is False
+
+
+def test_mock_buttons_dpad_level_is_shared_by_every_object(rig, steami):
+    # The D-pad level is the hardware one: an event taken while another object
+    # is active must still reach the object that is not.
+    first = rig.buttons
+    assert first.is_pressed("UP") is False
+    rig.advance(50)
+    rig.chip.press(UP)
+    rig.advance(30)
+    assert first.is_pressed("UP") is True
+    other = steami["Buttons"]()
+    assert other.is_pressed("UP") is True
+    rig.advance(50)
+    rig.chip.release(UP)  # its event goes to the other object
+    other.is_pressed("UP")
+    rig.advance(30)
+    assert other.is_pressed("UP") is False
+    rig.advance(500)
+    assert first.is_pressed("UP") is False
+    assert first.was_released("UP") is True
+    assert first.is_pressed("UP") is False
+
+
+def test_mock_buttons_dpad_press_while_another_object_is_active(rig, steami):
+    first = rig.buttons
+    assert first.is_pressed("DOWN") is False
+    other = steami["Buttons"]()
+    assert other.is_pressed("DOWN") is False
+    rig.advance(50)
+    rig.chip.press(DOWN)  # held, its event goes to the other object
+    rig.advance(30)
+    assert other.is_pressed("DOWN") is True
+    rig.advance(30)
+    assert first.is_pressed("DOWN") is True
+    assert first.was_pressed("DOWN") is True
+    rig.advance(500)
+    assert first.is_pressed("DOWN") is True

@@ -114,3 +114,190 @@ tests:
       result = Buttons().is_pressed("A") is False
     expect_true: true
     mode: [hardware]
+
+  # Quick taps between two calls (issue #497): A, B and MENU through a hard
+  # IRQ, the D-pad through the latch of the MCP23009E. The D-pad taps check
+  # the release filter (20 ms with no change) against real bounces.
+
+  - name: "Buttons catch quick A taps with a slow loop"
+    action: hardware_script
+    pre_prompt: "Quand la LED verte s'allume, tapez A 4 fois, très brièvement (moins de 150 ms), environ une fois par seconde. Elle s'éteint au bout de 8 s."
+    wait: false
+    script: |
+      import os, sys
+      for d in os.listdir('/remote'):
+        sys.path.insert(0, '/remote/' + d)
+      from machine import Pin
+      from time import sleep_ms, ticks_ms, ticks_diff
+      from steami import Steami, Buttons
+      Steami.begin()
+      buttons = Buttons()
+      buttons.begin()
+      names = ("A", "B", "MENU", "UP", "DOWN", "LEFT", "RIGHT")
+      for n in names:
+        buttons.was_pressed(n)
+        buttons.was_released(n)
+      led = Pin("LED_GREEN", Pin.OUT)
+      led.on()
+      presses = releases = others = 0
+      t0 = ticks_ms()
+      while ticks_diff(ticks_ms(), t0) < 8000:
+        sleep_ms(300)  # a slow loop: the taps happen between two calls
+        for n in names:
+          if buttons.was_pressed(n):
+            if n == "A":
+              presses += 1
+            else:
+              others += 1
+        if buttons.was_released("A"):
+          releases += 1
+      sleep_ms(300)
+      if buttons.was_released("A"):
+        releases += 1
+      led.off()
+      print("presses:", presses, "releases:", releases, "others:", others)
+      result = presses == 4 and releases == 4 and others == 0
+    expect_true: true
+    mode: [hardware]
+
+  - name: "Buttons catch quick MENU taps with a slow loop"
+    action: hardware_script
+    pre_prompt: "Quand la LED verte s'allume, tapez MENU 4 fois, très brièvement (moins de 150 ms), environ une fois par seconde. Elle s'éteint au bout de 8 s."
+    wait: false
+    script: |
+      import os, sys
+      for d in os.listdir('/remote'):
+        sys.path.insert(0, '/remote/' + d)
+      from machine import Pin
+      from time import sleep_ms, ticks_ms, ticks_diff
+      from steami import Steami, Buttons
+      Steami.begin()
+      buttons = Buttons()
+      buttons.begin()
+      names = ("A", "B", "MENU", "UP", "DOWN", "LEFT", "RIGHT")
+      for n in names:
+        buttons.was_pressed(n)
+        buttons.was_released(n)
+      led = Pin("LED_GREEN", Pin.OUT)
+      led.on()
+      presses = releases = others = 0
+      t0 = ticks_ms()
+      while ticks_diff(ticks_ms(), t0) < 8000:
+        sleep_ms(300)  # a slow loop: the taps happen between two calls
+        for n in names:
+          if buttons.was_pressed(n):
+            if n == "MENU":
+              presses += 1
+            else:
+              others += 1
+        if buttons.was_released("MENU"):
+          releases += 1
+      sleep_ms(300)
+      if buttons.was_released("MENU"):
+        releases += 1
+      led.off()
+      print("presses:", presses, "releases:", releases, "others:", others)
+      result = presses == 4 and releases == 4 and others == 0
+    expect_true: true
+    mode: [hardware]
+
+  - name: "Buttons catch quick UP taps with a slow loop"
+    action: hardware_script
+    pre_prompt: "Quand la LED verte s'allume, tapez UP 4 fois, très brièvement (moins de 150 ms), environ une fois par seconde. Elle s'éteint au bout de 8 s."
+    wait: false
+    script: |
+      import os, sys
+      for d in os.listdir('/remote'):
+        sys.path.insert(0, '/remote/' + d)
+      from machine import Pin
+      from time import sleep_ms, ticks_ms, ticks_diff
+      from steami import Steami, Buttons
+      Steami.begin()
+      buttons = Buttons()
+      buttons.begin()
+      names = ("A", "B", "MENU", "UP", "DOWN", "LEFT", "RIGHT")
+      for n in names:
+        buttons.was_pressed(n)
+        buttons.was_released(n)
+      led = Pin("LED_GREEN", Pin.OUT)
+      led.on()
+      presses = releases = others = 0
+      t0 = ticks_ms()
+      while ticks_diff(ticks_ms(), t0) < 8000:
+        sleep_ms(300)  # a slow loop: the taps happen between two calls
+        for n in names:
+          if buttons.was_pressed(n):
+            if n == "UP":
+              presses += 1
+            else:
+              others += 1
+        if buttons.was_released("UP"):
+          releases += 1
+      sleep_ms(300)
+      if buttons.was_released("UP"):
+        releases += 1
+      led.off()
+      print("presses:", presses, "releases:", releases, "others:", others)
+      result = presses == 4 and releases == 4 and others == 0
+    expect_true: true
+    mode: [hardware]
+
+  - name: "Buttons catch quick LEFT taps with a slow loop"
+    action: hardware_script
+    pre_prompt: "Quand la LED verte s'allume, tapez LEFT 4 fois, très brièvement (moins de 150 ms), environ une fois par seconde. Elle s'éteint au bout de 8 s."
+    wait: false
+    script: |
+      import os, sys
+      for d in os.listdir('/remote'):
+        sys.path.insert(0, '/remote/' + d)
+      from machine import Pin
+      from time import sleep_ms, ticks_ms, ticks_diff
+      from steami import Steami, Buttons
+      Steami.begin()
+      buttons = Buttons()
+      buttons.begin()
+      names = ("A", "B", "MENU", "UP", "DOWN", "LEFT", "RIGHT")
+      for n in names:
+        buttons.was_pressed(n)
+        buttons.was_released(n)
+      led = Pin("LED_GREEN", Pin.OUT)
+      led.on()
+      presses = releases = others = 0
+      t0 = ticks_ms()
+      while ticks_diff(ticks_ms(), t0) < 8000:
+        sleep_ms(300)  # a slow loop: the taps happen between two calls
+        for n in names:
+          if buttons.was_pressed(n):
+            if n == "LEFT":
+              presses += 1
+            else:
+              others += 1
+        if buttons.was_released("LEFT"):
+          releases += 1
+      sleep_ms(300)
+      if buttons.was_released("LEFT"):
+        releases += 1
+      led.off()
+      print("presses:", presses, "releases:", releases, "others:", others)
+      result = presses == 4 and releases == 4 and others == 0
+    expect_true: true
+    mode: [hardware]
+
+  - name: "Buttons take EXTI line 0 for MENU, not for INT_EXPANDER"
+    action: hardware_script
+    script: |
+      import os, sys
+      for d in os.listdir('/remote'):
+        sys.path.insert(0, '/remote/' + d)
+      from machine import Pin
+      from steami import Steami, Buttons
+      Steami.begin()
+      Buttons().begin()
+      try:
+        Pin("INT_EXPANDER", Pin.IN).irq(lambda pin: None, Pin.IRQ_FALLING)
+        result = False
+      except OSError as exc:
+        print("refused:", exc)
+        result = True
+    expect_true: true
+    mode: [hardware]
