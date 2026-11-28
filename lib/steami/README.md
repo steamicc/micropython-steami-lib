@@ -161,11 +161,17 @@ create the function objects again.
 | `Accelerometer` | `read()` in g as a `Vector`, `x()`, `y()`, `z()`, `strength()`, `is_shaken(threshold_g=2)` | `nan`, `False` |
 | `Gyroscope` | `read()` in dps as a `Vector`, `x()`, `y()`, `z()` | `nan` |
 | `Magnetometer` | `read()` in µT as a `Vector`, `x()`, `y()`, `z()`, `strength()`, `calibrate(seconds=12)` | `nan` |
-| `Compass` | `heading()` in degrees, `direction()`, `set_declination(deg)`, `calibrate(seconds=12)` | `nan`, `""` |
+| `Compass` | `heading()` in degrees, `heading_tilt_compensated()`, `direction()`, `set_declination(deg)`, `calibrate(seconds=12)` | `nan`, `""` |
 | `Light` | `read()`, the raw clear count | `0` |
 | `Color` | `read()` returns `(r, g, b)`, `red()`, `green()`, `blue()`; `rgb()`, the hue with the largest channel scaled to 255 (a `steami_screen` colour) | `(0, 0, 0)`, `0` |
 | `Gesture` | `read(timeout_ms=0)` returns `Gesture.NONE`, `LEFT`, `RIGHT`, `UP`, `DOWN`, `NEAR` or `FAR`; `name(g)` | `Gesture.NONE` |
 | `Buttons` | `is_pressed(b)`, `was_pressed(b)`, `was_released(b)`, `wait_for_press(timeout_ms=None)` | the D-pad stays released; A, B and MENU always work |
+
+`Compass.heading()` is for the board held flat. `Compass.heading_tilt_compensated()`
+also reads the accelerometer (set as `Accelerometer` sets it) and corrects the heading
+when the board is tilted, up to about 60 degrees; it equals `heading()` when flat and
+is `nan` when either sensor is missing. It needs the 3D calibration of `calibrate()`
+or of the board config: after `calibrate_minmax_2d()` on the driver, it is meaningless.
 
 When a vector is missing, `read()` returns `Vector(nan, nan, nan)`.
 
