@@ -11,6 +11,7 @@ from mcp23009e.const import (
     MCP23009_LOGIC_LOW,
     MCP23009_PULLUP,
 )
+from micropython import const
 
 from steami.const import DEBOUNCE_MS, POLL_MS, Function, Status
 from steami.handle import Handle
@@ -20,15 +21,16 @@ _NAMES = ("A", "B", "MENU", "UP", "DOWN", "LEFT", "RIGHT")
 _PINS = ("A_BUTTON", "B_BUTTON", "MENU_BUTTON")
 # Expander bit of UP, DOWN, LEFT and RIGHT.
 _DPAD_BITS = (MCP23009_BTN_UP, MCP23009_BTN_DOWN, MCP23009_BTN_LEFT, MCP23009_BTN_RIGHT)
+# After a read that found a whole D-pad tap: a button pressed again before this
+# time is taken for a bounce of the press of that tap, after it for a second tap.
+_BOUNCE_MS = const(5)
 
 # The object the IRQs of A, B and MENU and the D-pad presses update: the one
 # started or called last. The handlers hold no object of their own.
 _active = None
 # The D-pad as the expander events left it, shared by every object since it is
-# the hardware: bit d for _DPAD_BITS[d] set while pressed, and the time of the
-# last event of each button.
+# the hardware: bit d for _DPAD_BITS[d] set while pressed.
 _dpad_level = 0
-_dpad_event_at = [0] * 4
 
 
 def _locked(t, stamp):
@@ -53,13 +55,14 @@ def _dpad(d):
 
     def callback(level):
         global _dpad_level
-        _dpad_event_at[d] = ticks_ms()
         if level == MCP23009_LOGIC_LOW:
             _dpad_level |= bit
             if _active is not None:
                 _active._dpad_down |= bit
         else:
             _dpad_level &= ~bit
+            if _active is not None:
+                _active._dpad_up |= bit
 
     return callback
 
@@ -104,6 +107,12 @@ def _read_latch(driver):
     return True
 
 
+def _wait(since, ms):
+    waited = ticks_diff(ticks_ms(), since)
+    if waited < ms:
+        sleep_ms(ms - waited)
+
+
 class Buttons(Handle):
     """The A, B and MENU buttons and the D-pad (UP, DOWN, LEFT, RIGHT).
 
@@ -122,16 +131,26 @@ class Buttons(Handle):
       is_pressed() false.
     - D-pad: no MCU interrupt (INT_EXPANDER, PB0, shares EXTI line 0 with
       MENU, PA0). Each call reads the latch of the expander
-      (MCP23009E.interrupt_event()). A press found there is taken if 20 ms
-      passed since the last accepted change; a release only once the reads
-      found no change on that button for 20 ms. A tap made between two calls
-      gives was_pressed() and is_pressed() true at the next call; the release
-      comes at the first call made 20 ms or more after it.
-    - At most one press per button between two calls (a flag, not a counter).
+      (MCP23009E.interrupt_event()), which keeps the first change made since
+      the previous read: it is taken at once. The latch does not keep the
+      time of the change, so once a read changed the D-pad, the call reads it
+      again 20 ms later and only the level then counts (a bounce is not a
+      new tap): that call takes 20 ms more, 40 ms at most. A tap made between
+      two calls then gives the same as on A, and a release is reported by
+      the call that reads it. When a read found a whole tap, a press found
+      20 ms later is a second tap if the button was still released 5 ms
+      after the read, and a bounce of the first press otherwise.
+    - The D-pad is one lever: released from one direction, it can touch the
+      opposite one for a moment. A press found in the read that releases
+      another direction counts only if it is still there 20 ms later.
+    - was_pressed() and was_released() are flags: several presses (or
+      releases) between two calls give one, and a press nobody reads is not
+      reported later more than once. get_presses() counts every press.
 
-    Limits: a D-pad tap made before the release of the previous one is
-    reported merges with it; a D-pad press and its release made while another
-    expander interrupt is pending leave no trace. Buttons uses EXTI lines 0, 7
+    Limits: two D-pad taps between two reads of the expander give one (as
+    does a second tap pressed within 5 ms after a read that found the first
+    one whole), and a D-pad tap made while another expander interrupt is
+    pending leaves no trace. Buttons uses EXTI lines 0, 7
     and 8: a line already taken (MCP23009E(interrupt_pin=Pin("INT_EXPANDER"))
     takes line 0) leaves that button sampled at each call only, and a later
     Pin.irq() on such a line raises OSError. With several Buttons objects, the
@@ -153,9 +172,12 @@ class Buttons(Handle):
         self._state = 0  # bit i set: button i pressed
         self._edges = [0, 0]  # latched presses, latched releases
         self._changed_at = [0] * len(_NAMES)  # time of the last accepted change
-        # D-pad, bit d for _DPAD_BITS[d]: a press seen by the expander
-        # callbacks since the last sample of this object, while it is active.
+        self._presses = bytearray(len(_NAMES))  # since get_presses(), up to 255
+        # D-pad, bit d for _DPAD_BITS[d]: a pressed or a released level seen by
+        # the expander callbacks since the last read of this object, while it
+        # is active.
         self._dpad_down = 0
+        self._dpad_up = 0
 
     def begin(self):
         """Set the pins and their IRQs up and find the D-pad expander.
@@ -175,17 +197,15 @@ class Buttons(Handle):
             port = self._read(None, _setup_dpad)
             if port is None:
                 port = 0xFF  # on an error the D-pad reads released
-            t = ticks_ms() - DEBOUNCE_MS
             _dpad_level = 0
             for d, bit in enumerate(_DPAD_BITS):
                 if not port & (1 << bit):
                     _dpad_level |= 1 << d
-                _dpad_event_at[d] = t
         return ok
 
     def is_pressed(self, name):
         """True while the button is held (debounced)."""
-        bit = _bit(name)
+        bit = 1 << _index(name)
         self._sample()
         return (self._state & bit) != 0
 
@@ -196,6 +216,21 @@ class Buttons(Handle):
     def was_released(self, name):
         """True once per release, since the last time it was asked."""
         return self._take(name, 1)
+
+    def get_presses(self, name):
+        """The presses since the last get_presses() for that button, then 0.
+
+        As get_presses() on the micro:bit: it stops at 255 and does not depend
+        on was_pressed() or wait_for_press().
+        """
+        i = _index(name)
+        self._sample()
+        presses = self._presses
+        irq = disable_irq()
+        n = presses[i]
+        presses[i] = 0
+        enable_irq(irq)
+        return n
 
     def wait_for_press(self, timeout_ms=None):
         """Wait for a new press and return the name of the button.
@@ -225,7 +260,7 @@ class Buttons(Handle):
             sleep_ms(POLL_MS)
 
     def _take(self, name, k):
-        bit = _bit(name)
+        bit = 1 << _index(name)
         self._sample()
         edges = self._edges
         irq = disable_irq()
@@ -239,26 +274,74 @@ class Buttons(Handle):
         # from the IRQ of the pin and from _sample() with the IRQs disabled.
         bit = 1 << i
         if down == ((self._state & bit) != 0) or _locked(t, self._changed_at[i]):
-            return
+            return False
         self._state ^= bit
         self._changed_at[i] = t
         self._edges[0 if down else 1] |= bit
+        if down and self._presses[i] < 255:
+            self._presses[i] += 1
+        return True
 
     def _edge(self, i):
         # Hard IRQ of A, B or MENU: the debounce at the time of the edge.
         if self._primed:
             self._debounce(i, self._pins[i].value() == 0, ticks_ms())
 
+    def _read_dpad(self):
+        # Reads the latch, IRQs enabled (the read uses the I2C bus): the D-pad
+        # pressed now (released on an error or without the expander), the
+        # pressed and the released levels seen since the last read, and True
+        # when the read worked.
+        ok = self._read(False, _read_latch)
+        down = self._dpad_down
+        up = self._dpad_up
+        self._dpad_down = self._dpad_up = 0
+        return (_dpad_level if ok else 0), down, up, ok
+
+    def _settle(self, since, tapped):
+        # Once a read changed the D-pad, the latch is read again 20 ms later:
+        # what changed in between is a bounce, and only the level then
+        # counts. A change that level gives is settled the same way, once.
+        # tapped: the buttons the read found as a whole tap. A read 5 ms after
+        # it tells a second tap (still released then) from a bounce.
+        lifted = 0
+        if tapped:
+            _wait(since, _BOUNCE_MS)
+            lifted = tapped & ~self._read_dpad()[0]
+        for _ in range(2):
+            _wait(since, DEBOUNCE_MS)
+            level = self._read_dpad()[0]
+            irq = disable_irq()
+            t = ticks_ms()
+            changed = False
+            for d in range(4):
+                i = 3 + d
+                bit = 1 << i
+                held = (level >> d) & 1 == 1
+                if held and (lifted >> d) & 1 and self._state & bit:
+                    # The release of the first tap, then the press of a
+                    # second one: the button stays pressed.
+                    self._edges[0] |= bit
+                    self._edges[1] |= bit
+                    if self._presses[i] < 255:
+                        self._presses[i] += 1
+                    self._changed_at[i] = t
+                    changed = True
+                elif self._debounce(i, held, t):
+                    changed = True
+            enable_irq(irq)
+            lifted = 0
+            if not changed:
+                return
+            since = t
+
     def _sample(self):
         global _active
         if self._status == Status.NOT_STARTED:
             self.begin()
         _active = self
-        # The D-pad first, IRQs enabled: the read uses the I2C bus. On an
-        # error the D-pad reads released, with no event.
-        dpad = _dpad_level if self._read(False, _read_latch) else 0
-        down = self._dpad_down
-        self._dpad_down = 0
+        # The D-pad first, IRQs enabled: the read uses the I2C bus.
+        dpad, down, up, ok = self._read_dpad()
 
         irq = disable_irq()
         t = ticks_ms()
@@ -277,20 +360,35 @@ class Buttons(Handle):
         # what it could not (a change at the end of a lock-out, a line taken).
         for i in range(3):
             self._debounce(i, (mcu & (1 << i)) != 0, t)
-        # D-pad: a press found in the latch or in the level; a release only
-        # after 20 ms without an event on that button.
+        # D-pad: the first change the latch kept, at once; the level after it
+        # is for _settle(). Releases first: a press found as the lever leaves
+        # another direction is a rebound unless _settle() finds it again.
+        settle = released = False
+        tapped = 0  # pressed then released, both found by this read
         for d in range(4):
-            i = 3 + d
             bit = 1 << d
-            if not self._state & (1 << i):
-                if (down | dpad) & bit:
-                    self._debounce(i, True, t)
-            elif not dpad & bit and not _locked(t, _dpad_event_at[d]):
-                self._debounce(i, False, t)
+            if (
+                self._state & (8 << d)
+                and (up & bit or not dpad & bit)
+                and self._debounce(3 + d, False, t)
+            ):
+                settle = released = True
+        for d in range(4):
+            bit = 1 << d
+            if self._state & (8 << d) or not (down | dpad) & bit:
+                continue
+            if released and dpad & bit:
+                settle = True
+            elif self._debounce(3 + d, True, t):
+                settle = True
+                if not dpad & bit:
+                    tapped |= bit
         enable_irq(irq)
+        if ok and settle:
+            self._settle(t, tapped)
 
 
-def _bit(name):
+def _index(name):
     if name not in _NAMES:
         raise ValueError("unknown button {!r}".format(name))
-    return 1 << _NAMES.index(name)
+    return _NAMES.index(name)
