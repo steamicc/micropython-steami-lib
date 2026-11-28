@@ -287,8 +287,22 @@ silences them, and `Steami.last_error()` returns the last one.
 * `Buttons.wait_for_press(None)` waits forever and `wait_for_press(0)` samples
   once. Arduino uses 0 for "forever".
 * Debounce is the Arduino 20 ms lock-out: a change is taken at once, then the
-  bounces of the next 20 ms are ignored. Buttons are polled, with no
-  interrupts: call a method on every loop turn.
+  bounces of the next 20 ms are ignored. As in Arduino, a tap made between
+  two calls is not missed. A, B and MENU get a hard IRQ on both edges
+  (`Pin.irq(hard=True)`, EXTI lines 7, 8 and 0): a tap between two calls
+  gives `was_pressed()` and `was_released()` at the next call. The D-pad has
+  no MCU interrupt (`INT_EXPANDER`, PB0, shares EXTI line 0 with MENU, PA0):
+  each call reads the latch of the MCP23009E (`interrupt_event()`), so a tap
+  gives `was_pressed()` and `is_pressed()` at the next call and the release
+  one call later (20 ms with no change on that button). At most one press
+  per button is reported between two calls.
+* `Buttons` cannot share EXTI line 0 with
+  `MCP23009E(interrupt_pin=Pin("INT_EXPANDER"))`, as in the mcp23009e
+  examples `reaction_timer.py` and `sleep_on_button.py`: when the line is
+  already taken, MENU is only sampled at each call; when `Buttons` took it
+  first, the later `Pin.irq()` raises `OSError`. Pad callbacks set with
+  `Steami.mcp23009e().interrupt_on_*()` are still called, by every
+  `Buttons` call.
 * `Steami.end()` also resets the logger to `print`; Arduino keeps it.
 * `Steami.begin()` returns the release text (truthy when the release is
   known) where Arduino returns a bool.

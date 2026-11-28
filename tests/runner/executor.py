@@ -59,6 +59,8 @@ def load_driver_mock(driver_name, fake_i2c, module_name=None):
     fake_machine.Pin = FakePin
     fake_machine.SPI = FakeSPI
     fake_machine.lightsleep = lambda ms=0: None
+    fake_machine.disable_irq = lambda: 0
+    fake_machine.enable_irq = lambda state=0: None
 
     sys.modules["machine"] = fake_machine
     sys.modules["micropython"] = micropython_stub
