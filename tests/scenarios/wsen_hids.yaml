@@ -180,6 +180,17 @@ tests:
     expect_true: true
     mode: [hardware]
 
+  - name: "Heater uses CTRL_2 bit 1, not a reserved bit"
+    action: script
+    script: |
+      dev.enable_heater(True)
+      on = i2c.readfrom_mem(dev.address, 0x21, 1)[0]
+      dev.enable_heater(False)
+      off = i2c.readfrom_mem(dev.address, 0x21, 1)[0]
+      result = (on & 0x7E) == 0x02 and (off & 0x7E) == 0x00
+    expect_true: true
+    mode: [mock, hardware]
+
   - name: "Temperature with offset"
     action: script
     script: |

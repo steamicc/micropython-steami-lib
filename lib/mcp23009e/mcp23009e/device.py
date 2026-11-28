@@ -88,6 +88,12 @@ class MCP23009E(object):
         # n'appelle pas le nouveau callback
         self._generation = 0
         self._registered = [0] * 8
+        # Callback de watch_changes(), GPIO qu'il suit, et valeur du compteur
+        # à son enregistrement : une lecture antérieure ne lui est pas
+        # transmise
+        self._watch = None
+        self._watched = 0
+        self._watched_since = 0
 
         # Configuration du pin de reset
         self.reset_pin.init(Pin.OUT)
@@ -104,10 +110,11 @@ class MCP23009E(object):
         """
         Effectue un reset hardware du MCP23009E
 
-        Le reset désactive les interruptions du composant : les callbacks
-        doivent être enregistrés à nouveau.
+        Le reset désactive les interruptions du composant : les callbacks,
+        celui de watch_changes() compris, doivent être enregistrés à nouveau.
         """
         self._enabled = 0
+        self._watched = 0
         self.reset_pin.value(0)
         sleep_ms(5)
         self.reset_pin.value(1)
@@ -121,6 +128,7 @@ class MCP23009E(object):
         doivent être enregistrés à nouveau après power_on().
         """
         self._enabled = 0
+        self._watched = 0
         self.reset_pin.value(0)
 
     def power_on(self):
@@ -135,6 +143,7 @@ class MCP23009E(object):
         enregistrés à nouveau.
         """
         self._enabled = 0
+        self._watched = 0
         # Configuration par défaut : toutes les pins en entrée
         self._write_reg(MCP23009_IODIR, 0xFF)
         # Désactiver les pull-ups
@@ -339,14 +348,17 @@ class MCP23009E(object):
         # DEFVAL, activer GPINTEN déclencherait une interruption tout de suite
         self._write_reg(MCP23009_INTCON, self._read_reg(MCP23009_INTCON) & ~(1 << gpx))
 
-        # Les lectures déjà en file ne transmettent plus d'événement de gpx
+        # Effacer l'interruption en attente. Pour un GPIO que suit déjà le
+        # callback de watch_changes(), ses événements restent en file pour
+        # lui ; sinon, sans événement de gpx, son niveau actuel devient son
+        # dernier niveau connu
+        self._read_interrupt((1 << gpx) & ~(self._watched & self._enabled))
+
+        # Les lectures déjà en file, celle-ci comprise, ne transmettent plus
+        # d'événement de gpx aux callbacks enregistrés ici
         self._generation += 1
         self._registered[gpx] = self._generation
         self._enabled |= 1 << gpx
-
-        # Effacer l'interruption en attente, sans événement de gpx, et prendre
-        # le niveau actuel de gpx comme dernier niveau connu
-        self._read_interrupt(1 << gpx)
         self._write_reg(MCP23009_GPINTEN, self._read_reg(MCP23009_GPINTEN) | (1 << gpx))
 
         # Puis transmettre les événements des autres GPIO
@@ -427,12 +439,47 @@ class MCP23009E(object):
         if gpx > 7:
             return
 
-        self._send_disable_interrupt(gpx)
+        # Un GPIO suivi par watch_changes() reste activé pour lui
+        if not (self.watched() >> gpx) & 1:
+            self._send_disable_interrupt(gpx)
 
         # Effacer tous les callbacks pour ce GPIO
         self.events_change[gpx] = None
         self.events_fall[gpx] = None
         self.events_rise[gpx] = None
+
+    def watch_changes(self, mask, callback):
+        """
+        Suit les GPIO de mask avec un callback que le programme ne remplace pas
+
+        Pour une bibliothèque qui partage le composant avec le programme
+        (Buttons suit ainsi le D-pad) : callback(gpx, level) reçoit les
+        événements des GPIO de mask, comme interrupt_on_change(), après les
+        callbacks du programme. Un enregistrement du programme sur l'un de
+        ces GPIO ne le remplace pas et lui laisse l'événement en attente, et
+        disable_interrupt() laisse le GPIO activé pour lui. Les GPIO de mask
+        pas encore activés le sont comme par interrupt_on_change(). Un seul
+        suivi par composant : un appel remplace le précédent, et None le
+        retire (ses GPIO restent activés). reset(), power_off() et le reset
+        logiciel le retirent.
+
+        Args:
+            mask: GPIO suivis (un bit par GPIO)
+            callback: Fonction appelée à chaque changement, avec le GPIO et
+                le niveau, ou None
+        """
+        self._watch = callback
+        self._watched = 0 if callback is None else mask
+        # Les lectures déjà en file ne lui transmettent rien
+        self._generation += 1
+        self._watched_since = self._generation
+        for i in range(8):
+            if (self._watched & ~self._enabled) >> i & 1:
+                self._send_enable_interrupt(i)
+
+    def watched(self):
+        """GPIO que suit le callback de watch_changes() (un bit par GPIO), 0 sans suivi"""
+        return self._watched & self._enabled
 
     def _irq_handler(self, pin):
         """
@@ -582,14 +629,24 @@ class MCP23009E(object):
     def _dispatch_if_current(self, i, level, generation):
         """
         Appelle les callbacks du GPIO i, sauf si son interruption a été
-        désactivée, ou enregistrée à nouveau, après la lecture de l'événement
+        désactivée, ou enregistrée à nouveau, après la lecture de l'événement,
+        puis celui de watch_changes(), sauf s'il a été retiré, ou enregistré
+        à nouveau, après cette lecture
 
         Returns:
             La première exception levée par un callback, ou None
         """
+        error = None
         if (self._enabled >> i) & 1 and generation >= self._registered[i]:
-            return self._dispatch(i, level)
-        return None
+            error = self._dispatch(i, level)
+        watch = self._watch
+        if (self.watched() >> i) & 1 and generation >= self._watched_since:
+            try:
+                watch(i, level)
+            except Exception as exc:
+                if error is None:
+                    error = exc
+        return error
 
     def _dispatch(self, i, level):
         """

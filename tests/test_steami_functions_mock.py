@@ -1,13 +1,27 @@
 """Tests of the STeaMi function classes (steami.handle and one module per function)."""
 
+import ast
 import math
+import sys
+import types
+from pathlib import Path
 
 import pytest
 
 from tests.fake_machine import FakePin, steami_chips
 from tests.fake_machine.i2c_bus import FakeI2CBus
 from tests.fake_machine.mcp23009 import ADDR as MCP_ADDR
-from tests.fake_machine.mcp23009 import DOWN, GPPU, IODIR, LEFT, RIGHT, UP, FakeMCP23009
+from tests.fake_machine.mcp23009 import (
+    DOWN,
+    GPINTEN,
+    GPIO,
+    GPPU,
+    IODIR,
+    LEFT,
+    RIGHT,
+    UP,
+    FakeMCP23009,
+)
 from tests.test_steami_board_mock import (  # noqa: F401 (board_module is a fixture)
     Setup,
     board_module,
@@ -1464,7 +1478,10 @@ class ButtonsRig:
 
     Pressing a button pin runs its IRQ handler, as the edge does on the board.
     ``taken`` names pins whose EXTI line is already used: their ``irq()``
-    raises OSError, as the firmware does.
+    raises OSError, as the firmware does. The actions set with ``at()`` run
+    in time order, each at its own time, while the code waits (``sleep_ms``)
+    or reads the expander: ``read_us`` is the bus time of one register read
+    (about 400 us at 100 kHz), 0 by default.
     """
 
     def __init__(self, steami, monkeypatch, release="V1c", taken=(), **kwargs):
@@ -1493,6 +1510,8 @@ class ButtonsRig:
 
         self.now = 1000
         self.later = []  # (time, action) run by advance()
+        self.read_us = 0
+        self._bus_us = 0
         monkeypatch.setattr(module, "Pin", PinStub)
         monkeypatch.setattr(module, "ticks_ms", lambda: self.now)
         monkeypatch.setattr(module, "sleep_ms", self.advance)
@@ -1514,6 +1533,10 @@ class ButtonsRig:
             self.board.reads.append((addr, reg))
             if self.fail_reads:
                 raise OSError(5, "bus")
+            self._bus_us += self.read_us
+            if self._bus_us >= 1000:
+                ms, self._bus_us = divmod(self._bus_us, 1000)
+                self.advance(ms)  # the buttons may move meanwhile
             return chip.readfrom_mem(addr, reg, nbytes, **kwargs)
 
         def writeto_mem(addr, reg, buf, **kwargs):
@@ -1526,14 +1549,60 @@ class ButtonsRig:
         bus.writeto_mem = writeto_mem
 
     def advance(self, ms):
-        self.now += ms
-        for item in [i for i in self.later if i[0] <= self.now]:
+        end = self.now + ms
+        while True:
+            due = [i for i in self.later if i[0] <= end]
+            if not due:
+                break
+            item = min(due, key=lambda i: i[0])  # the first one set, among equal times
             self.later.remove(item)
+            self.now = max(self.now, item[0])
             item[1]()
+        self.now = max(self.now, end)
 
     def at(self, delay, action):
         """Run action once the clock has moved delay ms from now."""
         self.later.append((self.now + delay, action))
+
+    def at_time(self, t, action):
+        self.later.append((t, action))
+
+    def tap_at(self, t, name, ms):
+        """A tap of ms on A, B or MENU from time t: each edge runs the IRQ."""
+        self.at_time(t, lambda: self.press(name))
+        self.at_time(t + ms, lambda: self.release(name))
+
+    def dpad_tap_at(self, t, bit, ms):
+        """A tap of ms on a D-pad button from time t."""
+        self.at_time(t, lambda: self.chip.press(bit))
+        self.at_time(t + ms, lambda: self.chip.release(bit))
+
+    def bouncy_dpad_tap_at(self, t, bit, ms):
+        """The same, with a 2 ms bounce at the press and at the release."""
+        self.dpad_tap_at(t, bit, 1)
+        self.dpad_tap_at(t + 2, bit, ms - 2)
+        self.dpad_tap_at(t + ms + 1, bit, 1)
+
+    def start_timeline(self):
+        """Start the buttons, then read the expander with the bus time of the board."""
+        assert self.buttons.begin() is True
+        assert self.buttons.is_pressed("A") is False
+        self.read_us = 400
+        self.advance(50)
+        return self.now
+
+    def slow_loop(self, until, period):
+        """The loop of the hardware check until time until: get_presses() and
+        was_released() for the seven buttons, then a wait of period ms."""
+        presses = [0] * 7
+        releases = [0] * 7
+        while self.now < until:
+            self.advance(0)
+            for k, name in enumerate(BUTTON_NAMES):
+                presses[k] += self.buttons.get_presses(name)
+                releases[k] += self.buttons.was_released(name)
+            self.advance(period)
+        return presses, releases
 
     def press(self, name):
         self.pins[name + "_BUTTON"].drive(0)
@@ -1550,6 +1619,9 @@ class ButtonsRig:
         """Set the MCP23009 input port (a bit at 0 is a pressed button)."""
         self.chip.pins = port
         self.chip._update()
+
+
+BUTTON_NAMES = ("A", "B", "MENU", "UP", "DOWN", "LEFT", "RIGHT")
 
 
 @pytest.fixture
@@ -1844,8 +1916,8 @@ def test_mock_buttons_a_taken_exti_line_leaves_the_button_sampled(steami, monkey
     ("name", "bit"), [("UP", UP), ("DOWN", DOWN), ("LEFT", LEFT), ("RIGHT", RIGHT)]
 )
 def test_mock_buttons_dpad_tap_between_two_calls_is_caught(rig, name, bit):
-    # The expander latch keeps the tap: the next call finds the press, the
-    # release comes one call later and is_pressed() stays true until then.
+    # The expander latch keeps the tap: the next call finds the press, reads
+    # the expander again 20 ms later and finds the release, as for A.
     assert rig.buttons.was_pressed(name) is False
     rig.advance(150)
     rig.chip.press(bit)
@@ -1853,17 +1925,19 @@ def test_mock_buttons_dpad_tap_between_two_calls_is_caught(rig, name, bit):
     rig.chip.release(bit)
     rig.advance(50)
     assert rig.buttons.was_pressed(name) is True
-    assert rig.buttons.is_pressed(name) is True
-    assert rig.buttons.was_released(name) is False
-    rig.advance(300)
     assert rig.buttons.is_pressed(name) is False
     assert rig.buttons.was_released(name) is True
+    rig.advance(300)
+    assert rig.buttons.is_pressed(name) is False
+    assert rig.buttons.was_released(name) is False
     assert rig.buttons.was_pressed(name) is False
 
 
 def test_mock_buttons_dpad_read_during_a_release_bounce_gives_no_false_press(rig):
-    # A call reads the D-pad in the middle of a release bounce and the next one
-    # finds the tail of the bounce: no release then false press.
+    # A call reads the D-pad in the middle of a release bounce, and the tail
+    # of the bounce comes just after that read: the expander latches it, the
+    # read made 20 ms later finds it and takes it for a bounce, not for a
+    # release then a press.
     assert rig.buttons.is_pressed("DOWN") is False
     rig.advance(50)
     rig.chip.press(DOWN)
@@ -1871,10 +1945,19 @@ def test_mock_buttons_dpad_read_during_a_release_bounce_gives_no_false_press(rig
     presses = rig.buttons.was_pressed("DOWN")
     rig.advance(100)
     rig.chip.release(DOWN)
+    tail = []
+
+    def bounce(reg):
+        if reg == GPIO and not tail:
+            tail.append(1)  # just after the read that found the release
+            rig.chip.press(DOWN)
+            rig.chip.release(DOWN)
+
+    rig.chip.on_read = bounce
     presses += rig.buttons.was_pressed("DOWN")  # read in the bounce
+    rig.chip.on_read = None
+    assert tail
     releases = rig.buttons.was_released("DOWN")
-    rig.chip.press(DOWN)  # tail of the bounce
-    rig.chip.release(DOWN)
     rig.advance(30)
     for _ in range(4):
         presses += rig.buttons.was_pressed("DOWN")
@@ -1963,6 +2046,239 @@ def test_mock_buttons_deliver_the_pad_callbacks_of_the_program(rig, steami):
     expander.disable_interrupt(0)
 
 
+def test_mock_buttons_dpad_survives_the_pad_callbacks_of_the_program(rig, steami):
+    # A program that registers its own callback on a D-pad bit, or disables
+    # its interrupt, does not stop the D-pad of Buttons: both keep working.
+    assert rig.buttons.is_pressed("UP") is False
+    expander = rig.board.steami.mcp23009e()
+    levels = []
+    expander.interrupt_on_change(UP, levels.append)
+    expander.disable_interrupt(DOWN)
+    rig.advance(50)
+    rig.chip.press(UP)
+    rig.advance(60)
+    rig.chip.release(UP)
+    rig.advance(60)
+    assert rig.buttons.was_pressed("UP") is True
+    rig.chip.press(DOWN)
+    rig.advance(60)
+    rig.chip.release(DOWN)
+    rig.advance(60)
+    assert rig.buttons.was_pressed("DOWN") is True
+    assert levels == [0, 1]  # the press, then the release
+    rig.advance(30)
+    assert rig.buttons.is_pressed("UP") is False
+    assert rig.buttons.was_released("UP") is True
+    assert rig.buttons.was_released("DOWN") is True
+    expander.disable_interrupt(UP)
+    assert expander.watched() & (1 << UP)
+
+
+def test_mock_buttons_dpad_follows_again_after_a_reset_of_the_expander(rig, steami):
+    # A reset of the expander by the program removes the watch of Buttons:
+    # the next call sets the D-pad up again.
+    assert rig.buttons.is_pressed("LEFT") is False
+    expander = rig.board.steami.mcp23009e()
+    expander.reset()
+    assert expander.watched() == 0
+    assert rig.buttons.is_pressed("LEFT") is False
+    assert expander.watched() == 0xF0
+    rig.advance(50)
+    rig.chip.press(LEFT)
+    rig.advance(60)
+    rig.chip.release(LEFT)
+    rig.advance(60)
+    assert rig.buttons.was_pressed("LEFT") is True
+
+
+def test_mock_buttons_dpad_follows_again_after_calls_during_a_power_off(rig, steami):
+    # The loop keeps calling Buttons while the expander is held in reset by
+    # power_off(): the call after power_on() still sets the D-pad up again
+    # (pull-ups and interrupts back on the chip). Same as arduino-steami-lib.
+    assert rig.buttons.begin() is True
+    expander = rig.board.steami.mcp23009e()
+    expander.power_off()
+    rig.chip.held = True
+    assert rig.buttons.is_pressed("LEFT") is False
+    assert rig.buttons.was_pressed("LEFT") is False
+    assert expander.watched() == 0
+    expander.power_on()
+    rig.chip.power_on_reset()  # no pull-up, no interrupt
+    assert rig.buttons.is_pressed("LEFT") is False
+    assert expander.watched() == 0xF0
+    assert rig.chip.regs[GPPU] & 0xF0 == 0xF0
+    assert rig.chip.regs[GPINTEN] & 0xF0 == 0xF0
+    rig.advance(50)
+    rig.chip.press(LEFT)
+    rig.chip.release(LEFT)  # a tap between two calls: in the latch
+    assert rig.buttons.was_pressed("LEFT") is True
+
+
+def test_mock_buttons_dpad_taps_all_counted_beside_a_program_callback_and_a_reset(rig):
+    # The quick taps of a slow loop (#341) are all counted while the program
+    # has its own callback on UP, and after it resets the expander halfway
+    # and registers that callback again.
+    t0 = rig.start_timeline()
+    expander = rig.board.steami.mcp23009e()
+    levels = []
+    expander.interrupt_on_change(UP, levels.append)
+    for k in range(10):
+        rig.dpad_tap_at(t0 + 100 + k * 450 + 40 * (k % 3), UP, 80)
+    first = rig.slow_loop(t0 + 2000, 300)  # ends between the 5th and the 6th tap
+    assert rig.buttons.is_pressed("UP") is False  # the 5th one read
+    expander.reset()
+    expander.interrupt_on_change(UP, levels.append)
+    second = rig.slow_loop(t0 + 100 + 10 * 450 + 1500, 300)
+    counts = tuple([a + b for a, b in zip(x, y)] for x, y in zip(first, second))
+    assert_only_on(counts, 3, 10)
+    assert levels == [0, 1] * 10
+    assert expander.watched() == 0xF0
+
+
+def test_mock_buttons_dpad_taps_all_counted_beside_a_program_callback_that_raises(
+    rig, monkeypatch
+):
+    # #502 meets #512: the program callback on UP raises at every edge, and
+    # Buttons still counts every quick tap, before and after a reset().
+    import sys
+
+    printed = []
+    monkeypatch.setattr(sys, "print_exception", printed.append, raising=False)
+    t0 = rig.start_timeline()
+    expander = rig.board.steami.mcp23009e()
+
+    def bad(_level):
+        raise ValueError("bug in the program")
+
+    expander.interrupt_on_change(UP, bad)
+    for k in range(10):
+        rig.dpad_tap_at(t0 + 100 + k * 450 + 40 * (k % 3), UP, 80)
+    first = rig.slow_loop(t0 + 2000, 300)  # ends between the 5th and the 6th tap
+    assert rig.buttons.is_pressed("UP") is False  # the 5th one read
+    expander.reset()
+    expander.interrupt_on_change(UP, bad)
+    second = rig.slow_loop(t0 + 100 + 10 * 450 + 1500, 300)
+    counts = tuple([a + b for a, b in zip(x, y)] for x, y in zip(first, second))
+    assert_only_on(counts, 3, 10)
+    assert len(printed) >= 10
+    assert rig.buttons.status() == "ok"
+
+
+def test_mock_buttons_dpad_set_up_again_beside_a_pad_callback_that_raises(rig, monkeypatch):
+    # After a reset() of the expander, the call that sets the D-pad up again
+    # meets a pending pad event whose callback raises: the error is printed,
+    # the D-pad is followed again and the call goes on.
+    import sys
+
+    printed = []
+    monkeypatch.setattr(sys, "print_exception", printed.append, raising=False)
+    rig.chip.release(0)
+    assert rig.buttons.is_pressed("UP") is False
+    expander = rig.board.steami.mcp23009e()
+    expander.reset()
+    mcp = pytest.importorskip("mcp23009e.const")
+    expander.setup(0, mcp.MCP23009_DIR_INPUT, mcp.MCP23009_PULLUP)
+
+    def callback():
+        raise ValueError("bug in the program")
+
+    expander.interrupt_on_falling(0, callback)
+    rig.chip.press(0)  # pending until Buttons reads the expander
+    assert rig.buttons.is_pressed("RIGHT") is False
+    assert expander.watched() == 0xF0
+    assert [type(e) for e in printed] == [ValueError]
+    rig.advance(50)
+    rig.chip.press(RIGHT)
+    rig.chip.release(RIGHT)
+    rig.advance(30)
+    assert rig.buttons.was_pressed("RIGHT") is True
+    assert rig.buttons.status() == "ok"
+    expander.disable_interrupt(0)
+
+
+@pytest.mark.parametrize("error", [ValueError, TypeError, OSError])
+def test_mock_buttons_a_pad_callback_that_raises_does_not_stop_buttons(rig, monkeypatch, error):
+    # As in Arduino, a pad callback of the program cannot abort Buttons: the
+    # call returns, the D-pad keeps its state and the exception is printed.
+    import sys
+
+    printed = []
+    monkeypatch.setattr(sys, "print_exception", printed.append, raising=False)
+    rig.chip.release(0)
+    rig.chip.press(UP)
+    assert rig.buttons.begin() is True
+    assert rig.buttons.is_pressed("UP") is True
+    expander = rig.board.steami.mcp23009e()
+    mcp = pytest.importorskip("mcp23009e.const")
+    expander.setup(0, mcp.MCP23009_DIR_INPUT, mcp.MCP23009_PULLUP)
+
+    def callback():
+        raise error("bug in the program")
+
+    expander.interrupt_on_falling(0, callback)
+    rig.advance(50)
+    rig.chip.press(LEFT)  # captured by the interrupt
+    rig.chip.release(LEFT)
+    rig.chip.press(0)  # found in GPIO by the same read: the callback raises
+    rig.advance(30)
+    assert rig.buttons.is_pressed("UP") is True  # no false release
+    assert rig.buttons.was_pressed("LEFT") is True
+    rig.advance(30)
+    assert rig.buttons.was_released("UP") is False
+    assert rig.buttons.was_released("LEFT") is True
+    assert [type(e) for e in printed] == [error]
+    expander.disable_interrupt(0)
+
+
+@pytest.mark.parametrize("error", [ValueError, TypeError, OSError])
+def test_mock_buttons_begin_survives_a_pad_callback_that_raises(rig, monkeypatch, error):
+    # A pad event pending before begin() reaches its callback while Buttons
+    # registers the D-pad: an error of that callback is printed, begin() goes
+    # on and registers the four arrows.
+    import sys
+
+    printed = []
+    monkeypatch.setattr(sys, "print_exception", printed.append, raising=False)
+    rig.chip.release(0)
+    expander = rig.board.steami.mcp23009e()
+    mcp = pytest.importorskip("mcp23009e.const")
+    expander.setup(0, mcp.MCP23009_DIR_INPUT, mcp.MCP23009_PULLUP)
+
+    def callback():
+        raise error("bug in the program")
+
+    expander.interrupt_on_falling(0, callback)
+    rig.chip.press(0)  # pending until Buttons reads the expander
+    assert rig.buttons.begin() is True
+    assert rig.buttons.status() == "ok"
+    assert [type(e) for e in printed] == [error]
+    assert rig.buttons.is_pressed("UP") is False
+    for arrow, name in ((UP, "UP"), (DOWN, "DOWN"), (LEFT, "LEFT"), (RIGHT, "RIGHT")):
+        rig.advance(50)
+        rig.chip.press(arrow)
+        rig.chip.release(arrow)
+        rig.advance(30)
+        assert rig.buttons.was_pressed(name) is True, name
+    expander.disable_interrupt(0)
+
+
+def test_mock_buttons_wait_for_press_0_drops_what_came_before_and_does_not_wait(rig):
+    # wait_for_press(0) samples, drops the presses found, samples again: a
+    # press made before the call is not returned, and the clock moves only
+    # by the second read of the D-pad change (20 ms).
+    assert rig.buttons.is_pressed("A") is False
+    rig.advance(50)
+    rig.tap("A", 60)
+    rig.chip.press(DOWN)
+    start = rig.now
+    assert rig.buttons.wait_for_press(0) is None
+    assert rig.now - start == 20
+    assert rig.buttons.is_pressed("DOWN") is True
+    start = rig.now
+    assert rig.buttons.wait_for_press(0) is None
+    assert rig.now == start  # no change: no wait
+
+
 def test_mock_buttons_called_last_get_the_interrupts(rig, steami):
     # Two objects: the IRQs and the D-pad events go to the one called last.
     outer = rig.buttons
@@ -2018,3 +2334,316 @@ def test_mock_buttons_dpad_press_while_another_object_is_active(rig, steami):
     assert first.was_pressed("DOWN") is True
     rig.advance(500)
     assert first.is_pressed("DOWN") is True
+
+
+# Buttons on the board's timeline (Arduino #341): the finger moves at given
+# times while the program waits and while it reads the expander (400 us per
+# register read, so 1.2 ms per call and 17 ms for the 14 calls of a turn).
+# The loop is the one of the hardware check: get_presses() and was_released()
+# for the seven buttons, then 300 ms (about 520 ms in the second hardware run,
+# which redrew the screen at each turn). was_released() is a flag, so the
+# releases count only when at most one tap falls in a turn of the loop.
+
+
+def assert_only_on(counts, target, taps, releases=True):
+    presses, released = counts
+    for k, name in enumerate(BUTTON_NAMES):
+        expected = taps if k == target else 0
+        assert presses[k] == expected, "presses of " + name
+        if releases or k != target:
+            assert released[k] == expected, "releases of " + name
+
+
+def test_mock_buttons_two_mcu_taps_between_two_calls_count_two(rig):
+    assert rig.buttons.is_pressed("MENU") is False
+    rig.advance(50)
+    for _ in range(2):
+        rig.tap("MENU", 60)
+        rig.advance(60)
+    assert rig.buttons.was_pressed("MENU") is True  # a flag: one
+    assert rig.buttons.get_presses("MENU") == 2
+    assert rig.buttons.get_presses("MENU") == 0
+    with pytest.raises(ValueError):
+        rig.buttons.get_presses("X")
+
+
+def test_mock_buttons_unread_presses_are_not_replayed_by_was_pressed(rig):
+    # A program whose mode 1 ignores B and whose mode 2 acts on was_pressed("B")
+    # acts once, not 30 times. get_presses() still has them all, on its own.
+    assert rig.buttons.is_pressed("A") is False
+    rig.advance(50)
+    for _ in range(30):
+        rig.tap("B", 80)
+        rig.advance(120)
+        assert rig.buttons.was_pressed("A") is False
+    assert rig.buttons.was_pressed("B") is True
+    assert rig.buttons.was_pressed("B") is False
+    assert rig.buttons.get_presses("B") == 30
+    assert rig.buttons.get_presses("B") == 0
+    assert rig.buttons.get_presses("A") == 0
+
+
+def test_mock_buttons_get_presses_stops_at_255(rig):
+    assert rig.buttons.is_pressed("A") is False
+    for _ in range(300):
+        rig.advance(30)
+        rig.tap("A", 30)
+    assert rig.buttons.get_presses("A") == 255
+
+
+EXAMPLE = Path(__file__).parent.parent / "lib" / "steami" / "examples" / "buttons.py"
+
+
+def run_buttons_example(rig, monkeypatch, wait_ms, turns):
+    """Run lib/steami/examples/buttons.py on the rig and return what it printed.
+
+    Each sleep_ms() of its loop waits wait_ms on the rig clock (a slow loop),
+    which runs the taps set on the rig; the sleep after the given number of
+    turns stops the program with KeyboardInterrupt, as Ctrl-C would.
+    """
+    lines = []
+    waits = []
+
+    def sleep_ms(ms):
+        if len(waits) == turns:
+            raise KeyboardInterrupt
+        waits.append(ms)
+        rig.advance(wait_ms)
+
+    def capture(*args):
+        lines.append(" ".join(str(arg) for arg in args))
+
+    clock = types.ModuleType("time")
+    clock.sleep_ms = sleep_ms
+    monkeypatch.setitem(sys.modules, "time", clock)
+    code = compile(EXAMPLE.read_text(encoding="utf-8"), str(EXAMPLE), "exec")
+    with pytest.raises(KeyboardInterrupt):
+        exec(code, {"__name__": "__main__", "print": capture})
+    return lines
+
+
+def test_mock_buttons_example_counts_every_tap_of_a_slow_loop(rig, monkeypatch):
+    # Hardware run 2 (Arduino #341): the loop also redrew the screen, about
+    # 520 ms a turn. Three taps on A and one on UP in the first turn, one more
+    # on A in the second: the example prints every press of A, and on both
+    # buttons the release at the call that sees the press.
+    t0 = rig.now
+    for k in range(3):
+        rig.tap_at(t0 + 50 + k * 150, "A", 60)
+    rig.dpad_tap_at(t0 + 100, UP, 60)
+    rig.tap_at(t0 + 700, "A", 60)
+    lines = run_buttons_example(rig, monkeypatch, 520, turns=2)
+    assert lines == [
+        "Buttons ready.",
+        "A pressed (+3, total 3)",
+        "A released",
+        "UP pressed (+1, total 1)",
+        "UP released",
+        "A pressed (+1, total 4)",
+        "A released",
+    ]
+
+
+def test_mock_buttons_example_docstring_matches_the_taps():
+    # Since #341 a D-pad tap between two calls is seen whole by one call, and
+    # get_presses() counts the presses that the was_pressed() flag merges.
+    doc = ast.get_docstring(ast.parse(EXAMPLE.read_text(encoding="utf-8")))
+    assert "get_presses()" in doc
+    assert "At most one press per button" not in doc
+    assert "as released at a later one" not in doc
+
+
+def test_mock_buttons_quick_taps_on_a_faster_than_the_loop_are_all_reported(rig):
+    # Hardware run 2: about 30 quick taps on A for the counter to reach 10.
+    # Four taps a second with the 300 ms loop: some turns see two taps.
+    t0 = rig.start_timeline()
+    for k in range(10):
+        rig.tap_at(t0 + 100 + k * 250, "A", 80)
+    counts = rig.slow_loop(t0 + 100 + 10 * 250 + 3000, 300)
+    assert_only_on(counts, 0, 10, releases=False)
+    assert rig.buttons.is_pressed("A") is False
+
+
+@pytest.mark.parametrize("name", ["B", "MENU"])
+def test_mock_buttons_quick_taps_with_a_520_ms_loop_are_all_reported(rig, name):
+    t0 = rig.start_timeline()
+    for k in range(10):
+        rig.tap_at(t0 + 100 + k * 337, name, 60 + 10 * (k % 5))
+    counts = rig.slow_loop(t0 + 100 + 10 * 337 + 3000, 520)
+    assert_only_on(counts, BUTTON_NAMES.index(name), 10, releases=False)
+
+
+@pytest.mark.parametrize(
+    ("name", "bit"), [("UP", UP), ("DOWN", DOWN), ("LEFT", LEFT), ("RIGHT", RIGHT)]
+)
+def test_mock_buttons_quick_taps_on_the_dpad_are_all_reported(rig, name, bit):
+    # Hardware run 1: UP 2 presses, DOWN, LEFT and RIGHT 1 each, for 10 quick
+    # taps each with the 300 ms loop.
+    t0 = rig.start_timeline()
+    for k in range(10):
+        rig.dpad_tap_at(t0 + 100 + k * 450 + 40 * (k % 3), bit, 80)
+    counts = rig.slow_loop(t0 + 100 + 10 * 450 + 1500, 300)
+    assert_only_on(counts, BUTTON_NAMES.index(name), 10)
+    assert rig.buttons.is_pressed(name) is False
+
+
+def test_mock_buttons_dpad_taps_once_a_second_with_a_520_ms_loop_are_all_reported(rig):
+    # Hardware run 2: 4 UP for 10 taps, about once a second, with the 520 ms loop.
+    t0 = rig.start_timeline()
+    at = t0 + 300
+    for k in range(10):
+        rig.dpad_tap_at(at, UP, 80)
+        at += 620 + 140 * (k % 3)  # more than one turn of the loop between two taps
+    counts = rig.slow_loop(at + 1500, 520)
+    assert_only_on(counts, 3, 10)
+
+
+def test_mock_buttons_bouncy_dpad_taps_give_one_press_each(rig):
+    # Contact bounces at the press and at the release, read or not by a call.
+    t0 = rig.start_timeline()
+    for k in range(20):
+        rig.bouncy_dpad_tap_at(t0 + 100 + k * 377, LEFT, 70 + 7 * (k % 4))
+    counts = rig.slow_loop(t0 + 100 + 20 * 377 + 1500, 300)
+    assert_only_on(counts, 5, 20)
+
+
+def test_mock_buttons_dpad_release_is_reported_by_the_call_that_reads_it(rig):
+    # As for A: is_pressed() does not stay true one more turn of the loop (the
+    # long presses on UP looked longer than on A).
+    rig.start_timeline()
+    rig.chip.press(UP)
+    assert rig.buttons.was_pressed("UP") is True
+    rig.advance(1000)
+    assert rig.buttons.is_pressed("UP") is True
+    rig.chip.release(UP)
+    assert rig.buttons.is_pressed("UP") is False
+    assert rig.buttons.was_released("UP") is True
+
+
+def test_mock_buttons_dpad_lever_rebound_after_a_release_is_not_a_press(rig):
+    # Hardware run 2: 3 DOWN during taps on UP. The D-pad is one lever:
+    # released from UP, it can touch DOWN for a moment on its way back. A call
+    # that reads the release of UP just before that contact clears the
+    # interrupt of UP, and the expander latches the contact.
+    rig.start_timeline()
+    rig.chip.press(UP)
+    assert rig.buttons.was_pressed("UP") is True
+    rig.advance(200)
+    rig.chip.release(UP)
+    rig.dpad_tap_at(rig.now + 3, DOWN, 2)  # 3 ms after the read, for 2 ms
+    presses, releases = rig.slow_loop(rig.now + 1500, 300)
+    assert presses[4] == 0
+    assert releases[3] == 1
+    assert rig.buttons.is_pressed("DOWN") is False
+
+
+def test_mock_buttons_dpad_lever_rebound_read_with_the_release_is_not_a_press(rig):
+    rig.start_timeline()
+    rig.chip.press(UP)
+    assert rig.buttons.was_pressed("UP") is True
+    rig.advance(200)
+    rig.chip.release(UP)
+    rig.chip.press(DOWN)  # still there when the call reads the release of UP
+    rig.at(3, lambda: rig.chip.release(DOWN))
+    presses, releases = rig.slow_loop(rig.now + 1500, 300)
+    assert presses[4] == 0
+    assert releases[3] == 1
+    assert rig.buttons.is_pressed("DOWN") is False
+
+
+def test_mock_buttons_dpad_other_direction_held_after_a_release_is_a_press(rig):
+    rig.start_timeline()
+    rig.chip.press(UP)
+    assert rig.buttons.was_pressed("UP") is True
+    rig.advance(200)
+    rig.chip.release(UP)
+    rig.chip.press(DOWN)
+    rig.at(200, lambda: rig.chip.release(DOWN))
+    presses, releases = rig.slow_loop(rig.now + 1500, 300)
+    assert releases[3] == 1
+    assert presses[4] == 1
+    assert releases[4] == 1
+
+
+def test_mock_buttons_long_presses_stay_pressed_at_every_call(rig):
+    # The hardware run reported 1 to 4 out of 10 on A: the test, not the
+    # buttons (see the hardware check). is_pressed() is true at every call
+    # between the press and the release, on A and on UP.
+    t0 = rig.start_timeline()
+    for k in range(4):
+        rig.tap_at(t0 + 100 + k * 2000, "A", 1250)
+        rig.dpad_tap_at(t0 + 1100 + k * 2000, UP, 1250)
+    presses = [0, 0]
+    releases = [0, 0]
+    held = [False, False]
+    drops = 0
+    while rig.now - t0 < 4 * 2000 + 1500:
+        rig.advance(0)
+        for n, name in enumerate(("A", "UP")):
+            if rig.buttons.was_pressed(name):
+                presses[n] += 1
+                held[n] = True
+            down = rig.buttons.is_pressed(name)
+            if rig.buttons.was_released(name):
+                releases[n] += 1
+                held[n] = False
+            elif held[n] and not down:
+                drops += 1
+        rig.advance(300)
+    assert drops == 0
+    assert presses == [4, 4]
+    assert releases == [4, 4]
+
+
+def second_tap_after_a_read(steami, monkeypatch, off):
+    # A call finds a whole UP tap in the latch (pressed, then released before
+    # the read), and the second tap is pressed off ms after the start of the
+    # call, while the call waits to confirm the first one.
+    rig = ButtonsRig(steami, monkeypatch)
+    t0 = rig.start_timeline()
+    rig.dpad_tap_at(t0 + 100, UP, 80)
+    rig.advance(300)  # the first tap is over, no call yet
+    rig.dpad_tap_at(rig.now + off, UP, 80)
+    presses, releases = rig.slow_loop(rig.now + 1500, 300)
+    assert rig.buttons.is_pressed("UP") is False
+    return presses[3], releases[3]
+
+
+def test_mock_buttons_second_dpad_tap_just_after_a_read_is_not_merged(steami, monkeypatch):
+    # The confirmation read 20 ms after a whole tap finds UP pressed again:
+    # the release of the first tap and the press of a second one, not a
+    # bounce. Only a press made before the read (offset 0: the chip latches
+    # the first change only) or within the 5 ms that follow it (taken for a
+    # bounce of the first press) merges.
+    scan = {}
+    for off in range(41):
+        scan[off] = second_tap_after_a_read(steami, monkeypatch, off)
+    assert all(p == r and p in (1, 2) for p, r in scan.values()), scan
+    assert all(scan[off] == (2, 2) for off in range(8, 41)), scan
+
+
+def test_mock_buttons_dpad_read_during_a_press_bounce_gives_one_press(rig):
+    # The latch has the press, the port reads open, and the contact closes
+    # again just after the read: one press, still held.
+    rig.start_timeline()
+    rig.chip.press(RIGHT)
+    rig.chip.release(RIGHT)
+    closed = []
+
+    def close(reg):
+        if reg == GPIO and not closed:
+            closed.append(1)
+            rig.chip.press(RIGHT)
+
+    rig.chip.on_read = close
+    assert rig.buttons.get_presses("RIGHT") == 1
+    rig.chip.on_read = None
+    assert closed
+    assert rig.buttons.is_pressed("RIGHT") is True
+    assert rig.buttons.was_released("RIGHT") is False
+    rig.advance(200)
+    rig.chip.release(RIGHT)
+    rig.advance(50)
+    assert rig.buttons.get_presses("RIGHT") == 0
+    assert rig.buttons.was_released("RIGHT") is True
+    assert rig.buttons.is_pressed("RIGHT") is False

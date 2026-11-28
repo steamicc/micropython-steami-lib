@@ -165,7 +165,7 @@ create the function objects again.
 | `Light` | `read()`, the raw clear count | `0` |
 | `Color` | `read()` returns `(r, g, b)`, `red()`, `green()`, `blue()`; `rgb()`, the hue with the largest channel scaled to 255 (a `steami_screen` colour) | `(0, 0, 0)`, `0` |
 | `Gesture` | `read(timeout_ms=0)` returns `Gesture.NONE`, `LEFT`, `RIGHT`, `UP`, `DOWN`, `NEAR` or `FAR`; `name(g)` | `Gesture.NONE` |
-| `Buttons` | `is_pressed(b)`, `was_pressed(b)`, `was_released(b)`, `wait_for_press(timeout_ms=None)` | the D-pad stays released; A, B and MENU always work |
+| `Buttons` | `is_pressed(b)`, `was_pressed(b)`, `was_released(b)`, `get_presses(b)`, `wait_for_press(timeout_ms=None)` | the D-pad stays released; A, B and MENU always work |
 
 `Compass.heading()` is for the board held flat. `Compass.heading_tilt_compensated()`
 also reads the accelerometer (set as `Accelerometer` sets it) and corrects the heading
@@ -323,19 +323,30 @@ silences them, and `Steami.last_error()` returns the last one.
 * Buttons are named by strings: `"A"`, `"B"`, `"MENU"`, `"UP"`, `"DOWN"`,
   `"LEFT"`, `"RIGHT"`. Any other name raises `ValueError`, where Arduino
   returns false for `SteamiButton::NONE`.
-* `Buttons.wait_for_press(None)` waits forever and `wait_for_press(0)` samples
-  once. Arduino uses 0 for "forever".
+* `Buttons.wait_for_press(None)` waits forever. `wait_for_press(0)` does not
+  wait (beyond the 20 ms second read of a D-pad change, see below): it
+  samples, drops the presses found, samples again and returns `None` unless
+  a press came between the two samples. Arduino uses 0 for "forever".
 * Debounce is the Arduino 20 ms lock-out: a change is taken at once, then the
   bounces of the next 20 ms are ignored. As in Arduino, a tap made between
   two calls is not missed. A, B and MENU get a hard IRQ on both edges
   (`Pin.irq(hard=True)`, EXTI lines 7, 8 and 0): a tap between two calls
   gives `was_pressed()` and `was_released()` at the next call. The D-pad has
   no MCU interrupt (`INT_EXPANDER`, PB0, shares EXTI line 0 with MENU, PA0):
-  each call reads the latch of the MCP23009E (`interrupt_event()`), so a tap
-  gives `was_pressed()` and `is_pressed()` at the next call and the release
-  one call later (20 ms with no change on that button). At most one press
-  per button is reported between two calls. With several `Buttons` objects,
-  those taps go to the one started or called last; every object follows the
+  each call reads the latch of the MCP23009E (`interrupt_event()`), which
+  keeps the first change since the previous read, and takes it at once. A
+  call that sees a D-pad change reads the expander again 20 ms later, and
+  only the level then counts (a bounce, or the lever touching the opposite
+  direction on its way back, is not a press): that call takes 20 ms more,
+  40 ms at most. A tap between two calls then gives `was_pressed()` and
+  `was_released()` at the next call, as on A (issue arduino-steami-lib#341).
+  `was_pressed()` and `was_released()` are flags: several taps between two
+  calls give one. `get_presses(b)` counts every press since its last call
+  for that button, up to 255, like `get_presses()` on the micro:bit
+  (Arduino `getPresses()`): a program that counts taps with a slow loop uses
+  it. Two D-pad taps between two reads of the expander still give one: the
+  chip latches the first change only. With several `Buttons` objects, those
+  taps go to the one started or called last; every object follows the
   levels of all the buttons.
 * `Buttons` cannot share EXTI line 0 with
   `MCP23009E(interrupt_pin=Pin("INT_EXPANDER"))`, as in the mcp23009e
@@ -343,7 +354,17 @@ silences them, and `Steami.last_error()` returns the last one.
   already taken, MENU is only sampled at each call; when `Buttons` took it
   first, the later `Pin.irq()` raises `OSError`. Pad callbacks set with
   `Steami.mcp23009e().interrupt_on_*()` are still called, by every
-  `Buttons` call.
+  `Buttons` call. As in Arduino, such a callback cannot stop `Buttons`: an
+  exception it raises is printed (`sys.print_exception()`, as for an IRQ
+  handler) and the call returns its result. `interrupt_event()` called by
+  the program itself still raises it. `Buttons` follows the D-pad with
+  `MCP23009E.watch_changes()`, a callback the program does not replace: a
+  callback the program registers on a D-pad bit runs too, and
+  `disable_interrupt()` on a D-pad bit stops only the program's callbacks.
+  After a `reset()` of the expander, or after `power_on()` following a
+  `power_off()`, the next call sets the D-pad up again, calls made while the
+  expander was off included (the D-pad then reads released). Arduino:
+  `watchChanges()`.
 * `Steami.end()` also resets the logger to `print`; Arduino keeps it.
 * `tone(frequency, duration_ms)` takes no pin: the board has one buzzer.
   Arduino calls `tone(SPEAKER, frequency, duration)`.
@@ -379,7 +400,7 @@ silences them, and `Steami.last_error()` returns the last one.
 | `accelerometer.py`, `gyroscope.py`, `magnetometer.py` | Motion and magnetic field, as vectors |
 | `compass.py` | Heading and direction, with a calibration on MENU |
 | `light.py`, `color.py`, `gesture.py` | APDS-9960, V1a and V1b only |
-| `buttons.py` | Press and release of the seven buttons |
+| `buttons.py` | Presses (counted with `get_presses()`) and releases of the seven buttons |
 | `weather_station.py` | Temperature, humidity, pressure graph and compass on four screen pages, changed with the buttons (and a swipe on V1a/V1b) |
 | `pads.py` | Read a crocodile pad and drive another one, on the expander |
 

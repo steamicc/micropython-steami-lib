@@ -144,6 +144,20 @@ its event is still queued. If another pin has a pending event at that
 moment, its handler is called during the registration, so the event is not
 lost. Calling `irq()` again replaces the previous handler and trigger.
 
+A library that shares the expander with the program follows its pins with
+`watch_changes(mask, callback)` (`Buttons` follows the D-pad with it):
+`callback(gpx, level)` gets the events of the pins of `mask`, as
+`interrupt_on_change()` does, after the program's handlers. A registration
+of the program on one of these pins does not replace it and leaves it the
+pending event, and `disable_interrupt()` leaves the pin enabled for it: both
+keep working. The pins of `mask` not enabled yet are enabled, with no event
+at registration. There is one watch per expander: a call replaces the
+earlier one, and `None` removes it (its pins stay enabled). `reset()`,
+`power_off()` and the soft reset remove it, as they disable every pin. A pin
+is enabled only when the chip answers: on a chip missing or held in reset by
+`power_off()`, the registration raises `OSError` and `watched()` leaves the
+pin out. Register again after `power_on()`.
+
 ## API Reference
 
 ### MCP23009E Class
@@ -163,7 +177,9 @@ MCP23009E(i2c, address, reset_pin, interrupt_pin=None)
 * `interrupt_on_falling(gpx, callback)` - Register falling edge callback
 * `interrupt_on_rising(gpx, callback)` - Register rising edge callback
 * `interrupt_on_raising(gpx, callback)` - Deprecated alias of `interrupt_on_rising()`, kept for the whole 1.x series and removed in 2.0.0
-* `disable_interrupt(gpx)` - Disable interrupts on a GPIO
+* `disable_interrupt(gpx)` - Disable interrupts on a GPIO and clear its callbacks; a pin followed by `watch_changes()` stays enabled for it
+* `watch_changes(mask, callback)` - Follow the pins of `mask` with `callback(gpx, level)`, a callback the program does not replace (see above)
+* `watched()` - The pins the watch follows (one bit per pin); `0` without a watch
 
 ### MCP23009Pin Class
 
