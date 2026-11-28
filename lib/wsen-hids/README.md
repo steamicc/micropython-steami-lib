@@ -130,8 +130,8 @@ temperature = sensor.temperature()
 
 ### Measurement behavior
 
-After initialization, the sensor operates in **one-shot mode** (ODR = 00).
-If `read()`, `humidity()`, or `temperature()` are called while the sensor is not in continuous mode, the driver **automatically triggers a one-shot conversion** to ensure fresh data is returned.
+After initialization, the sensor is in **power-down** with ODR = 00: the driver clears `CTRL_2` (a latched `ONE_SHOT` bit, the heater) and `CTRL_1` (a running continuous mode) left by a previous program, since a soft reset of the MCU does not power-cycle the sensor.
+If `read()`, `humidity()`, or `temperature()` are called while the sensor is not in continuous mode, the driver **automatically takes a single measurement** (as `read_one_shot()` does) to ensure fresh data is returned.
 
 ```python
 humidity, temperature = sensor.read()
@@ -147,12 +147,16 @@ sensor.set_continuous(WSEN_HIDS.ODR_1_HZ)
 
 # One-Shot Measurement
 
-Trigger a single conversion:
+Take a single measurement:
 
 ```python
-# Default timeout (100 ms)
+# Default timeout (200 ms)
 humidity, temperature = sensor.read_one_shot()
 ```
+
+`read_one_shot()` wakes the sensor in continuous mode at 12.5 Hz, waits for one new sample, reads it, then puts `CTRL_1` back as it was (power-down after initialization). It does not use the `CTRL_2.ONE_SHOT` bit: on the STeaMi V1a/V1b this bit stays at 1 and no data is ever reported ([#425](https://github.com/steamicc/micropython-steami-lib/issues/425)), while continuous mode works. The [Arduino driver](https://github.com/steamicc/arduino-steami-lib/tree/main/lib/wsen-hids) also uses continuous mode. One sample takes up to 80 ms at 12.5 Hz.
+
+`trigger_one_shot()` still writes `CTRL_2.ONE_SHOT` without waiting, for experiments with the chip; on the STeaMi V1a/V1b it gives no data.
 
 You can specify a timeout:
 
