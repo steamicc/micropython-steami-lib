@@ -240,6 +240,53 @@ tests:
     expect_true: true
     mode: [mock]
 
+  - name: "calibrate_minmax with samples=0 raises ValueError and keeps calibration"
+    action: script
+    script: |
+      dev.set_calibrate_step(10, 20, 30, 2.0, 3.0, 4.0)
+      raised = 0
+      for calibrate in (dev.calibrate_minmax_2d, dev.calibrate_minmax_3d):
+          try:
+              calibrate(samples=0, delay_ms=0)
+          except ValueError:
+              raised += 1
+      result = raised == 2 and dev.read_calibration() == (10, 20, 30, 2.0, 3.0, 4.0)
+    expect_true: true
+    mode: [mock]
+
+  - name: "calibrate_minmax keeps calibration when a sample read fails"
+    action: script
+    script: |
+      dev.set_calibrate_step(10, 20, 30, 2.0, 3.0, 4.0)
+      reads = []
+      def flaky_field():
+          reads.append(1)
+          if len(reads) % 2 == 0:
+              raise OSError("bus error")
+          return (400, -300, 200)
+      dev.magnetic_field = flaky_field
+      raised = 0
+      for calibrate in (dev.calibrate_minmax_2d, dev.calibrate_minmax_3d):
+          try:
+              calibrate(samples=5, delay_ms=0)
+          except OSError:
+              raised += 1
+      del dev.magnetic_field
+      result = raised == 2 and dev.read_calibration() == (10, 20, 30, 2.0, 3.0, 4.0)
+    expect_true: true
+    mode: [mock]
+
+  - name: "calibrate_minmax_3d uses every sample"
+    action: script
+    script: |
+      fields = [(100, -50, 10), (300, 150, -30), (200, 50, 90)]
+      dev.magnetic_field = lambda: fields.pop(0)
+      dev.calibrate_minmax_3d(samples=3, delay_ms=0)
+      del dev.magnetic_field
+      result = dev.read_calibration() == (200, 50, 30, 100, 100, 60)
+    expect_true: true
+    mode: [mock]
+
   # ----- Heading -----
 
   - name: "heading_flat_only returns angle 0-360"

@@ -3,6 +3,12 @@
 The buzzer is on SPEAKER (PA11), driven by hardware PWM on Timer 1 channel 4.
 The timer is created on first use. A timed tone stops by itself through a
 one-shot soft timer, so tone() never blocks.
+
+A soft timer callback is scheduled (mp_sched_schedule), not run in the
+interrupt: deinit() cannot take back a callback already queued. The stop
+callback therefore checks that its timer is still the pending stop, so a late
+stop of an older tone never silences a newer one (as Arduino tone(), a new
+tone replaces the previous one and its duration).
 """
 
 _timer = None
@@ -11,10 +17,18 @@ _stop = None
 
 
 def _cancel():
+    # Clear _stop before any jump: a stop callback run at the jump then sees
+    # None and does nothing, instead of clearing _stop under our feet.
     global _stop
-    if _stop is not None:
-        _stop.deinit()
-        _stop = None
+    s = _stop
+    _stop = None
+    if s is not None:
+        s.deinit()
+
+
+def _expire(t):
+    if t is _stop:
+        no_tone()
 
 
 def no_tone():
@@ -46,4 +60,4 @@ def tone(frequency, duration_ms=0):
     if duration_ms > 0:
         from machine import Timer
 
-        _stop = Timer(-1, mode=Timer.ONE_SHOT, period=duration_ms, callback=lambda t: no_tone())
+        _stop = Timer(-1, mode=Timer.ONE_SHOT, period=duration_ms, callback=_expire)

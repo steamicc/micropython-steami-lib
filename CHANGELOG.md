@@ -3,6 +3,55 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [0.38.7](https://github.com/steamicc/micropython-steami-lib/compare/v0.38.6...v0.38.7) (2026-11-28)
+
+
+### Bug Fixes
+
+* **steami:** Report every button tap made between two slow calls. ([#521](https://github.com/steamicc/micropython-steami-lib/issues/521)) ([342cd4c](https://github.com/steamicc/micropython-steami-lib/commit/342cd4c1ba577fc6a47bb9f23d6de8ba8b47b429)), closes [steamicc/arduino-steami-lib#346](https://github.com/steamicc/arduino-steami-lib/issues/346) [#341](https://github.com/steamicc/micropython-steami-lib/issues/341) [arduino-steami-lib#346](https://github.com/arduino-steami-lib/issues/346)
+
+## [0.38.6](https://github.com/steamicc/micropython-steami-lib/compare/v0.38.5...v0.38.6) (2026-11-28)
+
+
+### Bug Fixes
+
+* **tooling:** Flash the DAPLink interface at 0x0800C000, above the bootloader. ([#519](https://github.com/steamicc/micropython-steami-lib/issues/519)) ([a37ee74](https://github.com/steamicc/micropython-steami-lib/commit/a37ee74ca196c4d6e4eea3eeca33c208f0f73d42)), closes [#516](https://github.com/steamicc/micropython-steami-lib/issues/516)
+
+## [0.38.5](https://github.com/steamicc/micropython-steami-lib/compare/v0.38.4...v0.38.5) (2026-11-28)
+
+
+### Bug Fixes
+
+* **bq27441:** End the user config session in exit_config. ([#510](https://github.com/steamicc/micropython-steami-lib/issues/510)) ([a4d9db8](https://github.com/steamicc/micropython-steami-lib/commit/a4d9db8eaabc2baa4114bdc6a4343e4357406bc0)), closes [#509](https://github.com/steamicc/micropython-steami-lib/issues/509)
+
+## [0.38.4](https://github.com/steamicc/micropython-steami-lib/compare/v0.38.3...v0.38.4) (2026-11-28)
+
+
+### Bug Fixes
+
+* **wsen-hids:** Drive the heater with CTRL_2 bit 1, not reserved bit 3. ([#508](https://github.com/steamicc/micropython-steami-lib/issues/508)) ([5feae21](https://github.com/steamicc/micropython-steami-lib/commit/5feae216476c86af204ee218da62cc4334413017)), closes [#507](https://github.com/steamicc/micropython-steami-lib/issues/507) [#507](https://github.com/steamicc/micropython-steami-lib/issues/507)
+
+## [0.38.3](https://github.com/steamicc/micropython-steami-lib/compare/v0.38.2...v0.38.3) (2026-11-28)
+
+
+### Bug Fixes
+
+* **steami:** Keep a late tone() stop from silencing a newer tone. ([#506](https://github.com/steamicc/micropython-steami-lib/issues/506)) ([65ff165](https://github.com/steamicc/micropython-steami-lib/commit/65ff16556dcaae24db54ee42740d4125380f04bd)), closes [#505](https://github.com/steamicc/micropython-steami-lib/issues/505) [#496](https://github.com/steamicc/micropython-steami-lib/issues/496) [#505](https://github.com/steamicc/micropython-steami-lib/issues/505)
+
+## [0.38.2](https://github.com/steamicc/micropython-steami-lib/compare/v0.38.1...v0.38.2) (2026-11-28)
+
+
+### Bug Fixes
+
+* **lis2mdl:** Reject samples=0 in the min/max calibrations. ([#504](https://github.com/steamicc/micropython-steami-lib/issues/504)) ([1c89457](https://github.com/steamicc/micropython-steami-lib/commit/1c894572c9892b2687cbce6cbb48468bbb035c44)), closes [steamicc/arduino-steami-lib#329](https://github.com/steamicc/arduino-steami-lib/issues/329) [#503](https://github.com/steamicc/micropython-steami-lib/issues/503)
+
+## [0.38.1](https://github.com/steamicc/micropython-steami-lib/compare/v0.38.0...v0.38.1) (2026-11-28)
+
+
+### Bug Fixes
+
+* **steami:** Keep Buttons going when a pad callback raises. ([#502](https://github.com/steamicc/micropython-steami-lib/issues/502)) ([ea50e9e](https://github.com/steamicc/micropython-steami-lib/commit/ea50e9e7bf07e82180aef7cfa64b4e6385cc2da9)), closes [#498](https://github.com/steamicc/micropython-steami-lib/issues/498) [#501](https://github.com/steamicc/micropython-steami-lib/issues/501)
+
 # [0.38.0](https://github.com/steamicc/micropython-steami-lib/compare/v0.37.0...v0.38.0) (2026-11-28)
 
 

@@ -1,11 +1,15 @@
 """Register model of the MCP23009 interrupt logic, seen as an I2C bus.
 
-It keeps the interrupt logic that matters for the D-pad: the first change on
-an enabled pin sets INTF and copies the port into INTCAP, later changes (on
-any pin) are ignored until the interrupt is cleared, and reading GPIO (or
-INTCAP when IOCON.INTCC is set) clears it and makes the current port the new
-compare reference, so a change ignored while INTF was set never raises an
-interrupt. Shared by the mcp23009e driver tests and the steami.Buttons tests.
+It keeps the interrupt logic that matters for the D-pad, as the datasheet
+(DS20002121C, 1.7.3 to 1.7.5) describes it: the first change on an enabled
+pin sets INTF, copies the port into INTCAP and makes that port the compare
+reference ("the default state is reset after an Interrupt occurs"). Later
+changes, on any pin, raise no interrupt while INTF is set. Reading GPIO (or
+INTCAP when IOCON.INTCC is set) clears it; if the port then differs from the
+reference (a change made while INTF was set, still there), the interrupt
+sets again at once with a new INTCAP (1.7.4, note). A change made and undone
+while INTF was set leaves no trace. Shared by the mcp23009e driver tests and
+the steami.Buttons tests.
 """
 
 ADDR = 0x20
@@ -35,14 +39,15 @@ class FakeMCP23009:
     """Register model of the MCP23009 interrupt logic, seen as an I2C bus.
 
     In "previous state" mode (INTCON bit clear), a pin is compared with a
-    reference: the port value at the last read that cleared the interrupt.
-    With this model, enabling a pin that changed since the last clear
-    raises an interrupt at once: the spurious event seen on a V1c, when
-    the reference is still the port before the pull-ups were set (0x00).
+    reference: the port value at the last interrupt, or at the last clear
+    that found no interrupt set. With this model, enabling a pin that
+    changed since then raises an interrupt at once: the spurious event seen
+    on a V1c, when the reference is still the port before the pull-ups were
+    set (0x00).
 
     Args:
         pins: input levels of the port.
-        reference: port value at the last clear (default: pins).
+        reference: compare reference (default: pins).
     """
 
     def __init__(self, pins=RELEASED, reference=None):
@@ -87,10 +92,14 @@ class FakeMCP23009:
         if changed:
             self.regs[INTF] = changed
             self.regs[INTCAP] = self.pins
+            self.reference = self.pins
 
     def _clear(self):
+        # A change made while INTF was set, and still there, sets the
+        # interrupt again. With no interrupt set, the reference follows the port.
+        if not self.regs[INTF]:
+            self.reference = self.pins
         self.regs[INTF] = 0
-        self.reference = self.pins
         self._update()
 
     # ----- I2C side -----

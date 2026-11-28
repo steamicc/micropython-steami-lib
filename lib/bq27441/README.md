@@ -129,6 +129,8 @@ bq.enter_config(user_control=True)
 bq.exit_config(resim=True)
 ```
 
+With `user_control=True` and a `True` return, the setters write without entering or leaving the configuration mode themselves until `exit_config()`, so several writes share one session. A failed `enter_config(True)` opens no session; `exit_config()` always ends it. The percentage setters clamp their arguments to 0–100.
+
 ### GPOUT / Alerts
 
 ```python

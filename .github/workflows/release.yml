@@ -7,6 +7,14 @@ on:
 permissions:
   contents: read
 
+# One release at a time: a later merge waits behind the running release
+# instead of computing the same version, and a running release is never
+# cancelled (its tag and draft would be left half done). GitHub keeps only the
+# newest waiting run, which releases every commit since the last tag.
+concurrency:
+  group: release
+  cancel-in-progress: false
+
 jobs:
   release:
     name: Semantic Release
@@ -22,10 +30,15 @@ jobs:
     steps:
       - name: Generate token
         id: generate_token
-        uses: actions/create-github-app-token@v3
+        uses: actions/create-github-app-token@64ab729a6294000f5aa4a4bc0b73d1f32bc45510 # v3.3.0
         with:
-          app-id: ${{ secrets.RELEASE_APP_ID }}
+          client-id: ${{ secrets.RELEASE_APP_ID }}
           private-key: ${{ secrets.RELEASE_APP_SECRET }}
+          owner: steamicc
+          repositories: micropython-steami-lib
+          permission-contents: write
+          permission-issues: write
+          permission-pull-requests: write
 
       - uses: actions/checkout@v7
         with:
@@ -56,10 +69,13 @@ jobs:
     steps:
       - name: Generate token
         id: generate_token
-        uses: actions/create-github-app-token@v3
+        uses: actions/create-github-app-token@64ab729a6294000f5aa4a4bc0b73d1f32bc45510 # v3.3.0
         with:
-          app-id: ${{ secrets.RELEASE_APP_ID }}
+          client-id: ${{ secrets.RELEASE_APP_ID }}
           private-key: ${{ secrets.RELEASE_APP_SECRET }}
+          owner: steamicc
+          repositories: micropython-steami-lib
+          permission-contents: write
 
       - uses: actions/checkout@v7
         with:
@@ -100,10 +116,13 @@ jobs:
     steps:
       - name: Generate token
         id: generate_token
-        uses: actions/create-github-app-token@v3
+        uses: actions/create-github-app-token@64ab729a6294000f5aa4a4bc0b73d1f32bc45510 # v3.3.0
         with:
-          app-id: ${{ secrets.RELEASE_APP_ID }}
+          client-id: ${{ secrets.RELEASE_APP_ID }}
           private-key: ${{ secrets.RELEASE_APP_SECRET }}
+          owner: steamicc
+          repositories: micropython-steami-lib
+          permission-contents: write
 
       - uses: actions/checkout@v7
         with:
@@ -155,10 +174,13 @@ jobs:
     steps:
       - name: Generate token
         id: generate_token
-        uses: actions/create-github-app-token@v3
+        uses: actions/create-github-app-token@64ab729a6294000f5aa4a4bc0b73d1f32bc45510 # v3.3.0
         with:
-          app-id: ${{ secrets.RELEASE_APP_ID }}
+          client-id: ${{ secrets.RELEASE_APP_ID }}
           private-key: ${{ secrets.RELEASE_APP_SECRET }}
+          owner: steamicc
+          repositories: micropython-steami-lib
+          permission-contents: write
 
       # The repository uses immutable releases: assets can only be added while
       # the release is a draft, so the firmware jobs upload first and the

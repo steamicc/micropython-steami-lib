@@ -38,6 +38,24 @@ Runs all tests on a connected STeaMi board (default port: `/dev/ttyACM0`).
 make test-board
 ```
 
+### Interactive check of the buttons (a human at the board)
+
+`tests/interactive/steami_buttons.py` runs the scenario of the Arduino
+integration test `test_steami_buttons` on a V1c: 17 steps of quick taps, long
+presses and D-pad bursts, with a slow loop (300 ms, then 520 ms). Each step
+shows its instruction in French on the screen, with a 3-2-1 countdown; the
+counts go to the serial output, with a summary at the end. It mounts `lib/`,
+so the `steami` and `mcp23009e` sources of the checkout are used instead of
+the frozen ones. About eight minutes.
+
+```bash
+make test-interactive-buttons PORT=/dev/ttyACM0
+make test-interactive-buttons PORT=/dev/ttyACM0 STEP=14   # one step alone
+```
+
+`tests/test_interactive_buttons_mock.py` runs the same script on the fakes
+with a simulated tester, so it stays free of mistakes.
+
 ### Run sensor driver hardware tests (I2C devices)
 
 ```bash

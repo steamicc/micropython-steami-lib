@@ -380,7 +380,11 @@ class LIS2MDL(object):
         MIN/MAX calibration while flat (XY only).
         Slowly rotate the board FLAT during acquisition.
         Updates x_off, y_off, x_scale, y_scale (leaves Z unchanged).
+        All or nothing: ValueError for samples < 1, and a failed read raises
+        OSError before the calibration changes.
         """
+        if samples < 1:
+            raise ValueError("samples must be >= 1")
         xmin = ymin = 1e9
         xmax = ymax = -1e9
 
@@ -405,7 +409,11 @@ class LIS2MDL(object):
         """
         MIN/MAX calibration on 3 axes (rotate the board in ALL directions).
         Updates offsets + scales for X, Y, Z.
+        All or nothing: ValueError for samples < 1, and a failed read raises
+        OSError before the calibration changes.
         """
+        if samples < 1:
+            raise ValueError("samples must be >= 1")
         xmin = ymin = zmin = 1e9
         xmax = ymax = zmax = -1e9
 
