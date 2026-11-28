@@ -1921,6 +1921,38 @@ def test_mock_buttons_a_pad_callback_that_raises_does_not_stop_buttons(rig, monk
     expander.disable_interrupt(0)
 
 
+@pytest.mark.parametrize("error", [ValueError, TypeError, OSError])
+def test_mock_buttons_begin_survives_a_pad_callback_that_raises(rig, monkeypatch, error):
+    # A pad event pending before begin() reaches its callback while Buttons
+    # registers the D-pad: an error of that callback is printed, begin() goes
+    # on and registers the four arrows.
+    import sys
+
+    printed = []
+    monkeypatch.setattr(sys, "print_exception", printed.append, raising=False)
+    rig.chip.release(0)
+    expander = rig.board.steami.mcp23009e()
+    mcp = pytest.importorskip("mcp23009e.const")
+    expander.setup(0, mcp.MCP23009_DIR_INPUT, mcp.MCP23009_PULLUP)
+
+    def callback():
+        raise error("bug in the program")
+
+    expander.interrupt_on_falling(0, callback)
+    rig.chip.press(0)  # pending until Buttons reads the expander
+    assert rig.buttons.begin() is True
+    assert rig.buttons.status() == "ok"
+    assert [type(e) for e in printed] == [error]
+    assert rig.buttons.is_pressed("UP") is False
+    for arrow, name in ((UP, "UP"), (DOWN, "DOWN"), (LEFT, "LEFT"), (RIGHT, "RIGHT")):
+        rig.advance(50)
+        rig.chip.press(arrow)
+        rig.chip.release(arrow)
+        rig.advance(30)
+        assert rig.buttons.was_pressed(name) is True, name
+    expander.disable_interrupt(0)
+
+
 def test_mock_buttons_wait_for_press_0_drops_what_came_before_and_does_not_wait(rig):
     # wait_for_press(0) samples, drops the presses found, samples again: a
     # press made before the call is not returned and the clock does not move.
