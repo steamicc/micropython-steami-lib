@@ -1,8 +1,14 @@
-"""Calibrate all temperature sensors against WSEN-HIDS reference.
+"""Calibrate the temperature sensors of the board against its reference sensor.
 
-Reads the WSEN-HIDS sensor as reference, then computes an offset for
-each other sensor.  Calibration offsets are stored in the persistent
-config zone and survive power cycles.
+The reference is the BME280 on a V1c and the WSEN-HIDS on a V1a/V1b. Every
+other temperature sensor gets an offset so that it reads like the reference.
+The offsets are stored in the persistent config zone, under the keys that
+both the MicroPython and the Arduino libraries read ("bme", or "hid" and
+"pad", plus "mag" and "ism"), and survive power cycles. The legacy "hts" key
+of older versions of this tool is removed, never written.
+
+Leave the board a few minutes at a stable room temperature, away from any
+heat source, before running it.
 
 Note: this example assumes the drivers are frozen into the firmware.
 Use ``make micropython-firmware && make micropython-deploy`` to build a
@@ -11,35 +17,43 @@ firmware with the latest drivers before running this script.
 
 from time import sleep_ms
 
-from daplink_bridge import DaplinkBridge
-from ism330dl import ISM330DL
-from lis2mdl import LIS2MDL
-from machine import I2C
-from steami_config import SteamiConfig
-from wsen_hids import WSEN_HIDS
-from wsen_pads import WSEN_PADS
+from steami import Release, Steami
 
-i2c = I2C(1)
-bridge = DaplinkBridge(i2c)
-config = SteamiConfig(bridge)
-config.load()
+release = Steami.begin()
+if release == Release.UNKNOWN:
+    raise SystemExit('Unknown board release: call Steami.begin("V1c") (or "V1b", "V1a").')
 
-# Read reference temperature from WSEN-HIDS (most accurate at ambient)
-ref = WSEN_HIDS(i2c)
+config = Steami.config()
+if config is None:
+    raise SystemExit("No config zone: update the DAPLink firmware of the board.")
+
+# (config name, driver); the reference comes first.
+if release == Release.V1C:
+    sensors = [("bme280", Steami.bme280())]
+else:
+    sensors = [("wsen_hids", Steami.wsen_hids()), ("wsen_pads", Steami.wsen_pads())]
+sensors += [("lis2mdl", Steami.lis2mdl()), ("ism330dl", Steami.ism330dl())]
+
+ref_name, ref = sensors[0]
+if ref is None:
+    raise SystemExit("The reference sensor {} does not answer.".format(ref_name))
+
+# Measure without any calibration, then let ISM330DL and LIS2MDL take a sample.
+for _, sensor in sensors:
+    if sensor is not None:
+        sensor.set_temp_offset(0.0)
+sleep_ms(200)
+
 ref_temp = ref.temperature()
-print("Reference (WSEN-HIDS): {:.2f} C".format(ref_temp))
-config.set_temperature_calibration("wsen_hids", gain=1.0, offset=0.0)
+print("Board {}, reference {}: {:.2f} C".format(release, ref_name, ref_temp))
+config.set_temperature_calibration(ref_name, gain=1.0, offset=0.0)
+# steami reads the legacy "hts" entry when "hid" is the identity: drop it.
+config.clear_temperature_calibration("hts221")
 
-# Calibrate each sensor
-sensors = [
-    ("wsen_pads", WSEN_PADS(i2c)),
-    ("lis2mdl", LIS2MDL(i2c)),
-    ("ism330dl", ISM330DL(i2c)),
-]
-
-for name, sensor in sensors:
-    if name in ("ism330dl", "lis2mdl"):
-        sleep_ms(200)
+for name, sensor in sensors[1:]:
+    if sensor is None:
+        print("  {:10s}: does not answer, skipped".format(name))
+        continue
     raw = sensor.temperature()
     offset = ref_temp - raw
     config.set_temperature_calibration(name, gain=1.0, offset=offset)
@@ -48,19 +62,10 @@ for name, sensor in sensors:
 config.save()
 print("\nCalibration saved.")
 
-# Verify by reloading with fresh sensor instances (simulates a reboot)
-config2 = SteamiConfig(bridge)
-config2.load()
-
-verify_sensors = [
-    ("wsen_pads", WSEN_PADS(i2c)),
-    ("lis2mdl", LIS2MDL(i2c)),
-    ("ism330dl", ISM330DL(i2c)),
-]
-
+# Verify: read the config zone back and apply it.
+config.load()
 print("\nVerification (after reload):")
-for name, sensor in verify_sensors:
-    if name in ("ism330dl", "lis2mdl"):
-        sleep_ms(200)
-    config2.apply_temperature_calibration(sensor)
-    print("  {:10s}: {:6.2f} C".format(name, sensor.temperature()))
+for name, sensor in sensors:
+    if sensor is not None:
+        config.apply_temperature_calibration(sensor)
+        print("  {:10s}: {:6.2f} C".format(name, sensor.temperature()))

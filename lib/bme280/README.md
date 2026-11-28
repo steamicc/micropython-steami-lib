@@ -113,6 +113,9 @@ temperature, pressure, humidity = sensor.read()
 
 Returns a tuple of `(temperature_c, pressure_hpa, humidity_rh)`.
 
+The Arduino `ReadResult` struct has the same values in another order
+(`temperature`, `humidity`, `pressure`): unpack by name when porting code.
+
 ---
 
 ### Temperature
@@ -173,6 +176,20 @@ alt = sensor.altitude()
 
 Returns the estimated altitude in **meters** using the ICAO barometric formula.
 
+The first parameter is the sea-level reference pressure in hPa, as in Arduino
+`altitude(seaLevelHpa)` and `steami.Pressure.altitude()`:
+
+```python
+alt = sensor.altitude(1020.0)
+```
+
+Without it, the `sea_level_pressure_hpa` attribute is used (default: 1013.25 hPa),
+which can be adjusted once for your location:
+
+```python
+sensor.sea_level_pressure_hpa = 1020.0
+```
+
 You can also pass an already-read pressure value to avoid a redundant I2C read:
 
 ```python
@@ -180,11 +197,7 @@ temperature, pressure, humidity = sensor.read()
 alt = sensor.altitude(pressure_hpa=pressure)
 ```
 
-The computation uses `sea_level_pressure_hpa` as reference (default: 1013.25 hPa). Adjust it for your location:
-
-```python
-sensor.sea_level_pressure_hpa = 1020.0
-```
+A sea-level pressure that is not positive raises `ValueError` (Arduino returns NAN).
 
 ---
 

@@ -100,6 +100,39 @@ tests:
     expect_true: true
     mode: [mock]
 
+  - name: "Clear temperature calibration removes only that sensor"
+    action: script
+    script: |
+      # Arduino: clearTemperatureCalibration(sensor).
+      dev._data = {"tc": {"hts": {"g": 1.05, "o": 0.3}, "hid": {"g": 1.0, "o": 0.0}}}
+      dev.clear_temperature_calibration("hts221")
+      result = (
+          dev.get_temperature_calibration("hts221") is None
+          and dev.get_temperature_calibration("wsen_hids") == {"gain": 1.0, "offset": 0.0}
+      )
+    expect_true: true
+    mode: [mock]
+
+  - name: "Clear temperature calibration without any entry does nothing"
+    action: script
+    script: |
+      dev._data = {}
+      dev.clear_temperature_calibration("bme280")
+      result = dev._data == {}
+    expect_true: true
+    mode: [mock]
+
+  - name: "Clear temperature calibration of an unknown sensor raises ValueError"
+    action: script
+    script: |
+      try:
+          dev.clear_temperature_calibration("unknown_sensor")
+          result = False
+      except ValueError:
+          result = True
+    expect_true: true
+    mode: [mock]
+
   - name: "Apply calibration sets gain and offset"
     action: script
     script: |

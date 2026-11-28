@@ -120,6 +120,21 @@ class SteamiConfig(object):
             return None
         return {"gain": entry["g"], "offset": entry["o"]}
 
+    def clear_temperature_calibration(self, sensor):
+        """Remove the temperature calibration of a sensor, if any.
+
+        Args:
+            sensor: sensor name (e.g. ``"wsen_hids"``, ``"hts221"``).
+        """
+        key = _SENSOR_KEYS.get(sensor)
+        if key is None:
+            raise ValueError("unknown sensor: {}".format(sensor))
+        tc = self._data.get("tc")
+        if tc is not None:
+            tc.pop(key, None)
+            if not tc:
+                del self._data["tc"]
+
     def apply_temperature_calibration(self, sensor_instance):
         """Apply stored calibration to a sensor instance.
 
