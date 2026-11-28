@@ -364,6 +364,9 @@ silences them, and `Steami.last_error()` returns the last one.
   `MCP23009E.watch_changes()`, a callback the program does not replace: a
   callback the program registers on a D-pad bit runs too, and
   `disable_interrupt()` on a D-pad bit stops only the program's callbacks.
+  Such a callback gets every raw edge of the expander, without the debounce
+  of `Buttons`: it can see more presses than `get_presses()` when a contact
+  bounces. Use `Buttons` to count presses.
   After a `reset()` of the expander, or after `power_on()` following a
   `power_off()`, the next call sets the D-pad up again, calls made while the
   expander was off included (the D-pad then reads released). Arduino:
