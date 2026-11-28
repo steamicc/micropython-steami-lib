@@ -1109,6 +1109,29 @@ def test_watch_removed_by_none_and_by_reset(drv, dev, chip):
     assert dev.watched() == 0
 
 
+def test_watch_on_a_chip_held_in_reset_enables_nothing(drv, dev, chip):
+    # A pin is enabled only when the chip answered: on a chip held in reset
+    # by power_off(), watched() stays 0, so the owner of the watch sees it
+    # is lost. Same as arduino-steami-lib.
+    watched = []
+    dev.power_off()
+    chip.held = True
+    with pytest.raises(OSError):
+        dev.watch_changes(1 << LEFT, lambda gpx, level: watched.append((gpx, level)))
+    assert dev.watched() == 0
+    levels = []
+    with pytest.raises(OSError):
+        dev.interrupt_on_change(UP, levels.append)
+    dev.power_on()
+    chip.power_on_reset()
+    chip.press(UP)
+    dev.interrupt_event()
+    assert levels == []  # UP was not enabled either
+    dev.watch_changes(1 << LEFT, lambda gpx, level: watched.append((gpx, level)))
+    assert dev.watched() == 1 << LEFT
+    assert chip.regs[GPINTEN] == 1 << LEFT
+
+
 def test_watch_error_is_raised_after_all_events(drv, dev, chip):
     def fail(gpx, level):
         raise ValueError("watch")

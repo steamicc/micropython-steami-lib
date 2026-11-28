@@ -7,7 +7,7 @@ import pytest
 from tests.fake_machine import FakePin, steami_chips
 from tests.fake_machine.i2c_bus import FakeI2CBus
 from tests.fake_machine.mcp23009 import ADDR as MCP_ADDR
-from tests.fake_machine.mcp23009 import DOWN, GPPU, IODIR, LEFT, RIGHT, UP, FakeMCP23009
+from tests.fake_machine.mcp23009 import DOWN, GPINTEN, GPPU, IODIR, LEFT, RIGHT, UP, FakeMCP23009
 from tests.test_steami_board_mock import (  # noqa: F401 (board_module is a fixture)
     Setup,
     board_module,
@@ -1929,6 +1929,29 @@ def test_mock_buttons_dpad_follows_again_after_a_reset_of_the_expander(rig, stea
     rig.advance(60)
     rig.chip.release(LEFT)
     rig.advance(60)
+    assert rig.buttons.was_pressed("LEFT") is True
+
+
+def test_mock_buttons_dpad_follows_again_after_calls_during_a_power_off(rig, steami):
+    # The loop keeps calling Buttons while the expander is held in reset by
+    # power_off(): the call after power_on() still sets the D-pad up again
+    # (pull-ups and interrupts back on the chip). Same as arduino-steami-lib.
+    assert rig.buttons.begin() is True
+    expander = rig.board.steami.mcp23009e()
+    expander.power_off()
+    rig.chip.held = True
+    assert rig.buttons.is_pressed("LEFT") is False
+    assert rig.buttons.was_pressed("LEFT") is False
+    assert expander.watched() == 0
+    expander.power_on()
+    rig.chip.power_on_reset()  # no pull-up, no interrupt
+    assert rig.buttons.is_pressed("LEFT") is False
+    assert expander.watched() == 0xF0
+    assert rig.chip.regs[GPPU] & 0xF0 == 0xF0
+    assert rig.chip.regs[GPINTEN] & 0xF0 == 0xF0
+    rig.advance(50)
+    rig.chip.press(LEFT)
+    rig.chip.release(LEFT)  # a tap between two calls: in the latch
     assert rig.buttons.was_pressed("LEFT") is True
 
 

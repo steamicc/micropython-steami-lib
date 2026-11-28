@@ -341,8 +341,10 @@ silences them, and `Steami.last_error()` returns the last one.
   `MCP23009E.watch_changes()`, a callback the program does not replace: a
   callback the program registers on a D-pad bit runs too, and
   `disable_interrupt()` on a D-pad bit stops only the program's callbacks.
-  After a `reset()` or `power_off()` of the expander, the next call sets the
-  D-pad up again (Arduino: `watchChanges()`).
+  After a `reset()` of the expander, or after `power_on()` following a
+  `power_off()`, the next call sets the D-pad up again, calls made while the
+  expander was off included (the D-pad then reads released). Arduino:
+  `watchChanges()`.
 * `Steami.end()` also resets the logger to `print`; Arduino keeps it.
 * `tone(frequency, duration_ms)` takes no pin: the board has one buzzer.
   Arduino calls `tone(SPEAKER, frequency, duration)`.

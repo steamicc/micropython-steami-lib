@@ -153,7 +153,10 @@ pending event, and `disable_interrupt()` leaves the pin enabled for it: both
 keep working. The pins of `mask` not enabled yet are enabled, with no event
 at registration. There is one watch per expander: a call replaces the
 earlier one, and `None` removes it (its pins stay enabled). `reset()`,
-`power_off()` and the soft reset remove it, as they disable every pin.
+`power_off()` and the soft reset remove it, as they disable every pin. A pin
+is enabled only when the chip answers: on a chip missing or held in reset by
+`power_off()`, the registration raises `OSError` and `watched()` leaves the
+pin out. Register again after `power_on()`.
 
 ## API Reference
 

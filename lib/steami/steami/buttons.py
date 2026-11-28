@@ -147,8 +147,9 @@ class Buttons(Handle):
     Pin.irq() on such a line raises OSError. The D-pad is followed with
     MCP23009E.watch_changes(): the program can register its own callbacks on
     the D-pad bits of Steami.mcp23009e(), or disable them, and both keep
-    working; after a reset() or power_off() of the expander, the next call
-    sets the D-pad up again. With several Buttons objects, the
+    working; after a reset() of the expander, or after power_on() following
+    a power_off(), the next call sets the D-pad up again (while the expander
+    is off, the D-pad reads released). With several Buttons objects, the
     taps made between two calls go to the one started or called last only;
     every object follows the levels of all the buttons.
     """
