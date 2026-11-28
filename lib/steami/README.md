@@ -387,7 +387,7 @@ silences them, and `Steami.last_error()` returns the last one.
 | `accelerometer.py`, `gyroscope.py`, `magnetometer.py` | Motion and magnetic field, as vectors |
 | `compass.py` | Heading and direction, with a calibration on MENU |
 | `light.py`, `color.py`, `gesture.py` | APDS-9960, V1a and V1b only |
-| `buttons.py` | Press and release of the seven buttons |
+| `buttons.py` | Presses (counted with `get_presses()`) and releases of the seven buttons |
 | `weather_station.py` | Temperature, humidity, pressure graph and compass on four screen pages, changed with the buttons (and a swipe on V1a/V1b) |
 | `pads.py` | Read a crocodile pad and drive another one, on the expander |
 

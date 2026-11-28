@@ -1,6 +1,10 @@
 """Tests of the STeaMi function classes (steami.handle and one module per function)."""
 
+import ast
 import math
+import sys
+import types
+from pathlib import Path
 
 import pytest
 
@@ -2149,6 +2153,68 @@ def test_mock_buttons_get_presses_stops_at_255(rig):
         rig.advance(30)
         rig.tap("A", 30)
     assert rig.buttons.get_presses("A") == 255
+
+
+EXAMPLE = Path(__file__).parent.parent / "lib" / "steami" / "examples" / "buttons.py"
+
+
+def run_buttons_example(rig, monkeypatch, wait_ms, turns):
+    """Run lib/steami/examples/buttons.py on the rig and return what it printed.
+
+    Each sleep_ms() of its loop waits wait_ms on the rig clock (a slow loop),
+    which runs the taps set on the rig; the sleep after the given number of
+    turns stops the program with KeyboardInterrupt, as Ctrl-C would.
+    """
+    lines = []
+    waits = []
+
+    def sleep_ms(ms):
+        if len(waits) == turns:
+            raise KeyboardInterrupt
+        waits.append(ms)
+        rig.advance(wait_ms)
+
+    def capture(*args):
+        lines.append(" ".join(str(arg) for arg in args))
+
+    clock = types.ModuleType("time")
+    clock.sleep_ms = sleep_ms
+    monkeypatch.setitem(sys.modules, "time", clock)
+    code = compile(EXAMPLE.read_text(encoding="utf-8"), str(EXAMPLE), "exec")
+    with pytest.raises(KeyboardInterrupt):
+        exec(code, {"__name__": "__main__", "print": capture})
+    return lines
+
+
+def test_mock_buttons_example_counts_every_tap_of_a_slow_loop(rig, monkeypatch):
+    # Hardware run 2 (Arduino #341): the loop also redrew the screen, about
+    # 520 ms a turn. Three taps on A and one on UP in the first turn, one more
+    # on A in the second: the example prints every press of A, and on both
+    # buttons the release at the call that sees the press.
+    t0 = rig.now
+    for k in range(3):
+        rig.tap_at(t0 + 50 + k * 150, "A", 60)
+    rig.dpad_tap_at(t0 + 100, UP, 60)
+    rig.tap_at(t0 + 700, "A", 60)
+    lines = run_buttons_example(rig, monkeypatch, 520, turns=2)
+    assert lines == [
+        "Buttons ready.",
+        "A pressed (+3, total 3)",
+        "A released",
+        "UP pressed (+1, total 1)",
+        "UP released",
+        "A pressed (+1, total 4)",
+        "A released",
+    ]
+
+
+def test_mock_buttons_example_docstring_matches_the_taps():
+    # Since #341 a D-pad tap between two calls is seen whole by one call, and
+    # get_presses() counts the presses that the was_pressed() flag merges.
+    doc = ast.get_docstring(ast.parse(EXAMPLE.read_text(encoding="utf-8")))
+    assert "get_presses()" in doc
+    assert "At most one press per button" not in doc
+    assert "as released at a later one" not in doc
 
 
 def test_mock_buttons_quick_taps_on_a_faster_than_the_loop_are_all_reported(rig):
