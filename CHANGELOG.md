@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [0.38.7](https://github.com/steamicc/micropython-steami-lib/compare/v0.38.6...v0.38.7) (2026-11-28)
+
+
+### Bug Fixes
+
+* **steami:** Report every button tap made between two slow calls. ([#521](https://github.com/steamicc/micropython-steami-lib/issues/521)) ([342cd4c](https://github.com/steamicc/micropython-steami-lib/commit/342cd4c1ba577fc6a47bb9f23d6de8ba8b47b429)), closes [steamicc/arduino-steami-lib#346](https://github.com/steamicc/arduino-steami-lib/issues/346) [#341](https://github.com/steamicc/micropython-steami-lib/issues/341) [arduino-steami-lib#346](https://github.com/arduino-steami-lib/issues/346)
+
 ## [0.38.6](https://github.com/steamicc/micropython-steami-lib/compare/v0.38.5...v0.38.6) (2026-11-28)
 
 
