@@ -196,3 +196,9 @@ def decode_revision(rev):
 # Buttons: a change is taken at once, then the bounces of the next 20 ms are ignored.
 DEBOUNCE_MS = const(20)
 POLL_MS = const(5)
+
+# Crocodile pads on the MCP23009E expander: GPIO numbers, for MCP23009Pin.
+PAD_P28 = const(0)
+PAD_P29 = const(1)
+PAD_P24 = const(2)
+PAD_P25 = const(3)

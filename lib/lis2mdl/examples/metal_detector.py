@@ -4,16 +4,16 @@ Measure a baseline, then loop and print an alert (with intensity bar)
 when magnitude deviates significantly.  Higher-pitched buzzer beep for
 stronger fields — like a real metal detector.
 
-The buzzer uses hardware PWM (Timer 1 channel 4 on PA11/SPEAKER) so the
-tone is generated in the background while the CPU continues reading the
+steami.tone() drives the buzzer with hardware PWM and stops it by itself,
+so the tone plays in the background while the CPU keeps reading the
 magnetometer.
 """
 
 from time import sleep_ms
 
 from lis2mdl import LIS2MDL
-from machine import I2C, Pin
-from pyb import Timer
+from machine import I2C
+from steami import tone
 
 BASELINE_SAMPLES = 30
 BASELINE_DELAY_MS = 100
@@ -21,28 +21,6 @@ BASELINE_DELAY_MS = 100
 MIN_ALERT_DELTA_UT = 8.0
 MAX_ALERT_DELTA_UT = 60.0
 BAR_WIDTH = 20
-
-# Hardware PWM on SPEAKER pin (PA11 = TIM1_CH4)
-buzzer_tim = Timer(1, freq=1000)
-buzzer_ch = buzzer_tim.channel(4, Timer.PWM, pin=Pin("SPEAKER"))
-buzzer_ch.pulse_width_percent(0)
-
-
-def tone(freq, duration_ms):
-    """Play a tone at the given frequency for duration_ms using hardware PWM."""
-    if freq <= 0:
-        buzzer_ch.pulse_width_percent(0)
-        sleep_ms(duration_ms)
-        return
-    buzzer_tim.freq(freq)
-    buzzer_ch.pulse_width_percent(50)
-    sleep_ms(duration_ms)
-    buzzer_ch.pulse_width_percent(0)
-
-
-def no_tone():
-    """Silence the buzzer."""
-    buzzer_ch.pulse_width_percent(0)
 
 
 def make_bar(value, max_value, width=20):

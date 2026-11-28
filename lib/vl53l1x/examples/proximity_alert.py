@@ -6,8 +6,8 @@ increases as the object gets closer.
 
 from time import sleep_ms
 
-from machine import I2C, Pin
-from pyb import Timer
+from machine import I2C
+from steami import no_tone, tone
 from vl53l1x import VL53L1X
 
 DISTANCE_THRESHOLD_MM = 200
@@ -15,11 +15,6 @@ DISTANCE_THRESHOLD_MM = 200
 # Sensor configuration
 i2c = I2C(1)
 tof = VL53L1X(i2c)
-
-# Buzzer initialisation
-buzzer_tim = Timer(1, freq=1000)
-buzzer_ch = buzzer_tim.channel(4, Timer.PWM, pin=Pin("SPEAKER"))
-buzzer_ch.pulse_width_percent(0)
 
 try:
     while True:
@@ -32,14 +27,13 @@ try:
             # Security limits
             freq = max(500, min(1500, freq))
 
-            buzzer_tim.freq(freq)
-            buzzer_ch.pulse_width_percent(50)
+            tone(freq)
         else:
-            buzzer_ch.pulse_width_percent(0)
+            no_tone()
 
         sleep_ms(50)
 
 except KeyboardInterrupt:
     pass
 finally:
-    buzzer_ch.pulse_width_percent(0)
+    no_tone()

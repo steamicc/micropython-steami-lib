@@ -429,3 +429,76 @@ def test_weather_station_gauge_stands_out_from_its_track_on_the_grey_screen(monk
 def test_weather_station_gauge_is_blue_on_the_colour_screen(monkeypatch):
     const, gauges = _weather_station_gauge_colors(monkeypatch, v1c=True)
     assert gauges == [const.BLUE]
+
+
+def _run_pads_example(monkeypatch, contact_levels):
+    """Run pads.py with fake modules; return the values written to the LED pad.
+
+    P24 reads each level of contact_levels in turn, then sleep_ms() stops the
+    program with KeyboardInterrupt, as Ctrl-C would.
+    """
+    from tests.fake_machine import micropython_stub
+
+    monkeypatch.setitem(sys.modules, "micropython", micropython_stub)
+    const = _load_file("_pads_const", LIB_DIR / "steami" / "steami" / "const.py")
+    writes = []
+    levels = list(contact_levels)
+
+    class FakePin:
+        IN, OUT, PULL_UP = "in", "out", "pull_up"
+
+        def __init__(self, mcp, gpio, mode, pull=None, value=None):
+            self.gpio = gpio
+            if gpio == const.PAD_P28:
+                writes.append(value)
+
+        def value(self, *args):
+            if args:
+                assert self.gpio == const.PAD_P28
+                writes.append(int(args[0]))
+                return None
+            assert self.gpio == const.PAD_P24
+            return levels.pop(0)
+
+    mcp23009e = types.ModuleType("mcp23009e")
+    mcp23009e.MCP23009Pin = FakePin
+
+    class Board:
+        @staticmethod
+        def mcp23009e():
+            return object()
+
+    steami = types.ModuleType("steami")
+    steami.Steami = Board
+    steami.PAD_P24, steami.PAD_P28 = const.PAD_P24, const.PAD_P28
+    steami.tone = lambda *args: None
+    steami.no_tone = lambda: None
+    monkeypatch.setitem(sys.modules, "mcp23009e", mcp23009e)
+    monkeypatch.setitem(sys.modules, "steami", steami)
+
+    def sleep_ms(ms):
+        if not levels:
+            raise KeyboardInterrupt
+
+    monkeypatch.setattr(time, "sleep_ms", sleep_ms, raising=False)
+    path = LIB_DIR / "steami" / "examples" / "pads.py"
+    exec(compile(path.read_text(encoding="utf-8"), str(path), "exec"), {"__name__": "__main__"})
+    return writes
+
+
+def test_pads_example_sinks_the_led_current_through_the_open_drain_pad(monkeypatch):
+    # The MCP23009E outputs are open-drain: a 1 leaves the pad floating, so
+    # the LED is wired from 3V3 to P28 and lights when the pad is driven to
+    # 0. The pad starts released (LED off), goes to 0 while P24 is grounded,
+    # back to 1 when P24 opens, and is released again on Ctrl-C.
+    writes = _run_pads_example(monkeypatch, [1, 0, 0, 1])
+    assert writes == [1, 1, 0, 1, 1]
+
+
+def test_pads_example_wiring_puts_the_led_between_3v3_and_the_pad():
+    doc = ast.get_docstring(
+        ast.parse((LIB_DIR / "steami" / "examples" / "pads.py").read_text(encoding="utf-8"))
+    )
+    assert "3V3" in doc
+    assert "open-drain" in doc
+    assert "to GND, and" not in doc

@@ -24,15 +24,10 @@ from mcp23009e.const import (
     MCP23009_LOGIC_LOW,
     MCP23009_PULLUP,
 )
-from pyb import Timer
+from steami import no_tone, tone
 
 # Board pins
 MENU_BUTTON = Pin("MENU_BUTTON", Pin.IN, Pin.PULL_UP)
-
-# Hardware PWM on SPEAKER pin (PA11 = TIM1_CH4)
-buzzer_tim = Timer(1, freq=1000)
-buzzer_ch = buzzer_tim.channel(4, Timer.PWM, pin=Pin("SPEAKER"))
-buzzer_ch.pulse_width_percent(0)
 
 # I2C and expander setup
 i2c = I2C(1)
@@ -62,20 +57,6 @@ NOTES_HIGH = {
     "DOWN": 659,   # E5
     "LEFT": 698,   # F5
 }
-
-
-def tone(freq):
-    """Start a tone using hardware PWM."""
-    if freq <= 0:
-        no_tone()
-        return
-    buzzer_tim.freq(freq)
-    buzzer_ch.pulse_width_percent(50)
-
-
-def no_tone():
-    """Silence the buzzer."""
-    buzzer_ch.pulse_width_percent(0)
 
 
 def setup_buttons():

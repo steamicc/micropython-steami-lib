@@ -8,8 +8,8 @@ Updates hardware only when the note changes to prevent jitter.
 from time import sleep_ms
 
 from apds9960 import uAPDS9960 as APDS9960
-from machine import I2C, Pin
-from pyb import Timer
+from machine import I2C
+from steami import no_tone, tone
 
 # Calibration Constants
 # You may need to adjust MAX_LIGHT depending on your room's ambient lighting
@@ -29,11 +29,6 @@ i2c = I2C(1)
 apds = APDS9960(i2c)
 apds.enable_light_sensor()
 
-# Hardware PWM on SPEAKER pin
-buzzer_tim = Timer(1, freq=1000)
-buzzer_ch = buzzer_tim.channel(4, Timer.PWM, pin=Pin("SPEAKER"))
-buzzer_ch.pulse_width_percent(0)
-
 print("=======================")
 print("    Light Theremin     ")
 print("=======================")
@@ -51,7 +46,7 @@ try:
         if light_level < MIN_LIGHT:
             # Only update hardware/console if it wasn't already muted
             if last_freq != 0:
-                buzzer_ch.pulse_width_percent(0)
+                no_tone()
                 print("Muted")
                 last_freq = 0
         else:
@@ -71,8 +66,7 @@ try:
 
             # Update the buzzer tone
             if freq != last_freq:
-                buzzer_tim.freq(freq)
-                buzzer_ch.pulse_width_percent(50)
+                tone(freq)
                 print("Light: {} | Note: {} | Freq: {} Hz".format(light_level, note_index, freq), end="\r")
                 last_freq = freq
 
@@ -81,4 +75,4 @@ try:
 except KeyboardInterrupt:
     print("\nTheremin stopped.")
 finally:
-    buzzer_ch.pulse_width_percent(0)
+    no_tone()
