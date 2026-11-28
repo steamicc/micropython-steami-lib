@@ -2059,6 +2059,35 @@ def test_mock_buttons_dpad_taps_all_counted_beside_a_program_callback_and_a_rese
     assert expander.watched() == 0xF0
 
 
+def test_mock_buttons_dpad_taps_all_counted_beside_a_program_callback_that_raises(
+    rig, monkeypatch
+):
+    # #502 meets #512: the program callback on UP raises at every edge, and
+    # Buttons still counts every quick tap, before and after a reset().
+    import sys
+
+    printed = []
+    monkeypatch.setattr(sys, "print_exception", printed.append, raising=False)
+    t0 = rig.start_timeline()
+    expander = rig.board.steami.mcp23009e()
+
+    def bad(_level):
+        raise ValueError("bug in the program")
+
+    expander.interrupt_on_change(UP, bad)
+    for k in range(10):
+        rig.dpad_tap_at(t0 + 100 + k * 450 + 40 * (k % 3), UP, 80)
+    first = rig.slow_loop(t0 + 2000, 300)  # ends between the 5th and the 6th tap
+    assert rig.buttons.is_pressed("UP") is False  # the 5th one read
+    expander.reset()
+    expander.interrupt_on_change(UP, bad)
+    second = rig.slow_loop(t0 + 100 + 10 * 450 + 1500, 300)
+    counts = tuple([a + b for a, b in zip(x, y)] for x, y in zip(first, second))
+    assert_only_on(counts, 3, 10)
+    assert len(printed) >= 10
+    assert rig.buttons.status() == "ok"
+
+
 def test_mock_buttons_dpad_set_up_again_beside_a_pad_callback_that_raises(rig, monkeypatch):
     # After a reset() of the expander, the call that sets the D-pad up again
     # meets a pending pad event whose callback raises: the error is printed,
