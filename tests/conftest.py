@@ -21,6 +21,13 @@ def pytest_addoption(parser):
         default=None,
         help="Run tests for a specific driver only (e.g. wsen-hids)",
     )
+    parser.addoption(
+        "--release",
+        action="store",
+        default=None,
+        choices=("V1a", "V1b", "V1c"),
+        help="STeaMi release of the board (default: found by Steami.begin() on the board)",
+    )
 
 
 def pytest_collection_modifyitems(config, items):
@@ -43,6 +50,31 @@ def pytest_collection_modifyitems(config, items):
 @pytest.fixture
 def port(request):
     return request.config.getoption("--port")
+
+
+@pytest.fixture(scope="session")
+def board_release(request):
+    """Return the STeaMi release of the board on --port, found once per session.
+
+    --release gives it without touching the board. Otherwise Steami.begin()
+    of lib/steami runs on the board; "" when it cannot tell.
+    """
+    from tests.runner.release import UNKNOWN, detect_release
+
+    forced = request.config.getoption("--release")
+    if forced is not None:
+        print(f"\n[STeaMi] Board {forced} (forced by --release)")
+        return forced
+
+    from tests.runner.mpremote_bridge import PROJECT_ROOT, MpremoteBridge
+
+    bridge = MpremoteBridge(port=request.config.getoption("--port"))
+    release = detect_release(bridge, PROJECT_ROOT / "lib")
+    if release == UNKNOWN:
+        print("\n[STeaMi] Board release unknown: tests limited to a release are skipped")
+    else:
+        print(f"\n[STeaMi] Board {release} (found by Steami.begin())")
+    return release
 
 
 def load_scenarios():

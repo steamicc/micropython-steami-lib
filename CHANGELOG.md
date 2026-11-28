@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [0.32.5](https://github.com/steamicc/micropython-steami-lib/compare/v0.32.4...v0.32.5) (2026-11-28)
+
+
+### Bug Fixes
+
+* **steami_screen:** Never crash a widget on NaN or infinity. ([#483](https://github.com/steamicc/micropython-steami-lib/issues/483)) ([861649a](https://github.com/steamicc/micropython-steami-lib/commit/861649a8ca7a491c964ca8d7990a7dee11283275)), closes [#482](https://github.com/steamicc/micropython-steami-lib/issues/482)
+
 ## [0.32.4](https://github.com/steamicc/micropython-steami-lib/compare/v0.32.3...v0.32.4) (2026-11-28)
 
 

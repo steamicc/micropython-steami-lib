@@ -1,6 +1,10 @@
 type: board
 name: "board_temperature_comparison"
 
+# Reads the WSEN-HIDS (HTS221 driver too) and the WSEN-PADS, on the V1a and
+# V1b only: the tests are skipped on a V1c.
+releases: [V1a, V1b]
+
 i2c:
   id: 1
 

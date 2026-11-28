@@ -42,6 +42,11 @@ STEAMI_CHAR_H = const(8)
 STEAMI_DEFAULT_WIDTH = const(128)
 STEAMI_DEFAULT_HEIGHT = const(128)
 
+# --- Number text: a float from this magnitude up (NaN and infinities
+# included) shows "--" in value(), the gauge and graph labels and graph's
+# current value (Arduino SteamiValue and integerText()).
+STEAMI_NUMBER_LIMIT = const(1000000000)
+
 # --- Round-screen fitting (k > 1), in 128 px cells or units ---
 # A title row is lowered for at most a 13-cell text: the N/S row cap.
 STEAMI_TITLE_CAP_CELLS = const(13)
