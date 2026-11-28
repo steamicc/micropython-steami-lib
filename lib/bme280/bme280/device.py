@@ -351,24 +351,55 @@ class BME280(object):
     def _compensate_humidity(self, raw_hum):
         """Compute compensated humidity in Q22.10 fixed point."""
         h = self.t_fine - 76800
-        h = (
-            (((raw_hum << 14) - (self.dig_H4 << 20) - (self.dig_H5 * h)) + 16384)
-            >> 15
-        ) * (
+        # The ">> 14" applies to the second factor only, as in the datasheet.
+        h = ((((raw_hum << 14) - (self.dig_H4 << 20) - (self.dig_H5 * h)) + 16384) >> 15) * (
             (
                 (
-                    (((h * self.dig_H6) >> 10) * (((h * self.dig_H3) >> 11) + 32768))
-                    >> 10
+                    ((((h * self.dig_H6) >> 10) * (((h * self.dig_H3) >> 11) + 32768)) >> 10)
+                    + 2097152
                 )
-                + 2097152
+                * self.dig_H2
+                + 8192
             )
-            * self.dig_H2
-            + 8192
-        ) >> 14
+            >> 14
+        )
         h = h - (((((h >> 15) * (h >> 15)) >> 7) * self.dig_H1) >> 4)
         h = max(h, 0)
         h = min(h, 419430400)
         return h >> 12
+
+    # --------------------------------------------------
+    # Temperature calibration
+    # --------------------------------------------------
+
+    def set_temp_offset(self, offset_c):
+        """Set a temperature offset in °C (gain remains 1.0).
+
+        Args:
+            offset_c: offset value in degrees Celsius.
+        """
+        self._temp_gain = 1.0
+        self._temp_offset = float(offset_c)
+
+    def calibrate_temperature(self, ref_low, measured_low, ref_high, measured_high):
+        """Two-point calibration from reference measurements.
+
+        Computes gain and offset so that the sensor reading is adjusted
+        to match reference values at two temperature points. The measured
+        values must be taken without calibration (gain 1.0, offset 0.0).
+        Pressure and humidity are not affected.
+
+        Args:
+            ref_low: reference temperature at the low point (°C).
+            measured_low: sensor reading at the low point (°C).
+            ref_high: reference temperature at the high point (°C).
+            measured_high: sensor reading at the high point (°C).
+        """
+        delta = float(measured_high - measured_low)
+        if delta == 0.0:
+            raise ValueError("measured_low and measured_high must differ")
+        self._temp_gain = float(ref_high - ref_low) / delta
+        self._temp_offset = float(ref_low) - self._temp_gain * float(measured_low)
 
     # --------------------------------------------------
     # Public measurement methods

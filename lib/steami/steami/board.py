@@ -292,8 +292,9 @@ class _Board(object):
             if chip == Chip.WSEN_HIDS and (
                 cal is None or (cal["gain"] == 1.0 and cal["offset"] == 0.0)
             ):
-                # The tool of steami_config stores the real calibration under
-                # "hts" (HTS221 driver); "hid" is the identity Arduino reads.
+                # Older versions of the steami_config tool stored the real
+                # calibration under "hts" (through the removed HTS221 driver,
+                # same chip at 0x5F); "hid" is the identity Arduino reads.
                 legacy = config.get_temperature_calibration("hts221")
                 if legacy is not None:
                     cal = legacy

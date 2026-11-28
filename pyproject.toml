@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "micropython-steami-lib"
-version = "0.31.3"
+version = "0.32.3"
 description = "MicroPython driver library for the STeaMi board."
 license = {text = "GPL-3.0-or-later"}
 requires-python = ">=3.10"
@@ -145,7 +145,6 @@ extraPaths = [
     "lib/daplink_bridge",
     "lib/daplink_flash",
     "lib/gc9a01",
-    "lib/hts221",
     "lib/im34dt05",
     "lib/ism330dl",
     "lib/lis2mdl",

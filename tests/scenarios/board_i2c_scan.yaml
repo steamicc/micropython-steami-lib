@@ -139,7 +139,7 @@ tests:
     expect: 0xB3
     mode: [hardware]
 
-  - name: "HTS221/WSEN-HIDS device ID (0x5F)"
+  - name: "WSEN-HIDS device ID (0x5F)"
     releases: [V1a, V1b]
     action: hardware_script
     script: |

@@ -19,7 +19,7 @@ def pytest_addoption(parser):
         "--driver",
         action="store",
         default=None,
-        help="Run tests for a specific driver only (e.g. hts221)",
+        help="Run tests for a specific driver only (e.g. wsen-hids)",
     )
     parser.addoption(
         "--release",

@@ -10,7 +10,6 @@ i2c:
 
 # List of drivers needed — triggers mounting lib/ via mpremote
 drivers:
-  - hts221
   - wsen-hids
   - wsen-pads
   - lis2mdl
@@ -21,7 +20,6 @@ tests:
     action: hardware_script
     script: |
       import sys
-      sys.path.insert(0, '/remote/hts221')
       sys.path.insert(0, '/remote/wsen-hids')
       sys.path.insert(0, '/remote/wsen-pads')
       sys.path.insert(0, '/remote/lis2mdl')
@@ -33,15 +31,6 @@ tests:
       i2c = I2C(1)
 
       temps = {}
-
-      # HTS221
-      from hts221.device import HTS221
-      hts = HTS221(i2c)
-      hts.power_off()
-      sleep_ms(20)
-      hts.power_on()
-      sleep_ms(50)
-      temps['HTS221'] = hts.temperature()
 
       # WSEN-HIDS
       from wsen_hids.device import WSEN_HIDS
@@ -70,8 +59,8 @@ tests:
         pad = ' ' * (12 - len(name))
         print('  ' + name + pad + ': ' + str(round(t, 2)) + ' C')
 
-      # Check thermometers in plausible range (HTS221, WSEN-HIDS, WSEN-PADS)
-      thermometers = [temps['HTS221'], temps['WSEN-HIDS'], temps['WSEN-PADS']]
+      # Check thermometers in plausible range (WSEN-HIDS, WSEN-PADS)
+      thermometers = [temps['WSEN-HIDS'], temps['WSEN-PADS']]
       all_ok = all(5.0 <= t <= 50.0 for t in thermometers)
 
       # Check spread between thermometers
@@ -86,7 +75,6 @@ tests:
     action: hardware_script
     script: |
       import sys
-      sys.path.insert(0, '/remote/hts221')
       sys.path.insert(0, '/remote/wsen-pads')
 
       from machine import I2C
@@ -94,20 +82,16 @@ tests:
 
       i2c = I2C(1)
 
-      from hts221.device import HTS221
-      hts = HTS221(i2c)
-      hts.power_off()
-      sleep_ms(20)
-      hts.power_on()
-      sleep_ms(50)
-      t_hts = hts.temperature()
+      from wsen_hids.device import WSEN_HIDS
+      hids = WSEN_HIDS(i2c)
+      t_hids = hids.temperature()
 
       from wsen_pads.device import WSEN_PADS
       pads = WSEN_PADS(i2c)
       t_pads = pads.temperature()
 
-      spread = abs(t_hts - t_pads)
-      print('  HTS221: ' + str(round(t_hts, 2)) + ' C  |  WSEN-PADS: ' + str(round(t_pads, 2)) + ' C  |  Spread: ' + str(round(spread, 2)) + ' C')
+      spread = abs(t_hids - t_pads)
+      print('  WSEN-HIDS: ' + str(round(t_hids, 2)) + ' C  |  WSEN-PADS: ' + str(round(t_pads, 2)) + ' C  |  Spread: ' + str(round(spread, 2)) + ' C')
       result = spread < 5.0
     expect_true: true
     mode: [hardware]
@@ -116,7 +100,6 @@ tests:
     action: hardware_script
     script: |
       import sys
-      sys.path.insert(0, '/remote/hts221')
       sys.path.insert(0, '/remote/wsen-hids')
       sys.path.insert(0, '/remote/wsen-pads')
       sys.path.insert(0, '/remote/lis2mdl')
@@ -131,13 +114,6 @@ tests:
       from wsen_hids.device import WSEN_HIDS
       ref = WSEN_HIDS(i2c)
 
-      from hts221.device import HTS221
-      hts = HTS221(i2c)
-      hts.power_off()
-      sleep_ms(20)
-      hts.power_on()
-      sleep_ms(50)
-
       from wsen_pads.device import WSEN_PADS
       pads = WSEN_PADS(i2c)
 
@@ -150,9 +126,6 @@ tests:
 
       # Read reference just before each sensor to minimize drift
       ref_t = ref.temperature()
-      hts_t = hts.temperature()
-
-      ref_t2 = ref.temperature()
       pads_t = pads.temperature()
 
       ref_t3 = ref.temperature()
@@ -163,36 +136,32 @@ tests:
 
       print('--- Before offset alignment ---')
       print('  WSEN-HIDS (ref): ' + str(round(ref_t, 2)) + ' C')
-      print('  HTS221:          ' + str(round(hts_t, 2)) + ' C')
       print('  WSEN-PADS:       ' + str(round(pads_t, 2)) + ' C')
       print('  LIS2MDL:         ' + str(round(mag_t, 2)) + ' C')
       print('  ISM330DL:        ' + str(round(imu_t, 2)) + ' C')
 
-      spread_before = max(hts_t, pads_t, mag_t, imu_t, ref_t) - min(hts_t, pads_t, mag_t, imu_t, ref_t)
+      spread_before = max(pads_t, mag_t, imu_t, ref_t) - min(pads_t, mag_t, imu_t, ref_t)
       print('  Spread: ' + str(round(spread_before, 2)) + ' C')
 
       # Apply offset to align each sensor to the reference reading
-      hts.set_temp_offset(ref_t - hts_t)
-      pads.set_temp_offset(ref_t2 - pads_t)
+      pads.set_temp_offset(ref_t - pads_t)
       mag.set_temp_offset(ref_t3 - mag_t)
       imu.set_temp_offset(ref_t4 - imu_t)
 
       # Re-read after offset alignment
       sleep_ms(50)
       ref_t5 = ref.temperature()
-      hts_t2 = hts.temperature()
       pads_t2 = pads.temperature()
       mag_t2 = mag.temperature()
       imu_t2 = imu.temperature()
 
       print('--- After offset alignment ---')
       print('  WSEN-HIDS (ref): ' + str(round(ref_t5, 2)) + ' C')
-      print('  HTS221:          ' + str(round(hts_t2, 2)) + ' C')
       print('  WSEN-PADS:       ' + str(round(pads_t2, 2)) + ' C')
       print('  LIS2MDL:         ' + str(round(mag_t2, 2)) + ' C')
       print('  ISM330DL:        ' + str(round(imu_t2, 2)) + ' C')
 
-      spread_after = max(hts_t2, pads_t2, mag_t2, imu_t2, ref_t5) - min(hts_t2, pads_t2, mag_t2, imu_t2, ref_t5)
+      spread_after = max(pads_t2, mag_t2, imu_t2, ref_t5) - min(pads_t2, mag_t2, imu_t2, ref_t5)
       print('  Spread: ' + str(round(spread_after, 2)) + ' C')
 
       # After alignment, spread should be < 2°C
