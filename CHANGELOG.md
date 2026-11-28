@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [0.32.3](https://github.com/steamicc/micropython-steami-lib/compare/v0.32.2...v0.32.3) (2026-11-28)
+
+
+### Bug Fixes
+
+* **bme280:** Apply the humidity >> 14 to the second factor only. ([#479](https://github.com/steamicc/micropython-steami-lib/issues/479)) ([429efc8](https://github.com/steamicc/micropython-steami-lib/commit/429efc89389a64522e95f13990a22b016b541be7)), closes [#476](https://github.com/steamicc/micropython-steami-lib/issues/476)
+
 ## [0.32.2](https://github.com/steamicc/micropython-steami-lib/compare/v0.32.1...v0.32.2) (2026-11-28)
 
 ## [0.32.1](https://github.com/steamicc/micropython-steami-lib/compare/v0.32.0...v0.32.1) (2026-11-28)
