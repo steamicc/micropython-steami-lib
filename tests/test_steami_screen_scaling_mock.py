@@ -666,13 +666,13 @@ def test_mock_value_label_never_enters_the_value_rows(panel):
 def test_mock_bar_at_240(panel):
     # Arduino test_bar_golden: W - u(40) = 165 wide from x 38, u(8) = 15 rows from
     # cy + u(20) + u(-12) = 135; fill int(165 * 72 / 100) = 118 columns. The
-    # track is DARK in MicroPython (GRID_DARK in Arduino).
+    # track is GRID_DARK, as in Arduino (#437).
     s, raw = panel()
     s.bar(72, 100, -12, color=(119, 255, 119))
     assert box(raw, GREEN) == (38, 135, 155, 149)
     assert count(raw, GREEN) == 118 * 15
-    assert box(raw, DARK) == (156, 135, 202, 149)
-    assert count(raw, DARK) == 47 * 15
+    assert box(raw, GRID_DARK) == (156, 135, 202, 149)
+    assert count(raw, GRID_DARK) == 47 * 15
 
 
 @pytest.mark.parametrize("y_offset", (0, 12, 25, 40, 60, -80))
@@ -695,7 +695,7 @@ def test_mock_bar_is_clipped_to_the_circle_per_row(panel, size, y_offset):
         if c is None:
             continue
         for px in range(max(x, c[0]), min(x + w - 1, c[1], size - 1) + 1):
-            expected[(px, y)] = GREEN if px < x + fill else DARK
+            expected[(px, y)] = GREEN if px < x + fill else GRID_DARK
     assert lit(raw) == expected
     assert not outside(raw, slack=0)
     if y_offset in (25, 40):

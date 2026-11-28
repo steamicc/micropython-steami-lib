@@ -16,6 +16,10 @@ from steami_screen.colors import rgb_to_gray4
 class SSD1327Display:
     """Thin wrapper around an SSD1327 driver that accepts RGB colors."""
 
+    # A grey panel: Screen lifts a widget foreground over its own track
+    # (STEAMI_MIN_CONTRAST), as Arduino's isColor() false.
+    is_color = False
+
     def __init__(self, raw):
         self._raw = raw
         self.width = getattr(raw, "width", 128)

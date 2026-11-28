@@ -165,6 +165,9 @@ def _write_glyph(
 class GC9A01Display:
     """Thin wrapper around a GC9A01 driver that accepts RGB colors."""
 
+    # A colour panel: Screen keeps every widget colour as given.
+    is_color = True
+
     def __init__(self, raw):
         self._raw = raw
         self.width = getattr(raw, "width", 240)

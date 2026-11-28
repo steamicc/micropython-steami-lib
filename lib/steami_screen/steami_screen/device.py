@@ -28,6 +28,7 @@ pixels.
 import math
 
 from steami_screen import fonts
+from steami_screen.colors import rgb_to_gray4
 from steami_screen.const import (
     BLACK,
     DARK,
@@ -50,6 +51,7 @@ from steami_screen.const import (
     STEAMI_GRAPH_Y,
     STEAMI_MENU_BAR_PAD,
     STEAMI_MENU_ROW_CELLS,
+    STEAMI_MIN_CONTRAST,
     STEAMI_TITLE_CAP_CELLS,
     STEAMI_VALUE_FIT_MARGIN,
     STEAMI_VALUE_LABEL_GAP,
@@ -460,9 +462,10 @@ class Screen:
         by = cy + self.u(20) + self.u(y_offset)
         fill_w = int(bar_w * min(val, max_val) / max_val) if max_val else 0
 
-        self._bar_rows(bx, bx + bar_w - 1, by, bar_h, DARK)
+        # Track GRID_DARK and fill lifted over it on a grey panel (Arduino 5.10).
+        self._bar_rows(bx, bx + bar_w - 1, by, bar_h, GRID_DARK)
         if fill_w > 0:
-            self._bar_rows(bx, bx + fill_w - 1, by, bar_h, color)
+            self._bar_rows(bx, bx + fill_w - 1, by, bar_h, self._lifted(color, GRID_DARK))
 
     def _bar_rows(self, left, right, top, h, c):
         """Fill columns left..right of rows top..top + h - 1 inside the circle.
@@ -481,6 +484,21 @@ class Screen:
                 x1 = min(right, ch[1], self.width - 1)
                 if x0 <= x1:
                     self._fill_rect(x0, y, x1 - x0 + 1, 1, c)
+
+    def _lifted(self, fg, bg):
+        """fg, or on a grey panel the grey STEAMI_MIN_CONTRAST levels above bg when fg is darker.
+
+        For a widget foreground drawn over the widget's own background (bar
+        fill over its track, gauge fill over its track, selected menu text
+        over its bar), as Arduino SteamiScreen::lifted (spec 5.10): on the
+        SSD1327 BLUE is grey4 6, as DARK, and would vanish on a DARK track.
+        The level is capped at 15. A display whose is_color is true, or
+        that has none, keeps fg. Primitives never adjust colours.
+        """
+        if getattr(self._d, "is_color", True):
+            return fg
+        level = min(rgb_to_gray4(bg) + STEAMI_MIN_CONTRAST, 15)
+        return fg if rgb_to_gray4(fg) >= level else (level * 17,) * 3
 
     def gauge(self, val, min_val=0, max_val=100, color=LIGHT, arc_width=None):
         """Draw a circular arc gauge (270 deg, gap at bottom).
@@ -512,9 +530,10 @@ class Screen:
 
         # Background arc
         self._draw_arc(cx, cy, r, start_angle, sweep, DARK, arc_w)
-        # Filled arc
+        # Filled arc, lifted over the DARK track on a grey panel
         if ratio > 0:
-            self._draw_arc(cx, cy, r, start_angle, int(sweep * ratio), color, arc_w + 2)
+            fill = self._lifted(color, DARK)
+            self._draw_arc(cx, cy, r, start_angle, int(sweep * ratio), fill, arc_w + 2)
 
         # Min/max labels, their top row on the point; when k > 1 at distance
         # outer - arc_w - u(10), in the 6x12 LABEL face, kept inside the circle.
@@ -645,7 +664,7 @@ class Screen:
             if i == selected:
                 by = iy - u(STEAMI_MENU_BAR_PAD)
                 self._fill_rect(u(15), by, self.width - u(30), item_h, DARK)
-                text, c = "> " + items[i], color
+                text, c = "> " + items[i], self._lifted(color, DARK)
             else:
                 text, c = "  " + items[i], GRAY
             if k > 1:
