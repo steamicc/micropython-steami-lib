@@ -207,7 +207,10 @@ micropython-clean: ## Clean MicroPython firmware build artifacts
 #
 #   * Bootloader (first stage, `stm32f103xb_bl`) at 0x08000000
 #       → rarely updated, requires an external SWD probe.
-#   * Interface firmware (second stage, `stm32f103xb_steami32_if`) at 0x08002000
+#   * Interface firmware (second stage, `stm32f103xb_steami32_if`) at 0x0800C000
+#       (DAPLINK_ROM_IF_START in source/hic_hal/stm32/stm32f103xb/daplink_addr.h;
+#       the bootloader region, which also holds the board config zone, ends at
+#       0x0800BFFF: flashing the interface lower overwrites the bootloader)
 #       → updated routinely, typically via the MAINTENANCE USB volume,
 #         or via an external SWD probe for recovery / bricked boards.
 #

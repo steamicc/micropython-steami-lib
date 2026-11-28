@@ -22,7 +22,7 @@ DAPLINK_BL_BUILD_DIR ?= $(DAPLINK_DIR)/projectfiles/make_gcc_arm/$(DAPLINK_BL_TA
 # SWD flash configuration (external probe). Used by the `daplink-deploy-*`
 # SWD targets. The STM32F103CB on the DAPLink chip is flash-compatible with
 # pyOCD's built-in stm32f103rc target for the lower 128 KB.
-DAPLINK_FLASH_ADDR ?= 0x08002000
+DAPLINK_FLASH_ADDR ?= 0x0800C000
 DAPLINK_BL_FLASH_ADDR ?= 0x08000000
 DAPLINK_PYOCD_TARGET ?= stm32f103rc
 DAPLINK_OPENOCD_INTERFACE ?= interface/stlink.cfg
