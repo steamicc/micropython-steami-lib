@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [0.38.3](https://github.com/steamicc/micropython-steami-lib/compare/v0.38.2...v0.38.3) (2026-11-28)
+
+
+### Bug Fixes
+
+* **steami:** Keep a late tone() stop from silencing a newer tone. ([#506](https://github.com/steamicc/micropython-steami-lib/issues/506)) ([65ff165](https://github.com/steamicc/micropython-steami-lib/commit/65ff16556dcaae24db54ee42740d4125380f04bd)), closes [#505](https://github.com/steamicc/micropython-steami-lib/issues/505) [#496](https://github.com/steamicc/micropython-steami-lib/issues/496) [#505](https://github.com/steamicc/micropython-steami-lib/issues/505)
+
 ## [0.38.2](https://github.com/steamicc/micropython-steami-lib/compare/v0.38.1...v0.38.2) (2026-11-28)
 
 
