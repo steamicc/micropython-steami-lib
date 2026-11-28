@@ -337,7 +337,12 @@ silences them, and `Steami.last_error()` returns the last one.
   already taken, MENU is only sampled at each call; when `Buttons` took it
   first, the later `Pin.irq()` raises `OSError`. Pad callbacks set with
   `Steami.mcp23009e().interrupt_on_*()` are still called, by every
-  `Buttons` call.
+  `Buttons` call. `Buttons` follows the D-pad with
+  `MCP23009E.watch_changes()`, a callback the program does not replace: a
+  callback the program registers on a D-pad bit runs too, and
+  `disable_interrupt()` on a D-pad bit stops only the program's callbacks.
+  After a `reset()` or `power_off()` of the expander, the next call sets the
+  D-pad up again (Arduino: `watchChanges()`).
 * `Steami.end()` also resets the logger to `print`; Arduino keeps it.
 * `tone(frequency, duration_ms)` takes no pin: the board has one buzzer.
   Arduino calls `tone(SPEAKER, frequency, duration)`.

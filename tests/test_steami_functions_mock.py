@@ -1887,6 +1887,51 @@ def test_mock_buttons_deliver_the_pad_callbacks_of_the_program(rig, steami):
     expander.disable_interrupt(0)
 
 
+def test_mock_buttons_dpad_survives_the_pad_callbacks_of_the_program(rig, steami):
+    # A program that registers its own callback on a D-pad bit, or disables
+    # its interrupt, does not stop the D-pad of Buttons: both keep working.
+    assert rig.buttons.is_pressed("UP") is False
+    expander = rig.board.steami.mcp23009e()
+    levels = []
+    expander.interrupt_on_change(UP, levels.append)
+    expander.disable_interrupt(DOWN)
+    rig.advance(50)
+    rig.chip.press(UP)
+    rig.advance(60)
+    rig.chip.release(UP)
+    rig.advance(60)
+    assert rig.buttons.was_pressed("UP") is True
+    rig.chip.press(DOWN)
+    rig.advance(60)
+    rig.chip.release(DOWN)
+    rig.advance(60)
+    assert rig.buttons.was_pressed("DOWN") is True
+    assert levels == [0, 1]  # the press, then the release
+    rig.advance(30)
+    assert rig.buttons.is_pressed("UP") is False
+    assert rig.buttons.was_released("UP") is True
+    assert rig.buttons.was_released("DOWN") is True
+    expander.disable_interrupt(UP)
+    assert expander.watched() & (1 << UP)
+
+
+def test_mock_buttons_dpad_follows_again_after_a_reset_of_the_expander(rig, steami):
+    # A reset of the expander by the program removes the watch of Buttons:
+    # the next call sets the D-pad up again.
+    assert rig.buttons.is_pressed("LEFT") is False
+    expander = rig.board.steami.mcp23009e()
+    expander.reset()
+    assert expander.watched() == 0
+    assert rig.buttons.is_pressed("LEFT") is False
+    assert expander.watched() == 0xF0
+    rig.advance(50)
+    rig.chip.press(LEFT)
+    rig.advance(60)
+    rig.chip.release(LEFT)
+    rig.advance(60)
+    assert rig.buttons.was_pressed("LEFT") is True
+
+
 def test_mock_buttons_called_last_get_the_interrupts(rig, steami):
     # Two objects: the IRQs and the D-pad events go to the one called last.
     outer = rig.buttons
