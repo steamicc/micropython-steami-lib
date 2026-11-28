@@ -768,3 +768,88 @@ tests:
       dev._temp_offset = 0.0
     expect_true: true
     mode: [mock]
+
+  # ----- Temperature calibration (public methods) -----
+
+  - name: "set_temp_offset shifts the temperature and resets the gain"
+    action: script
+    script: |
+      base_t = dev.temperature()
+      dev._temp_gain = 1.5
+      dev.set_temp_offset(-2.0)
+      t = dev.temperature()
+      result = (
+          dev._temp_gain == 1.0
+          and dev._temp_offset == -2.0
+          and abs(t - (base_t - 2.0)) < 1e-6
+      )
+      dev._temp_gain = 1.0
+      dev._temp_offset = 0.0
+    expect_true: true
+    mode: [mock]
+
+  - name: "calibrate_temperature maps the measured points onto the references"
+    action: script
+    script: |
+      base_t = dev.temperature()
+      dev.calibrate_temperature(20.0, base_t, 30.0, base_t + 8.0)
+      t = dev.temperature()
+      rt, _, _ = dev.read()
+      ot, _, _ = dev.read_one_shot()
+      result = (
+          abs(dev._temp_gain - 1.25) < 1e-9
+          and abs(t - 20.0) < 1e-6
+          and abs(rt - 20.0) < 1e-6
+          and abs(ot - 20.0) < 1e-6
+      )
+      dev._temp_gain = 1.0
+      dev._temp_offset = 0.0
+    expect_true: true
+    mode: [mock]
+
+  - name: "calibrate_temperature computes gain and offset"
+    action: script
+    script: |
+      dev.calibrate_temperature(20.0, 25.0, 30.0, 35.0)
+      result = (
+          abs(dev._temp_gain - 1.0) < 1e-9
+          and abs(dev._temp_offset - (-5.0)) < 1e-9
+      )
+      dev._temp_gain = 1.0
+      dev._temp_offset = 0.0
+    expect_true: true
+    mode: [mock]
+
+  - name: "calibrate_temperature leaves pressure and humidity unchanged"
+    action: script
+    script: |
+      base_p = dev.pressure_hpa()
+      base_h = dev.humidity()
+      dev.calibrate_temperature(0.0, 1.0, 50.0, 48.0)
+      _, rp, rh = dev.read()
+      result = (
+          abs(dev.pressure_hpa() - base_p) < 1e-6
+          and abs(dev.humidity() - base_h) < 1e-6
+          and abs(rp - base_p) < 1e-6
+          and abs(rh - base_h) < 1e-6
+      )
+      dev._temp_gain = 1.0
+      dev._temp_offset = 0.0
+    expect_true: true
+    mode: [mock]
+
+  - name: "calibrate_temperature rejects identical measured points"
+    action: script
+    script: |
+      dev.set_temp_offset(-1.0)
+      try:
+          dev.calibrate_temperature(20.0, 25.0, 30.0, 25.0)
+          result = False
+      except ValueError:
+          result = dev._temp_gain == 1.0 and dev._temp_offset == -1.0
+      except Exception:
+          result = False
+      dev._temp_gain = 1.0
+      dev._temp_offset = 0.0
+    expect_true: true
+    mode: [mock]

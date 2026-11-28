@@ -371,6 +371,39 @@ class BME280(object):
         return h >> 12
 
     # --------------------------------------------------
+    # Temperature calibration
+    # --------------------------------------------------
+
+    def set_temp_offset(self, offset_c):
+        """Set a temperature offset in °C (gain remains 1.0).
+
+        Args:
+            offset_c: offset value in degrees Celsius.
+        """
+        self._temp_gain = 1.0
+        self._temp_offset = float(offset_c)
+
+    def calibrate_temperature(self, ref_low, measured_low, ref_high, measured_high):
+        """Two-point calibration from reference measurements.
+
+        Computes gain and offset so that the sensor reading is adjusted
+        to match reference values at two temperature points. The measured
+        values must be taken without calibration (gain 1.0, offset 0.0).
+        Pressure and humidity are not affected.
+
+        Args:
+            ref_low: reference temperature at the low point (°C).
+            measured_low: sensor reading at the low point (°C).
+            ref_high: reference temperature at the high point (°C).
+            measured_high: sensor reading at the high point (°C).
+        """
+        delta = float(measured_high - measured_low)
+        if delta == 0.0:
+            raise ValueError("measured_low and measured_high must differ")
+        self._temp_gain = float(ref_high - ref_low) / delta
+        self._temp_offset = float(ref_low) - self._temp_gain * float(measured_low)
+
+    # --------------------------------------------------
     # Public measurement methods
     # --------------------------------------------------
 
