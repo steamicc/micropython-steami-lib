@@ -10,7 +10,9 @@ swiped to the right above the gesture sensor also shows the next page.
 
 The same file runs on V1a, V1b and V1c: the steami classes pick the sensors,
 and the screen lays itself out for the panel it finds (128 px OLED with 16 grey
-levels on V1a/V1b, 240 px colour TFT on V1c). V1c has no gesture sensor:
+levels on V1a/V1b, 240 px colour TFT on V1c). The blue gauge is drawn in
+grey 10 on the grey screen: BLUE gives grey 6 there, the colour of the gauge
+track, and the arc would not show. V1c has no gesture sensor:
 gesture.begin() prints an E20 message and returns False, and the program goes
 on with the buttons alone.
 
@@ -53,6 +55,8 @@ for function in (temperature, humidity, pressure, compass, buttons):
 has_gesture = gesture.begin()  # on V1c: prints E20 and returns False
 Steami.print_info()
 
+# BLUE is grey 6 on the OLED, as the gauge track: lift it to grey 10 there.
+GAUGE_COLOR = BLUE if Steami.is_v1c() else (170, 170, 170)
 PAGES = ("Temperature", "Humidity", "Pressure", "Compass")
 HISTORY = 40
 history = []  # the last 40 pressures
@@ -71,7 +75,7 @@ def draw(page):
         screen.value(one_decimal(temperature.read()), unit="C")
     elif page == 1:
         h = humidity.read()
-        screen.gauge(h, min_val=0, max_val=100, color=BLUE)
+        screen.gauge(h, min_val=0, max_val=100, color=GAUGE_COLOR)
         screen.title(PAGES[page])
         screen.value(one_decimal(h), unit="%")
     elif page == 2:
