@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [0.38.1](https://github.com/steamicc/micropython-steami-lib/compare/v0.38.0...v0.38.1) (2026-11-28)
+
+
+### Bug Fixes
+
+* **steami:** Keep Buttons going when a pad callback raises. ([#502](https://github.com/steamicc/micropython-steami-lib/issues/502)) ([ea50e9e](https://github.com/steamicc/micropython-steami-lib/commit/ea50e9e7bf07e82180aef7cfa64b4e6385cc2da9)), closes [#498](https://github.com/steamicc/micropython-steami-lib/issues/498) [#501](https://github.com/steamicc/micropython-steami-lib/issues/501)
+
 # [0.38.0](https://github.com/steamicc/micropython-steami-lib/compare/v0.37.0...v0.38.0) (2026-11-28)
 
 
