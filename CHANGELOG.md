@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [0.36.0](https://github.com/steamicc/micropython-steami-lib/compare/v0.35.0...v0.36.0) (2026-11-28)
+
+
+### Features
+
+* Port the driver examples that draw on the SSD1327 to steami.Screen. ([#487](https://github.com/steamicc/micropython-steami-lib/issues/487)) ([b4f5bfa](https://github.com/steamicc/micropython-steami-lib/commit/b4f5bfa0de292ad642a72dde10208f996a82e45f)), closes [#475](https://github.com/steamicc/micropython-steami-lib/issues/475)
+
 # [0.35.0](https://github.com/steamicc/micropython-steami-lib/compare/v0.34.0...v0.35.0) (2026-11-28)
 
 
