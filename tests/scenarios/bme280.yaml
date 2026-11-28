@@ -665,6 +665,36 @@ tests:
     expect_true: true
     mode: [mock]
 
+  - name: "altitude() takes the sea-level pressure first, as in Arduino"
+    action: script
+    script: |
+      # Arduino: altitude(float seaLevelHpa = 1013.25).
+      alt = dev.altitude(1020.0)
+      result = abs(alt - 89.6) < 1.0 and dev.sea_level_pressure_hpa == 1013.25
+    expect_true: true
+    mode: [mock]
+
+  - name: "altitude() takes both the sea-level and the measured pressure"
+    action: script
+    script: |
+      alt = dev.altitude(1020.0, pressure_hpa=1009.21)
+      result = abs(alt - 89.6) < 1.0
+    expect_true: true
+    mode: [mock]
+
+  - name: "altitude() rejects a non-positive sea-level pressure"
+    action: script
+    script: |
+      result = True
+      for bad in (0, -5.0):
+          try:
+              dev.altitude(bad)
+              result = False
+          except ValueError:
+              pass
+    expect_true: true
+    mode: [mock]
+
   # ----- Dew point -----
 
   - name: "dew_point() returns plausible value"

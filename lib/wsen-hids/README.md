@@ -111,6 +111,9 @@ When enabled, output registers are not updated until both high and low bytes are
 humidity, temperature = sensor.read()
 ```
 
+The Arduino `ReadResult` struct has the same values in the other order
+(`temperature`, `humidity`): unpack by name when porting code.
+
 ### Humidity only
 
 ```python
