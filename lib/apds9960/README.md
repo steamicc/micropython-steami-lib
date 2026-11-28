@@ -143,8 +143,9 @@ if sensor.is_gesture_available():
 
 ### Exceptions
 
-* `APDS9960InvalidDevId` — raised when device ID does not match `0xAB`
-* `APDS9960InvalidMode` — raised for invalid mode selection
+* `APDS9960Error` — base class of the driver errors, a subclass of `OSError`
+* `APDS9960InvalidDevId` — raised when device ID does not match `0xAB` (an `APDS9960Error`)
+* `APDS9960InvalidMode` — raised for invalid mode selection (a `ValueError`: an invalid argument)
 
 ## Examples
 

@@ -1,4 +1,4 @@
-class ISM330DLError(Exception):
+class ISM330DLError(OSError):
     """Base exception for ISM330DL driver."""
 
 

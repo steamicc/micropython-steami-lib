@@ -1,4 +1,4 @@
-class BME280Error(Exception):
+class BME280Error(OSError):
     """Base exception for BME280 driver."""
 
 
