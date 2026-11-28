@@ -63,6 +63,15 @@ class FakeSoftTimer:
             self.active = False
             self.callback(self)
 
+    def fire_late(self):
+        """Run the callback even after deinit(), as a scheduled callback does.
+
+        A soft timer queues its callback with mp_sched_schedule(): deinit()
+        cannot take back a callback already queued when the timer expired.
+        """
+        self.active = False
+        self.callback(self)
+
 
 @pytest.fixture
 def steami(monkeypatch):
@@ -161,6 +170,38 @@ def test_mock_no_tone_cancels_the_pending_stop(steami):
     steami.tone(440, 200)
     steami.no_tone()
     assert not FakeSoftTimer.armed[0].active
+
+
+def test_mock_late_stop_does_not_silence_a_newer_tone(steami):
+    steami.tone(440, 100)
+    stale = FakeSoftTimer.armed[0]
+    steami.tone(880)
+    stale.fire_late()
+    _, channel = buzzer()
+    assert channel.duty == 50
+
+
+def test_mock_late_stop_keeps_the_newer_timed_tone_and_its_stop(steami):
+    steami.tone(440, 100)
+    stale = FakeSoftTimer.armed[0]
+    steami.tone(880, 500)
+    current = FakeSoftTimer.armed[1]
+    stale.fire_late()
+    _, channel = buzzer()
+    assert channel.duty == 50
+    assert current.active
+    current.fire()
+    assert channel.duty == 0
+
+
+def test_mock_late_stop_after_no_tone_then_tone(steami):
+    steami.tone(440, 100)
+    stale = FakeSoftTimer.armed[0]
+    steami.no_tone()
+    steami.tone(660)
+    stale.fire_late()
+    _, channel = buzzer()
+    assert channel.duty == 50
 
 
 def test_mock_pad_constants(steami):
