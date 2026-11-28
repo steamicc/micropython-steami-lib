@@ -204,6 +204,71 @@ def test_mock_late_stop_after_no_tone_then_tone(steami):
     assert channel.duty == 50
 
 
+def _fire_in_cancel(steami, timer, at_line):
+    """Trace hook: run timer's callback before the at_line-th line of _cancel().
+
+    MicroPython runs scheduled callbacks at backward and conditional jumps
+    (py/vm.c, pending_exception_check), so the stop of the current tone can
+    run in the middle of _cancel(). Line boundaries cover every such jump.
+    """
+    code = steami.buzzer._cancel.__code__
+    state = {"line": 0, "fired": False}
+
+    def local(frame, event, arg):
+        if event == "line" and not state["fired"]:
+            if state["line"] == at_line:
+                state["fired"] = True
+                timer.fire_late()
+            state["line"] += 1
+        return local
+
+    def tracer(frame, event, arg):
+        if frame.f_code is code and not state["fired"]:
+            return local
+        return None
+
+    return tracer, state
+
+
+def _race_in_cancel(steami, action):
+    """Run action() with the current stop firing at each line of _cancel()."""
+    at_line = 0
+    while True:
+        steami.no_tone()
+        steami.tone(1000, 5)
+        current = FakeSoftTimer.armed[-1]
+        tracer, state = _fire_in_cancel(steami, current, at_line)
+        previous = sys.gettrace()
+        sys.settrace(tracer)
+        try:
+            action()
+        finally:
+            sys.settrace(previous)
+        if not state["fired"]:
+            return
+        yield at_line
+        at_line += 1
+
+
+def test_mock_current_stop_firing_inside_cancel_during_tone(steami):
+    lines = 0
+    for _ in _race_in_cancel(steami, lambda: steami.tone(2000)):
+        _, channel = buzzer()
+        assert channel.duty == 50
+        assert buzzer()[0].frequency == 2000
+        lines += 1
+    assert lines >= 3
+
+
+def test_mock_current_stop_firing_inside_cancel_during_no_tone(steami):
+    lines = 0
+    for _ in _race_in_cancel(steami, steami.no_tone):
+        _, channel = buzzer()
+        assert channel.duty == 0
+        lines += 1
+    assert lines >= 3
+
+
 def test_mock_pad_constants(steami):
     # GP0..GP3 of the MCP23009E (wiki: hardware/main-components/buttons-audio).
     assert steami.PAD_P28 == 0

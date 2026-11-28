@@ -17,10 +17,13 @@ _stop = None
 
 
 def _cancel():
+    # Clear _stop before any jump: a stop callback run at the jump then sees
+    # None and does nothing, instead of clearing _stop under our feet.
     global _stop
-    if _stop is not None:
-        _stop.deinit()
-        _stop = None
+    s = _stop
+    _stop = None
+    if s is not None:
+        s.deinit()
 
 
 def _expire(t):
