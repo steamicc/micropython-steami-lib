@@ -8,33 +8,25 @@ This example walks through the full calibration flow:
 - save the calibration to persistent SteamiConfig storage,
 - reload and verify the calibration survives a fresh config load.
 
-Instructions and a countdown are displayed on the SSD1327 OLED screen.
+Instructions and a countdown are displayed on the board screen
+(steami.Screen: the SSD1327 OLED on V1a/V1b, the round GC9A01 TFT on V1c).
 """
 
 import gc
 from time import sleep_ms
 
-import ssd1327
 from daplink_bridge import DaplinkBridge
 from lis2mdl import LIS2MDL
-from machine import I2C, SPI, Pin
+from machine import I2C, Pin
+from steami import Screen
 from steami_config import SteamiConfig
-from steami_screen import Screen, SSD1327Display
 
 # --- Hardware init ---
 
+screen = Screen()
+screen.begin()  # allocate the frame buffer early in the program
+
 i2c = I2C(1)
-
-spi = SPI(1)
-dc = Pin("DATA_COMMAND_DISPLAY")
-res = Pin("RST_DISPLAY")
-cs = Pin("CS_DISPLAY")
-
-display = SSD1327Display(
-    ssd1327.WS_OLED_128X128_SPI(spi, dc, res, cs)
-)
-
-screen = Screen(display)
 
 btn_menu = Pin("MENU_BUTTON", Pin.IN, Pin.PULL_UP)
 
@@ -55,17 +47,31 @@ def wait_menu():
         sleep_ms(10)
 
 
+def text_centered(text, y):
+    """Draw text centred horizontally, its top at row y (real pixels)."""
+    char_w = screen.width // screen.max_chars  # 8 px on 128 and on 240
+    screen.text(text, at=(screen.width // 2 - len(text) * char_w // 2, y))
+
+
+def text_rows(lines, y):
+    """Draw centred lines from row y down, spaced by the text height.
+
+    y is in 128 px units (scaled with screen.u), so that the block keeps its
+    place inside the circle on 128 and 240 px.
+    """
+    y = screen.u(y)
+    row_h = screen.text_height() + screen.u(3)
+    for line in lines:
+        text_centered(line, y)
+        y += row_h
+
+
 def show_intro():
     screen.clear()
     screen.title("COMPAS")
 
-    screen.subtitle(
-        "Tournez la",
-        "carte dans",
-        "toutes les",
-        "directions",
-    )
-    screen.text("Menu=demarrer", at="S")
+    text_rows(("Tournez la", "carte dans", "toutes les", "directions"), 36)
+    screen.subtitle("MENU pour", "demarrer")
 
     screen.show()
 
@@ -74,8 +80,7 @@ def show_progress(remaining):
     screen.clear()
     screen.title("COMPAS")
 
-    screen.text("Acquisition...", at=(12, 44))
-    screen.value(remaining, unit="s")
+    screen.value(remaining, unit="s", label="Acquisition...")
     screen.subtitle("Tournez", "la carte")
 
     screen.show()
@@ -92,15 +97,9 @@ def show_results(readings):
     screen.clear()
     screen.title("COMPAS")
 
-    screen.text("Resultats:", at=(24, 34))
-
-    y = 48
-    for i, heading in enumerate(readings):
-        line = "{}: {} deg".format(i + 1, int(heading))
-        screen.text(line, at=(16, y))
-        y += 12
-
-    screen.text("Termine !", at=(28, 112))
+    text_centered("Resultats:", screen.u(30))
+    text_rows(["{}: {} deg".format(i + 1, int(h)) for i, h in enumerate(readings)], 42)
+    screen.text("Termine !", at="S")
     screen.show()
 
 

@@ -1,21 +1,21 @@
 # Tetris for STeaMi — controlled via ISM330DL accelerometer
-# SSD1327 128x128 OLED, 4-bit greyscale
+# Board screen through steami.Screen: SSD1327 128x128 OLED (greyscale) on
+# V1a/V1b, round GC9A01 240x240 TFT (colour) on V1c. The layout is given in
+# 128 px units and scaled with screen.u().
 # Tilt left/right to move, shake to rotate, button A for hard drop,
 # button B for soft rotation.
 
 import random
 from time import sleep_ms, ticks_ms
 
-import ssd1327
 from ism330dl import ISM330DL
-from machine import I2C, SPI, Pin
+from machine import I2C, Pin
+from steami import Screen
+from steami_screen import BLACK, BLUE, DARK, GRAY, LIGHT, RED, WHITE, YELLOW
 
 # === Display ===
-spi = SPI(1)
-dc = Pin("DATA_COMMAND_DISPLAY")
-res = Pin("RST_DISPLAY")
-cs = Pin("CS_DISPLAY")
-display = ssd1327.WS_OLED_128X128_SPI(spi, dc, res, cs)
+screen = Screen()
+screen.begin()  # allocate the frame buffer early in the program
 
 # === IMU ===
 i2c = I2C(1)
@@ -28,22 +28,28 @@ BTN_B = Pin("B_BUTTON", Pin.IN, Pin.PULL_UP)
 # === Game parameters ===
 COLS = 10
 ROWS = 20
-CELL = 5  # cell size in pixels
-GRID_X = 25  # grid X position (centered for round OLED)
-GRID_Y = 14  # grid Y position (centered for round OLED)
+CELL = screen.u(5)  # cell size: 5 px on 128 px, 9 px on 240 px
+GRID_X = screen.u(25)  # grid X position (centered for the round screen)
+GRID_Y = screen.u(14)  # grid Y position (centered for the round screen)
 TILT_THRESH = 0.35  # tilt threshold (g)
 SHAKE_THRESH = 1.8  # shake threshold (g)
 MOVE_DELAY = 180  # ms between two lateral moves
 SHAKE_COOLDOWN = 400  # ms between two rotations
 
-# === Colors (0-15) ===
-COL_BG = 0
-COL_BORDER = 8
-COL_TEXT = 15
-COL_GHOST = 3
+# === Colors (RGB, shown as grey levels on the SSD1327) ===
+COL_BG = BLACK
+COL_BORDER = GRAY
+COL_TEXT = WHITE
+COL_VALUE = LIGHT
+COL_GHOST = (51, 51, 51)  # grey level 3 of 15
 
-# Piece colors (1-15)
-PIECE_COLORS = [0, 12, 14, 11, 13, 10, 9, 15]
+# Piece colors, in PIECES order (I, O, T, S, Z, J, L), after an unused 0.
+# On the SSD1327 they are the grey levels 12, 14, 9, 13, 8, 6 and 10.
+CYAN = (85, 255, 255)
+MAGENTA = (255, 85, 255)
+LIGHT_GREEN = (150, 255, 150)  # GREEN on the GC9A01, a grey apart from CYAN
+ORANGE = (255, 165, 0)
+PIECE_COLORS = [BLACK, CYAN, YELLOW, MAGENTA, LIGHT_GREEN, RED, BLUE, ORANGE]
 
 # === Tetris pieces (tetrominoes) ===
 # Format: list of rotations, each rotation = list of (row, col)
@@ -80,7 +86,7 @@ PIECES = [
 ]
 
 # === Game state ===
-grid = [[0] * COLS for _ in range(ROWS)]
+grid = [[None] * COLS for _ in range(ROWS)]
 score = 0
 level = 1
 lines_cleared = 0
@@ -135,7 +141,7 @@ def lock_piece():
     full = [r for r in range(ROWS) if all(grid[r])]
     for r in full:
         del grid[r]
-        grid.insert(0, [0] * COLS)
+        grid.insert(0, [None] * COLS)
 
     n = len(full)
     lines_cleared += n
@@ -154,42 +160,27 @@ def ghost_row():
 def draw_cell(row, col, color):
     x = GRID_X + col * CELL
     y = GRID_Y + row * CELL
-    for dy in range(CELL - 1):
-        for dx in range(CELL - 1):
-            display.pixel(x + dx, y + dy, color)
+    screen.rect(x, y, CELL - 1, CELL - 1, color, fill=True)
 
 
-def draw_hline(x, y, w, color):
-    for i in range(w):
-        display.pixel(x + i, y, color)
-
-
-def draw_vline(x, y, h, color):
-    for i in range(h):
-        display.pixel(x, y + i, color)
-
-
-def draw_rect_outline(x, y, w, h, color):
-    draw_hline(x, y, w, color)
-    draw_hline(x, y + h, w, color)
-    draw_vline(x, y, h, color)
-    draw_vline(x + w, y, h, color)
+def draw_text(text, x, y, color):
+    # x, y: top left of the first character, in real pixels
+    screen.text(text, at=(x, y), color=color)
 
 
 def draw_text_centered(text, y, color):
-    # MicroPython framebuf font is 8 px wide per char
-    x = 64 - (len(text) * 8) // 2
+    # y in 128 px units; characters are 8 px wide on 128 and 240 px
+    char_w = screen.width // screen.max_chars
+    x = screen.width // 2 - (len(text) * char_w) // 2
     x = max(x, 0)
-    display.text(text, x, y, color)
+    draw_text(text, x, screen.u(y), color)
 
 
 def draw_screen():
-    display.fill(COL_BG)
+    screen.clear(COL_BG)
 
     # Grid border
-    draw_rect_outline(
-        GRID_X - 1, GRID_Y - 1, COLS * CELL + 1, ROWS * CELL + 1, COL_BORDER
-    )
+    screen.rect(GRID_X - 1, GRID_Y - 1, COLS * CELL + 2, ROWS * CELL + 2, COL_BORDER)
 
     # Background grid (locked cells)
     for r in range(ROWS):
@@ -210,60 +201,58 @@ def draw_screen():
         if 0 <= r < ROWS and 0 <= c < COLS:
             draw_cell(r, c, color)
 
-    # === Right info panel ===
-    px = GRID_X + COLS * CELL + 4
+    # === Right info panel (offsets in 128 px units) ===
+    px = GRID_X + COLS * CELL + screen.u(4)
     py = GRID_Y
 
     # Score
-    display.text("SCR", px, py, COL_TEXT)
+    draw_text("SCR", px, py, COL_TEXT)
     s = str(score)
-    display.text(s[:5], px, py + 10, 14)
+    draw_text(s[:5], px, py + screen.u(10), COL_VALUE)
 
     # Level
-    display.text("LVL", px, py + 25, COL_TEXT)
-    display.text(str(level), px, py + 35, 14)
+    draw_text("LVL", px, py + screen.u(25), COL_TEXT)
+    draw_text(str(level), px, py + screen.u(35), COL_VALUE)
 
     # Lines
-    display.text("LNS", px, py + 50, COL_TEXT)
-    display.text(str(lines_cleared), px, py + 60, 14)
+    draw_text("LNS", px, py + screen.u(50), COL_TEXT)
+    draw_text(str(lines_cleared), px, py + screen.u(60), COL_VALUE)
 
     # Next piece
-    display.text("NXT", px, py + 75, COL_TEXT)
+    draw_text("NXT", px, py + screen.u(75), COL_TEXT)
     ncells = get_cells(0, 0, 0, next_type)
     for r, c in ncells:
         nx = px + c * (CELL - 1)
-        ny = py + 85 + r * (CELL - 1)
-        for dy in range(CELL - 2):
-            for dx in range(CELL - 2):
-                display.pixel(nx + dx, ny + dy, PIECE_COLORS[next_type + 1])
+        ny = py + screen.u(85) + r * (CELL - 1)
+        screen.rect(nx, ny, CELL - 2, CELL - 2, PIECE_COLORS[next_type + 1], fill=True)
 
-    display.show()
+    screen.show()
 
 
 def draw_game_over():
-    display.fill(0)
-    draw_text_centered("GAME", 45, 15)
-    draw_text_centered("OVER", 57, 15)
-    draw_text_centered("SCR:" + str(score), 75, 10)
-    draw_text_centered("B=restart", 95, 7)
-    display.show()
+    screen.clear()
+    draw_text_centered("GAME", 45, WHITE)
+    draw_text_centered("OVER", 57, WHITE)
+    draw_text_centered("SCR:" + str(score), 75, LIGHT)
+    draw_text_centered("B=restart", 95, DARK)
+    screen.show()
 
 
 def draw_start():
-    display.fill(0)
-    draw_text_centered("TETRIS", 22, 15)
-    draw_text_centered("Tilt=move", 45, 10)
-    draw_text_centered("Shake=rot", 57, 10)
-    draw_text_centered("B=rot", 69, 10)
-    draw_text_centered("A=drop", 81, 10)
-    draw_text_centered("A to start", 102, 7)
-    display.show()
+    screen.clear()
+    draw_text_centered("TETRIS", 22, WHITE)
+    draw_text_centered("Tilt=move", 45, LIGHT)
+    draw_text_centered("Shake=rot", 57, LIGHT)
+    draw_text_centered("B=rot", 69, LIGHT)
+    draw_text_centered("A=drop", 81, LIGHT)
+    draw_text_centered("A to start", 102, DARK)
+    screen.show()
 
 
 def reset_game():
     global grid, score, level, lines_cleared, game_over
     global last_fall, last_move, last_shake, fall_interval, next_type
-    grid = [[0] * COLS for _ in range(ROWS)]
+    grid = [[None] * COLS for _ in range(ROWS)]
     score = 0
     level = 1
     lines_cleared = 0

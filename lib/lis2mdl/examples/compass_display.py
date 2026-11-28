@@ -1,43 +1,33 @@
-"""Digital compass example using LIS2MDL and Steami Screen OLED widget.
+"""Digital compass example using LIS2MDL and the steami_screen compass widget.
 
 Reads the magnetic heading using the built-in flat heading method,
-and draws a dynamic compass on the display using the Screen widget.
+and draws a dynamic compass on the board screen using the Screen widget.
 Includes a preliminary 3D calibration step.
+
+The screen is steami.Screen: the SSD1327 OLED on V1a/V1b, the round GC9A01
+TFT on V1c.
 """
 
 from time import sleep_ms
 
-import ssd1327
 from lis2mdl import LIS2MDL
-from machine import I2C, SPI, Pin
-from steami_screen import Screen, SSD1327Display
-
-# Layout Constants for Calibration Screen
-CALIB_MSG1_X = 12
-CALIB_MSG1_Y = 50
-CALIB_MSG2_X = 4
-CALIB_MSG2_Y = 70
+from machine import I2C
+from steami import Screen
 
 # Hardware Initialization
+screen = Screen()
+screen.begin()  # allocate the frame buffer early in the program
+
 i2c = I2C(1)
 mag = LIS2MDL(i2c)
 
-spi = SPI(1)
-dc = Pin("DATA_COMMAND_DISPLAY")
-res = Pin("RST_DISPLAY")
-cs = Pin("CS_DISPLAY")
-
-# Initialize the raw display, then wrap it in the high-level Screen widget system
-raw_display = ssd1327.WS_OLED_128X128_SPI(spi, dc, res, cs)
-display = SSD1327Display(raw_display)
-screen = Screen(display)
-
 try:
     # Calibration Phase
-    raw_display.fill(0)
-    raw_display.text("Calibrating...", CALIB_MSG1_X, CALIB_MSG1_Y, 15)
-    raw_display.text("Move in 8-shape", CALIB_MSG2_X, CALIB_MSG2_Y, 15)
-    raw_display.show()
+    screen.clear()
+    screen.title("COMPASS")
+    screen.text("Calibrating...")
+    screen.subtitle("Move in", "8-shape")
+    screen.show()
     sleep_ms(100)
 
     print("Calibrate the magnetometer by moving it in a figure-eight pattern.")
@@ -61,8 +51,6 @@ try:
 except KeyboardInterrupt:
     pass
 finally:
-    # Clean up and power off display on exit
+    # Clean up: blank the screen on exit
     screen.clear()
     screen.show()
-    sleep_ms(100)
-    raw_display.power_off()

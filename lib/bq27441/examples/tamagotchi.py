@@ -1,4 +1,4 @@
-"""Battery Tamagotchi example using BQ27441, MCP23009E D-PAD, SSD1327 OLED and buzzer.
+"""Battery Tamagotchi example using BQ27441, MCP23009E D-PAD, the board screen and buzzer.
 
 The creature ages based on the real battery percentage and periodically asks
 to be fed or played with via the D-PAD. A correct answer triggers a happy
@@ -8,15 +8,17 @@ fail sound. When the battery drops below 10 %, the game is over.
 Controls:
     UP / DOWN  -> navigate the action menu
     LEFT       -> confirm selection
+
+The screen is steami.Screen: the SSD1327 OLED on V1a/V1b, the round GC9A01
+TFT on V1c. The layout is given in 128 px units and scaled with screen.u().
 """
 
 import random
 from time import sleep_ms, ticks_diff, ticks_ms
 
 import micropython
-import ssd1327
 from bq27441 import BQ27441
-from machine import I2C, SPI, Pin
+from machine import I2C, Pin
 from mcp23009e import MCP23009E
 from mcp23009e.const import (
     MCP23009_BTN_DOWN,
@@ -29,14 +31,13 @@ from mcp23009e.const import (
     MCP23009_PULLUP,
 )
 from pyb import Timer
+from steami import Screen
+from steami_screen import WHITE
 
 # --- Hardware setup ---
 
-spi = SPI(1)
-dc = Pin("DATA_COMMAND_DISPLAY")
-res = Pin("RST_DISPLAY")
-cs = Pin("CS_DISPLAY")
-display = ssd1327.WS_OLED_128X128_SPI(spi, dc, res, cs)
+screen = Screen()
+screen.begin()  # allocate the frame buffer early in the program
 
 i2c = I2C(1)
 reset_expander = Pin("RST_EXPANDER", Pin.OUT)
@@ -64,7 +65,10 @@ IDLE_DISPLAY_MS = 1000
 RESPONSE_TIMEOUT_MS = 5000
 RESULT_DISPLAY_MS = 1000
 
-X0 = 35
+# Rows, in 128 px units (scaled with screen.u)
+CHARGE_Y = 10
+NEED_Y = 20
+SPRITE_Y = 64  # centre of the creature
 ITEM_Y = 100
 ITEM_SPACING = 14
 
@@ -229,45 +233,55 @@ def wait_for_button():
 
 
 @micropython.native
-def draw_character(cx, cy, scale, sprite):
-    """Draw a scaled pixel-art sprite on the display framebuf."""
-    fb = display.framebuf
+def draw_character(cy, scale, sprite):
+    """Draw a pixel-art sprite centred on the screen, its centre at row cy.
+
+    Each sprite pixel is a square of scale * k px (k = 1 on 128 px, 2 on 240 px).
+    """
+    block = scale * screen.k
+    x0 = screen.width // 2 - len(sprite[0]) * block // 2
+    y0 = cy - len(sprite) * block // 2
     for y, row in enumerate(sprite):
         for x, color in enumerate(row):
-            for dy in range(scale):
-                for dx in range(scale):
-                    fb.pixel(cx + x * scale + dx, cy + y * scale + dy, color)
+            if color:
+                screen.rect(x0 + x * block, y0 + y * block, block, block, WHITE, fill=True)
+
+
+def text_centered(text, y):
+    """Draw text centred horizontally, its top at row y (128 px units)."""
+    char_w = screen.width // screen.max_chars  # 8 px on 128 and on 240
+    screen.text(text, at=(screen.width // 2 - len(text) * char_w // 2, screen.u(y)))
 
 
 def create_screen(selected_index, need, sprite, charge):
     """Render one game frame: sprite, need text, charge and action menu."""
-    display.fill(0)
-    display.text(need, 25, 20, 15)
-    display.text(str(charge), 50, 10, 15)
+    screen.clear()
+    text_centered(need, NEED_Y)
+    text_centered(str(charge), CHARGE_Y)
 
     if charge >= 70:
-        scale, x, y = 1, 55, 60
+        scale = 1
     elif charge >= 40:
-        scale, x, y = 2, 45, 50
+        scale = 2
     else:
-        scale, x, y = 3, 40, 40
+        scale = 3
 
-    draw_character(x, y, scale, sprite)
+    draw_character(screen.u(SPRITE_Y), scale, sprite)
 
     for index, label in enumerate(ACTION):
         row_y = ITEM_Y + index * ITEM_SPACING
         prefix = ">" if index == selected_index else " "
-        display.text(prefix + label, X0, row_y, 15)
+        text_centered(prefix + label, row_y)
 
-    display.show()
+    screen.show()
 
 
 def create_game_over_screen():
     """Display the game-over screen."""
-    display.fill(0)
-    display.text("Game Over", 25, 20, 15)
-    draw_character(35, 45, 3, SPRITE_DEAD)
-    display.show()
+    screen.clear()
+    text_centered("Game Over", NEED_Y)
+    draw_character(screen.u(SPRITE_Y), 3, SPRITE_DEAD)
+    screen.show()
 
 
 def action_check(selected_index, need):

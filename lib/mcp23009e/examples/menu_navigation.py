@@ -1,5 +1,8 @@
 """
-Minimal menu navigation example using the MCP23009E D-PAD and SSD1327 OLED display.
+Minimal menu navigation example using the MCP23009E D-PAD and the board screen.
+
+The screen is steami.Screen: the SSD1327 OLED on V1a/V1b, the round GC9A01
+TFT on V1c.
 
 UP/DOWN -> move in the menu
 RIGHT   -> select
@@ -9,8 +12,7 @@ LEFT    -> go back
 from time import sleep_ms
 
 import micropython
-import ssd1327
-from machine import I2C, SPI, Pin
+from machine import I2C, Pin
 from mcp23009e import MCP23009E
 from mcp23009e.const import (
     MCP23009_BTN_DOWN,
@@ -22,20 +24,16 @@ from mcp23009e.const import (
     MCP23009_LOGIC_LOW,
     MCP23009_PULLUP,
 )
-from steami_screen import Screen, SSD1327Display
+from steami import Screen
+
+# Board screen (SSD1327 or GC9A01, picked from the board release)
+screen = Screen()
+screen.begin()  # allocate the frame buffer early in the program
 
 # Setup MCP23009E on I2C bus
 i2c = I2C(1)
 reset_expander = Pin("RST_EXPANDER", Pin.OUT)
 mcp = MCP23009E(i2c, address=MCP23009_I2C_ADDR, reset_pin=reset_expander)
-
-# Setup SSD1327 display on SPI bus
-spi = SPI(1)
-dc = Pin("DATA_COMMAND_DISPLAY")
-res = Pin("RST_DISPLAY")
-cs = Pin("CS_DISPLAY")
-display = SSD1327Display(ssd1327.WS_OLED_128X128_SPI(spi, dc, res, cs))
-screen = Screen(display)
 
 # D-PAD button mapping
 BUTTONS = {
