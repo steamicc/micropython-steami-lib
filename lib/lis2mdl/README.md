@@ -75,8 +75,8 @@ print("Heading: {:.1f}° {}".format(heading, mag.direction_label(heading)))
 ```
 
 The heading is in degrees, **clockwise from north**, in `[0, 360)` (never exactly 360).
-It is measured with the board flat, screen up: the top of the screen (the side opposite the
-USB connector) is the pointing direction. North is 0°, east 90°, south 180°, west 270°.
+It is measured with the board flat, screen up: the top of the screen (the USB connector side)
+is the pointing direction. North is 0°, east 90°, south 180°, west 270°.
 It is computed as `atan2(-x, y)` on the calibrated X and Y axes, so run a calibration first
 (see below).
 
@@ -105,8 +105,9 @@ the same value when the board is flat. It is nan when the acceleration is zero.
   then meaningless.
 * It is valid up to about 60° of tilt. Near vertical, the heading of the top of the screen is not
   defined. The accelerometer noise adds a few degrees: `set_heading_filter()` smooths it.
-* The sign of the LIS2MDL Z axis (`_MAG_Z_SIGN`) is provisional until it is measured on a V1c
-  (issue #344).
+* The sign of the LIS2MDL Z axis (`_MAG_Z_SIGN = -1`) was measured on a V1c on 2026-11-28
+  (MPY#344). With a 15 s min/max calibration, the tilted heading stayed within 6° of the flat one
+  in roll and 11° in pitch.
 
 ---
 

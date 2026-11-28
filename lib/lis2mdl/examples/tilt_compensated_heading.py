@@ -14,7 +14,8 @@ from machine import I2C
 
 
 def pitch_roll_from_accel(ax, ay, az):
-    # ISM330DL axes: X towards the USB connector, Y to the left, Z to the back.
+    # ISM330DL axes: X towards the bottom of the screen (away from the USB
+    # connector), Y to the left, Z to the back.
     # Pitch > 0 when the top of the screen goes up, roll > 0 when the right edge does.
     pitch_rad = atan2(-ax, sqrt(ay * ay + az * az))
     roll_rad = atan2(-ay, -az)

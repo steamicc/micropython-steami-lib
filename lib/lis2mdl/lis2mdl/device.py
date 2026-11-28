@@ -557,8 +557,8 @@ class LIS2MDL(object):
     def heading_from_vectors(self, x, y, z, calibrated=True):
         """
         Computes the flat heading (0..360°, never 360), clockwise from north.
-        Board flat, screen up: the top of the screen (side opposite the USB
-        connector) is the reference direction.
+        Board flat, screen up: the top of the screen (the USB connector side)
+        is the reference direction.
         - calibrated=True: applies offset/scale per axis (recommended)
         - flat only (uses XY)
         """
@@ -580,11 +580,11 @@ class LIS2MDL(object):
         x, y, z = self.magnetic_field()
         return self.heading_from_vectors(x, y, z, calibrated=True)
 
-    # Board frame: R right of the screen, T top of the screen (side opposite
-    # the USB connector), U out of the screen. LIS2MDL: X = R, Y = T (measured,
+    # Board frame: R right of the screen, T top of the screen (the USB
+    # connector side), U out of the screen. LIS2MDL: X = R, Y = T (measured,
     # #434), Z = _MAG_Z_SIGN * U. ISM330DL: X = -T, Y = -R, Z = -U.
-    # Provisional: awaits the V1c measurement of issue #344 (-1 if the two
-    # chips have their Z on the same side of the board, +1 otherwise).
+    # _MAG_Z_SIGN measured on a V1c on 2026-11-28 (MPY#344): with +1, the
+    # tilted heading was off by 40 to 55 degrees in roll.
     _MAG_Z_SIGN = -1
 
     def heading_from_vectors_tilt(self, x, y, z, ax, ay, az, calibrated=True):
