@@ -1,0 +1,62 @@
+name: "🔧 Firmware"
+
+# Builds the MicroPython firmware the way release.yml does after the tag, so a
+# pull request that breaks the freezing of a driver or the firmware size fails
+# here instead of leaving the release a draft.
+#
+# No `paths` filter: `firmware` is a required check, and a workflow skipped by
+# a filter never reports it. The job always runs and decides in a step whether
+# the pull request touches an input of the build.
+
+on:
+  pull_request:
+    branches: ["main"]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: firmware-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  firmware:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: "⏳ Checkout repository"
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 2   # the merge commit and its base parent
+
+      - name: "🔎 Decide whether the firmware must be built"
+        id: decide
+        shell: bash
+        run: |
+          git diff --name-only HEAD^1 HEAD | python3 scripts/firmware_build_needed.py >>"$GITHUB_OUTPUT"
+          if grep -qx 'build=false' "$GITHUB_OUTPUT"; then
+            echo "::notice::No firmware input changed (lib/, Makefile, env.mk, scripts, workflows): build skipped."
+          fi
+
+      # Cached by the action; same GCC as release.yml.
+      - name: "🛠 Install ARM toolchain"
+        if: steps.decide.outputs.build == 'true'
+        uses: carlosperate/arm-none-eabi-gcc-action@v1
+        with:
+          release: '14.2.Rel1'
+
+      # A placeholder tag, so the build runs the same steps as release.yml.
+      - name: "🏷 Write a release-like version into the firmware"
+        if: steps.decide.outputs.build == 'true'
+        run: python3 scripts/write_firmware_version.py "v0.0.0"
+
+      - name: "🔧 Build MicroPython firmware"
+        if: steps.decide.outputs.build == 'true'
+        run: make -j"$(nproc)" micropython-firmware
+
+      - name: "📦 Check the firmware files"
+        if: steps.decide.outputs.build == 'true'
+        run: |
+          BUILD_DIR=".build/micropython-steami/ports/stm32/build-STEAM32_WB55RG"
+          ls -l "${BUILD_DIR}/firmware.hex" "${BUILD_DIR}/firmware.bin"
+          arm-none-eabi-size "${BUILD_DIR}/firmware.elf"
