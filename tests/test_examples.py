@@ -1,6 +1,10 @@
 """Validate example files: syntax, method names, and basic consistency."""
 
 import ast
+import importlib.util
+import sys
+import time
+import types
 from pathlib import Path
 
 import pytest
@@ -329,3 +333,99 @@ def test_compass_demo_smooths_the_heading():
         and isinstance(node.args[0], ast.Constant)
     ]
     assert alphas == [0.2]
+
+
+def _load_file(name, path):
+    spec = importlib.util.spec_from_file_location(name, path)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+def _weather_station_gauge_colors(monkeypatch, v1c):
+    """Run weather_station.py for one loop on page 1; the gauge colours drawn.
+
+    The steami classes are fakes: RIGHT is pressed once, so the first loop
+    draws the Humidity page, and sleep_ms() then stops the program.
+    """
+    from tests.fake_machine import micropython_stub
+
+    monkeypatch.setitem(sys.modules, "micropython", micropython_stub)
+    screen_dir = LIB_DIR / "steami_screen" / "steami_screen"
+    const = _load_file("_weather_const", screen_dir / "const.py")
+    gauges = []
+
+    class Part:
+        RIGHT = "right"
+
+        def __getattr__(self, name):
+            return lambda *args, **kwargs: None
+
+        def begin(self):
+            return True
+
+        def read(self):
+            return 50.0
+
+        def heading(self):
+            return 0.0
+
+    class Screen(Part):
+        def gauge(self, value, **kwargs):
+            gauges.append(kwargs["color"])
+
+    class Buttons(Part):
+        pressed = ["RIGHT"]
+
+        def was_pressed(self, name):
+            if name in self.pressed:
+                self.pressed.remove(name)
+                return True
+            return False
+
+    class Gesture(Part):
+        def begin(self):
+            return not v1c
+
+    class Board:
+        def is_v1c(self):
+            return v1c
+
+        def print_info(self):
+            pass
+
+    steami = types.ModuleType("steami")
+    steami.Screen, steami.Buttons, steami.Gesture = Screen, Buttons, Gesture
+    steami.Temperature = steami.Humidity = steami.Pressure = steami.Compass = Part
+    steami.Steami = Board()
+    steami_screen = types.ModuleType("steami_screen")
+    for name in ("BLACK", "DARK", "GRAY", "LIGHT", "WHITE", "GREEN", "RED", "BLUE"):
+        setattr(steami_screen, name, getattr(const, name))
+    monkeypatch.setitem(sys.modules, "steami", steami)
+    monkeypatch.setitem(sys.modules, "steami_screen", steami_screen)
+
+    def stop(ms):
+        raise KeyboardInterrupt
+
+    monkeypatch.setattr(time, "sleep_ms", stop, raising=False)
+    path = LIB_DIR / "steami" / "examples" / "weather_station.py"
+    exec(compile(path.read_text(encoding="utf-8"), str(path), "exec"), {"__name__": "__main__"})
+    return const, gauges
+
+
+def test_weather_station_gauge_stands_out_from_its_track_on_the_grey_screen(monkeypatch):
+    # gauge() draws its track in DARK (grey 6). BLUE is grey 6 too on the
+    # SSD1327, so the filled arc would not show: on V1a/V1b the example
+    # lifts it to grey 10, as the Arduino WeatherStation example (5.10).
+    const, gauges = _weather_station_gauge_colors(monkeypatch, v1c=False)
+    colors = _load_file(
+        "_weather_colors", LIB_DIR / "steami_screen" / "steami_screen" / "colors.py"
+    )
+    assert len(gauges) == 1
+    assert colors.rgb_to_gray4(gauges[0]) == 10
+    assert colors.rgb_to_gray4(gauges[0]) - colors.rgb_to_gray4(const.DARK) >= 3
+
+
+def test_weather_station_gauge_is_blue_on_the_colour_screen(monkeypatch):
+    const, gauges = _weather_station_gauge_colors(monkeypatch, v1c=True)
+    assert gauges == [const.BLUE]
