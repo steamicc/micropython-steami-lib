@@ -230,7 +230,8 @@ The calibrations of the DAPLink config zone (`tc`, `cm`, `ca`; see
 when the release is forced. For the WSEN-HIDS, the `tc.hid` key is used like in
 Arduino, or `tc.hts` when `tc.hid` is missing or is the identity (the key that
 older versions of `steami_config/examples/calibrate_temperature.py` wrote,
-through the removed HTS221 driver).
+through the removed HTS221 driver; the current tool removes it). Arduino reads
+it the same way (steamicc/arduino-steami-lib#301).
 
 ---
 

@@ -523,10 +523,10 @@ def test_mock_read_driver_exception_gives_absent_value(steami):
     humidity = steami["Humidity"]()
     assert humidity.begin() is True
     del s.bus._devices[0x5F]
-    # The driver raises its own class, which is not an OSError.
+    # The driver raises its own class, an OSError subclass (#320).
     with pytest.raises(WSENHIDSError) as info:
         s.steami.wsen_hids().humidity()
-    assert not isinstance(info.value, OSError)
+    assert isinstance(info.value, OSError)
     assert math.isnan(humidity.read())
 
 

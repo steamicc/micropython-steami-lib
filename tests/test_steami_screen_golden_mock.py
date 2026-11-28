@@ -18,7 +18,13 @@ draw_scaled_text has been a true zoom since #398, but value() still halved
 the width, so the value was 2 * scale px per character right of its anchor.
 Only the x of the value glyphs changed, by that amount (4 px per character at
 scale 2; at="N" did not move); the label and unit calls are unchanged and no
-other entry changed. The compass entry was re-recorded when the rose turned
+other entry changed. The bar, gauge and menu entries were re-recorded for the
+grey minimum contrast (#437, Arduino 5.10): only colours changed. The bar
+track is GRID_DARK (3, was DARK 6, 5 calls) and the color=5 fill over it is
+lifted to 7 (1 call); the color=5 gauge fill over its DARK track is lifted to
+10 (217 calls); the color=5 selected menu text over its DARK bar is lifted to
+10 (1 call). No coordinate and no other entry changed.
+The compass entry was re-recorded when the rose turned
 by -heading so that the needle shows north (#436, as Arduino): its compass(0)
 calls are unchanged, compass(45) and compass(200) moved their letters, ticks
 and needle; no other entry changed.
@@ -308,6 +314,40 @@ def test_mock_graph_one_point_draws_frame_and_value_at_128():
     for line in FRAME_128:
         assert line in calls
     assert _curve(calls) == []
+
+
+# NaN and infinity on the SSD1327 path (Arduino spec 5.11): no widget raises,
+# value() and the integer labels write "--", bar and gauge stay empty, the
+# compass has no needle.
+INF = float("inf")
+
+
+@pytest.mark.parametrize("bad", (NAN, INF, -INF), ids=("nan", "inf", "-inf"))
+def test_mock_value_of_nan_or_infinity_draws_dashes_at_128(bad):
+    calls = record(lambda s: s.value(bad, unit="C", label="Temp"))
+    assert calls == record(lambda s: s.value("--", unit="C", label="Temp"))
+
+
+def test_mock_gauge_labels_of_nan_and_infinity_are_dashes_at_128():
+    calls = record(lambda s: s.gauge(50, min_val=NAN, max_val=INF, color=5))
+    assert [c[1] for c in calls if c[0] == "text"] == ["--", "--"]
+    # A NaN ratio leaves the gauge empty: no call in colour 5.
+    assert not [c for c in calls if c[-1] == 5]
+
+
+def test_mock_bar_and_gauge_of_nan_are_empty_at_128():
+    assert record(lambda s: s.bar(NAN, color=5)) == record(lambda s: s.bar(0, color=5))
+    assert record(lambda s: s.bar(-50, max_val=-100, color=5)) == record(
+        lambda s: s.bar(0, color=5)
+    )
+    assert record(lambda s: s.gauge(NAN, color=5)) == record(lambda s: s.gauge(0, color=5))
+
+
+@pytest.mark.parametrize("bad", (NAN, INF, -INF), ids=("nan", "inf", "-inf"))
+def test_mock_compass_of_nan_or_infinity_has_no_needle_at_128(bad):
+    calls = record(lambda s: s.compass(bad, color=5))
+    assert calls
+    assert not [c for c in calls if c[-1] == 5]
 
 
 # value() centring on 128 (#351, Arduino placeValue: x = cx - tw / 2, with tw

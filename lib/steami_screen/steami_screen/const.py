@@ -16,8 +16,13 @@ RED = (255, 85, 85)
 BLUE = (85, 85, 255)
 YELLOW = (255, 255, 85)
 
-# Internal grid color (used by graph widget)
+# Internal grid color (graph middle line, bar track)
 GRID_DARK = (51, 51, 51)
+
+# Grey minimum contrast (Arduino STEAMI_MIN_CONTRAST): on a grey panel, a
+# widget foreground over the widget's own background is at least this many
+# grey4 levels above it (BLUE and DARK are both grey4 6).
+STEAMI_MIN_CONTRAST = const(4)
 
 # --- Pixel-art face bitmaps (8x8, MSB = left) ---
 FACES = {
@@ -36,6 +41,11 @@ STEAMI_CHAR_H = const(8)
 # --- Default screen dimensions (SSD1327) ---
 STEAMI_DEFAULT_WIDTH = const(128)
 STEAMI_DEFAULT_HEIGHT = const(128)
+
+# --- Number text: a float from this magnitude up (NaN and infinities
+# included) shows "--" in value(), the gauge and graph labels and graph's
+# current value (Arduino SteamiValue and integerText()).
+STEAMI_NUMBER_LIMIT = const(1000000000)
 
 # --- Round-screen fitting (k > 1), in 128 px cells or units ---
 # A title row is lowered for at most a 13-cell text: the N/S row cap.

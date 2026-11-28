@@ -3,6 +3,26 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [0.33.0](https://github.com/steamicc/micropython-steami-lib/compare/v0.32.5...v0.33.0) (2026-11-28)
+
+
+### Bug Fixes
+
+* Derive driver exceptions from OSError. ([#490](https://github.com/steamicc/micropython-steami-lib/issues/490)) ([2847d3e](https://github.com/steamicc/micropython-steami-lib/commit/2847d3e2a4f60d2999acaf2ea96c209fab533c15)), closes [#44](https://github.com/steamicc/micropython-steami-lib/issues/44) [#319](https://github.com/steamicc/micropython-steami-lib/issues/319) [#319](https://github.com/steamicc/micropython-steami-lib/issues/319) [#320](https://github.com/steamicc/micropython-steami-lib/issues/320) [#320](https://github.com/steamicc/micropython-steami-lib/issues/320)
+* **wsen-hids:** Read one-shot data through continuous mode. ([#486](https://github.com/steamicc/micropython-steami-lib/issues/486)) ([41796bd](https://github.com/steamicc/micropython-steami-lib/commit/41796bd84d1a929ff63ad07700a0bd01cf59b065))
+
+
+### Features
+
+* Align BME280.altitude() and the temperature calibration with Arduino. ([#489](https://github.com/steamicc/micropython-steami-lib/issues/489)) ([2ad8065](https://github.com/steamicc/micropython-steami-lib/commit/2ad806565e465e240973bd4b1339147c24aba8fe)), closes [#488](https://github.com/steamicc/micropython-steami-lib/issues/488)
+
+## [0.32.5](https://github.com/steamicc/micropython-steami-lib/compare/v0.32.4...v0.32.5) (2026-11-28)
+
+
+### Bug Fixes
+
+* **steami_screen:** Never crash a widget on NaN or infinity. ([#483](https://github.com/steamicc/micropython-steami-lib/issues/483)) ([861649a](https://github.com/steamicc/micropython-steami-lib/commit/861649a8ca7a491c964ca8d7990a7dee11283275)), closes [#482](https://github.com/steamicc/micropython-steami-lib/issues/482)
+
 ## [0.32.4](https://github.com/steamicc/micropython-steami-lib/compare/v0.32.3...v0.32.4) (2026-11-28)
 
 

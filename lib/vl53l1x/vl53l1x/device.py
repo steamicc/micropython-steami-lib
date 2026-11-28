@@ -129,7 +129,7 @@ class VL53L1X(object):
         self.reset()
         machine.lightsleep(1)
         if self.device_id() != VL53L1X_DEVICE_ID:
-            raise RuntimeError("Failed to find expected ID register values. Check wiring!")
+            raise OSError("VL53L1X not found: wrong model ID, check wiring")
         # Write default configuration
         self.i2c.writeto_mem(
             self.address, REG_DEFAULT_CONFIG_START,

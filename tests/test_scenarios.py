@@ -14,6 +14,7 @@ from tests.runner.executor import (
     prompt_yes_no,
     run_action,
 )
+from tests.runner.release import required_releases, skip_reason
 
 SCENARIOS_DIR = Path(__file__).parent / "scenarios"
 
@@ -91,12 +92,18 @@ def make_mock_instance(scenario):
 
 
 @pytest.mark.parametrize("scenario,test,mode", list(iter_scenario_tests()))
-def test_scenario(scenario, test, mode, port):
+def test_scenario(scenario, test, mode, port, request):
     """Run a single test from a YAML scenario."""
     if mode == "hardware":
         pytest.importorskip("subprocess")
         if port is None:
             pytest.skip("no --port provided for hardware test")
+
+        # Only a test limited to some releases needs the board release.
+        if required_releases(scenario, test) is not None:
+            reason = skip_reason(scenario, test, request.getfixturevalue("board_release"))
+            if reason is not None:
+                pytest.skip(reason)
 
         from tests.runner.mpremote_bridge import MpremoteBridge
 

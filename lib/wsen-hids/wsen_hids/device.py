@@ -82,7 +82,9 @@ class WSEN_HIDS(object):
     AVG_128 = AVG_128
     AVG_256 = AVG_256
 
-    DEFAULT_ONE_SHOT_TIMEOUT_MS = 100
+    # A measurement runs in continuous mode at 12.5 Hz (see _acquire()):
+    # one period is 80 ms, the timeout leaves room for two.
+    DEFAULT_ONE_SHOT_TIMEOUT_MS = 200
     DEFAULT_BOOT_TIME_MS = 10
 
     def __init__(
@@ -108,6 +110,12 @@ class WSEN_HIDS(object):
 
         if check_device:
             self.check_device()
+
+        # The sensor is not power-cycled by a soft reset of the MCU: do not
+        # inherit a latched ONE_SHOT, the heater or a running continuous
+        # mode from a previous program. Start in power-down, ODR 00.
+        self._write_reg(REG_CTRL_2, 0x00)
+        self._write_reg(REG_CTRL_1, 0x00)
 
         self.set_average(avg_t, avg_h)
 
@@ -358,29 +366,46 @@ class WSEN_HIDS(object):
     # Public measurement API
     # -------------------------------------------------------------------------
 
-    def _is_power_down(self):
+    def _is_continuous(self):
         ctrl1 = self._read_reg(REG_CTRL_1)
-        return (ctrl1 & CTRL_1_PD) == 0
+        return bool(ctrl1 & CTRL_1_PD) and (ctrl1 & CTRL_1_ODR_MASK) != ODR_ONE_SHOT
 
-    def _ensure_data(self, timeout_ms=DEFAULT_ONE_SHOT_TIMEOUT_MS):
-        if not self._is_power_down():
-            return
+    def _acquire(self, timeout_ms):
+        """Take one new sample and put CTRL_1 back as it was.
 
-        self.trigger_one_shot()
+        The sample comes from continuous mode at 12.5 Hz, not from
+        CTRL_2.ONE_SHOT: on the STeaMi V1a/V1b the ONE_SHOT bit stays at 1
+        and STATUS never reports new data, while continuous mode works
+        (#425). The Arduino driver does the same. Restoring CTRL_1 keeps
+        the sensor in power-down (or in the mode it was in) between reads.
 
-        start = ticks_ms()
-        while not self.data_ready():
-            if ticks_diff(ticks_ms(), start) >= timeout_ms:
-                raise WSENHIDSTimeoutError("One-shot measurement timeout")
-            sleep_ms(1)
+        Returns:
+            tuple: (h_raw, t_raw).
+        """
+        ctrl1 = self._read_reg(REG_CTRL_1)
+        self._write_reg(REG_CTRL_1, (ctrl1 & ~CTRL_1_ODR_MASK) | CTRL_1_PD | ODR_12_5_HZ)
+        try:
+            start = ticks_ms()
+            while not self.data_ready():
+                if ticks_diff(ticks_ms(), start) >= timeout_ms:
+                    raise WSENHIDSTimeoutError("One-shot measurement timeout")
+                sleep_ms(1)
+            return self._read_raw_humidity_temperature()
+        finally:
+            self._write_reg(REG_CTRL_1, ctrl1)
+
+    def _convert(self, h_raw, t_raw):
+        return self._convert_humidity(h_raw), self._convert_temperature(t_raw)
 
     def read(self):
-        self._ensure_data()
+        """Return (humidity, temperature).
 
-        h_raw, t_raw = self._read_raw_humidity_temperature()
-        humidity = self._convert_humidity(h_raw)
-        temperature = self._convert_temperature(t_raw)
-        return humidity, temperature
+        In continuous mode, the last sample is read. Otherwise (power-down
+        or ODR 00), a new sample is taken first, as read_one_shot() does.
+        """
+        if self._is_continuous():
+            return self._convert(*self._read_raw_humidity_temperature())
+        return self._convert(*self._acquire(self.DEFAULT_ONE_SHOT_TIMEOUT_MS))
 
     def humidity(self):
         return self.read()[0]
@@ -389,16 +414,21 @@ class WSEN_HIDS(object):
         return self.read()[1]
 
     def trigger_one_shot(self):
+        """Start a conversion with CTRL_2.ONE_SHOT, without waiting.
+
+        On the STeaMi V1a/V1b this conversion does not run (#425): use
+        read_one_shot() or set_continuous() to get data.
+        """
         self.set_one_shot_mode()
         self._update_reg(REG_CTRL_2, CTRL_2_ONE_SHOT, CTRL_2_ONE_SHOT)
 
     def read_one_shot(self, timeout_ms=DEFAULT_ONE_SHOT_TIMEOUT_MS):
-        self.trigger_one_shot()
+        """Take a single measurement and return (humidity, temperature).
 
-        start = ticks_ms()
-        while not self.data_ready():
-            if ticks_diff(ticks_ms(), start) >= timeout_ms:
-                raise WSENHIDSTimeoutError("One-shot measurement timeout")
-            sleep_ms(1)
+        The sensor is woken up in continuous mode for one sample, then put
+        back in the mode it was in (power-down after init).
 
-        return self.read()
+        Raises:
+            WSENHIDSTimeoutError: no new sample within timeout_ms.
+        """
+        return self._convert(*self._acquire(timeout_ms))

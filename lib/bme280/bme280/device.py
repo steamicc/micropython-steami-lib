@@ -375,6 +375,8 @@ class BME280(object):
     def set_temp_offset(self, offset_c):
         """Set a temperature offset in °C (gain remains 1.0).
 
+        It replaces any two-point calibration: the gain goes back to 1.0.
+
         Args:
             offset_c: offset value in degrees Celsius.
         """
@@ -464,18 +466,28 @@ class BME280(object):
         hum_rh = self._compensate_humidity(raw_hum) / 1024.0
         return temp_c, press_hpa, hum_rh
 
-    def altitude(self, pressure_hpa=None):
-        """Return estimated altitude in meters.
+    def altitude(self, sea_level_hpa=None, pressure_hpa=None):
+        """Return estimated altitude in meters (ICAO barometric formula).
 
-        Uses the ICAO barometric formula with ``sea_level_pressure_hpa``
-        as reference (default 1013.25 hPa, adjustable).
+        The first parameter is the sea-level pressure, as in Arduino
+        ``altitude(seaLevelHpa)`` and ``steami.Pressure.altitude()``.
 
         Args:
-            pressure_hpa: pressure in hPa. If None, a new reading is taken
-                          via :meth:`pressure_hpa`.
+            sea_level_hpa: sea-level reference pressure in hPa. If None,
+                           ``sea_level_pressure_hpa`` is used (1013.25 hPa
+                           by default, adjustable).
+            pressure_hpa: measured pressure in hPa. If None, a new reading
+                          is taken via :meth:`pressure_hpa`.
+
+        Raises:
+            ValueError: if the sea-level pressure is not positive.
         """
+        if sea_level_hpa is None:
+            sea_level_hpa = self.sea_level_pressure_hpa
+        if sea_level_hpa <= 0:
+            raise ValueError("sea_level_hpa must be positive")
         p = self.pressure_hpa() if pressure_hpa is None else pressure_hpa
-        return 44330.0 * (1.0 - (p / self.sea_level_pressure_hpa) ** 0.1903)
+        return 44330.0 * (1.0 - (p / sea_level_hpa) ** 0.1903)
 
     def dew_point(self):
         """Return dew point temperature in degrees Celsius.
