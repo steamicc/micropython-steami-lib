@@ -20,7 +20,6 @@ This repository contains all the drivers for the main components of the [STeaMi]
 | MCP23009E     | [`mcp23009e`](lib/mcp23009e/README.md)         | `0x20`      | 8-bit I/O expander (D-PAD)            |
 | VL53L1X       | [`vl53l1x`](lib/vl53l1x/README.md)             | `0x29`      | Time-of-Flight distance sensor        |
 | APDS-9960     | [`apds9960`](lib/apds9960/README.md)           | `0x39`      | Proximity, gesture, color, light      |
-| HTS221        | [`hts221`](lib/hts221/README.md)               | `0x5F`      | Humidity + temperature                |
 | WSEN-HIDS     | [`wsen-hids`](lib/wsen-hids/README.md)         | `0x5F`      | Humidity + temperature                |
 | WSEN-PADS     | [`wsen-pads`](lib/wsen-pads/README.md)         | `0x5D`      | Pressure + temperature                |
 | ISM330DL      | [`ism330dl`](lib/ism330dl/README.md)           | `0x6B`      | 6-axis IMU (accel + gyro)             |
@@ -115,7 +114,7 @@ Run `make help` to see all available targets:
 | `make test-sensors` | Sensor driver hardware tests |
 | `make test-all` | All tests (mock + hardware) |
 | `make test-examples` | Validate example files |
-| `make test-<scenario>` | Test a specific scenario (e.g. `make test-hts221`) |
+| `make test-<scenario>` | Test a specific scenario (e.g. `make test-wsen-hids`) |
 | `make ci` | Full CI pipeline (lint + tests + examples) |
 | `make repl` | Open MicroPython REPL |
 | `make mount` | Mount lib/ on the board |
@@ -148,7 +147,7 @@ make test-hardware
 Run tests for a specific driver:
 
 ```bash
-make test-hts221
+make test-wsen-hids
 ```
 
 See full details in [tests/TESTING.md](tests/TESTING.md).

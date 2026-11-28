@@ -27,8 +27,8 @@ body:
       placeholder: |
         ```python
         from machine import I2C
-        from hts221 import HTS221
-        sensor = HTS221(I2C(1))
+        from wsen_hids import WSEN_HIDS
+        sensor = WSEN_HIDS(I2C(1))
         print(sensor.temperature())  # always 0.0
         ```
     validations:
@@ -45,7 +45,6 @@ body:
         - bq27441
         - daplink_flash
         - gc9a01
-        - hts221
         - im34dt05
         - ism330dl
         - lis2mdl

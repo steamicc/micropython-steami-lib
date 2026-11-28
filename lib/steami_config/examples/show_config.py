@@ -52,7 +52,8 @@ print()
 # --------------------------------------------------
 
 print_section("Temperature calibration")
-sensors = ["hts221", "lis2mdl", "ism330dl", "wsen_hids", "wsen_pads"]
+# "hts221" is the legacy key that older calibration tools wrote for the WSEN-HIDS.
+sensors = ["wsen_hids", "wsen_pads", "bme280", "lis2mdl", "ism330dl", "hts221"]
 
 has_temp_cal = False
 for sensor in sensors:

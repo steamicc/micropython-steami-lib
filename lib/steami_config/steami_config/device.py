@@ -1,6 +1,9 @@
 import json
 
 # Map sensor class names to short JSON keys to save space.
+# "hts221" is a legacy name: no board has an HTS221 (the chip at 0x5F is the
+# WSEN-HIDS), but older calibration tools stored its calibration under "hts".
+# It stays so that existing config zones can still be read.
 _SENSOR_KEYS = {
     "hts221": "hts",
     "lis2mdl": "mag",
@@ -87,7 +90,7 @@ class SteamiConfig(object):
         """Store temperature calibration for a sensor.
 
         Args:
-            sensor: sensor name (e.g. ``"hts221"``, ``"wsen_pads"``).
+            sensor: sensor name (e.g. ``"wsen_hids"``, ``"wsen_pads"``).
             gain: multiplicative gain factor.
             offset: additive offset in degrees Celsius.
         """
@@ -125,7 +128,7 @@ class SteamiConfig(object):
         attributes (all STeaMi temperature sensors do).
 
         Args:
-            sensor_instance: a driver instance (e.g. ``HTS221``).
+            sensor_instance: a driver instance (e.g. ``WSEN_HIDS``).
         """
         class_name = type(sensor_instance).__name__.lower()
         if class_name not in _SENSOR_KEYS:

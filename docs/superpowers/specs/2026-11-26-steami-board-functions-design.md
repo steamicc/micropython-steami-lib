@@ -145,7 +145,7 @@ Where Python differs from Arduino (builder's calls, listed for the maintainer to
 
 - Applied once per chip on first use, even when the release is forced, through the existing `steami_config` helpers: `apply_temperature_calibration`, `apply_magnetometer_calibration` and `apply_accelerometer_calibration`.
 - The JSON keys (`tc`, `cm`, `ca`) are already the same as in Arduino.
-- The chip at 0x5F on V1a and V1b is a WSEN-HIDS (wiki hardware pages). Its register map and WHO_AM_I (0xBC) match the HTS221, which is why the current samples and `steami_config/examples/calibrate_temperature.py` drive it with the HTS221 driver. That tool stores the real calibration under `tc.hts`, and an identity calibration (gain 1, offset 0) under `tc.hid`, the key Arduino reads. Builder's call, to keep existing calibrations: use `tc.hid` like Arduino, but use `tc.hts` when `tc.hid` is missing or is the identity.
+- The chip at 0x5F on V1a and V1b is a WSEN-HIDS (wiki hardware pages). Its register map and WHO_AM_I (0xBC) match the HTS221, which is why the samples and `steami_config/examples/calibrate_temperature.py` used to drive it with the HTS221 driver (removed since, see [#426](https://github.com/steamicc/micropython-steami-lib/issues/426)). That tool stored the real calibration under `tc.hts`, and an identity calibration (gain 1, offset 0) under `tc.hid`, the key Arduino reads. Builder's call, to keep existing calibrations: use `tc.hid` like Arduino, but use `tc.hts` when `tc.hid` is missing or is the identity.
 
 ### Changes outside `lib/steami`
 
