@@ -48,9 +48,9 @@ ODR_1_HZ = const(0x01)
 ODR_7_HZ = const(0x02)
 ODR_12_5_HZ = const(0x03)
 
-# CTRL_2 bits
+# CTRL_2 bits (bits 2 to 6 are reserved and must stay at 0)
 CTRL_2_BOOT = const(1 << 7)
-CTRL_2_HEATER = const(1 << 3)
+CTRL_2_HEATER = const(1 << 1)
 CTRL_2_ONE_SHOT = const(1 << 0)
 
 # CTRL_3 bits
@@ -66,7 +66,9 @@ STATUS_T_DA = const(1 << 0)
 AVG_T_MASK = const(0x38)
 AVG_H_MASK = const(0x07)
 
-# Average presets
+# Average presets, named after the number of temperature samples. The
+# same code gives twice as many humidity samples (AVG_2 = 4 samples, ...,
+# AVG_256 = 512 samples).
 AVG_2 = const(0x00)
 AVG_4 = const(0x01)
 AVG_8 = const(0x02)
@@ -76,7 +78,7 @@ AVG_64 = const(0x05)
 AVG_128 = const(0x06)
 AVG_256 = const(0x07)
 
-# Default averaging according to the manual:
-# temperature = 16 samples, humidity = 16 samples
+# Default averaging according to the manual (AV_CONF = 0x1B):
+# temperature = 16 samples, humidity = 32 samples
 AVG_T_DEFAULT = AVG_16
 AVG_H_DEFAULT = AVG_16

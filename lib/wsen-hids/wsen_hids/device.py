@@ -383,6 +383,9 @@ class WSEN_HIDS(object):
             tuple: (h_raw, t_raw).
         """
         ctrl1 = self._read_reg(REG_CTRL_1)
+        # Reading the outputs clears H_DA and T_DA: a sample left unread
+        # (continuous mode, trigger_one_shot()) is not taken as new.
+        self._read_raw_humidity_temperature()
         self._write_reg(REG_CTRL_1, (ctrl1 & ~CTRL_1_ODR_MASK) | CTRL_1_PD | ODR_12_5_HZ)
         try:
             start = ticks_ms()

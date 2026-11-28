@@ -199,20 +199,21 @@ Configure internal measurement averaging for **temperature and humidity**:
 sensor.set_average(avg_t=WSEN_HIDS.AVG_16, avg_h=WSEN_HIDS.AVG_16)
 ```
 
-Available options:
+Available options. A constant is named after the number of temperature
+samples; the same code averages twice as many humidity samples:
 
-```
-AVG_2
-AVG_4
-AVG_8
-AVG_16
-AVG_32
-AVG_64
-AVG_128
-AVG_256
-```
+| Constant | Code | Temperature samples | Humidity samples |
+|----------|------|---------------------|------------------|
+| `AVG_2`   | 0 | 2   | 4   |
+| `AVG_4`   | 1 | 4   | 8   |
+| `AVG_8`   | 2 | 8   | 16  |
+| `AVG_16`  | 3 | 16  | 32  |
+| `AVG_32`  | 4 | 32  | 64  |
+| `AVG_64`  | 5 | 64  | 128 |
+| `AVG_128` | 6 | 128 | 256 |
+| `AVG_256` | 7 | 256 | 512 |
 
-**Defaults:**
+**Defaults** (AV_CONF = 0x1B, 16 temperature and 32 humidity samples):
 
 ```python
 AVG_T_DEFAULT = AVG_16
@@ -222,7 +223,7 @@ AVG_H_DEFAULT = AVG_16
 **Notes:**
 
 * The same averaging constants (`AVG_*`) are used for both temperature and humidity
-* Internally, temperature and humidity are configured in separate registers, but they share identical averaging values
+* Temperature (AV_CONF bits 5:3) and humidity (bits 2:0) are set separately; for one code, humidity averages twice as many samples
 * Higher averaging improves noise performance but increases conversion time
 
 ---
@@ -253,7 +254,9 @@ Reloads internal memory and calibration data from non-volatile memory.
 
 # Heater Control
 
-The sensor contains an internal heater to help remove condensation.
+The sensor contains an internal heater to help remove condensation. It is
+driven by the `HEATER` bit (bit 1) of `CTRL_2`; the other bits of `CTRL_2`
+are left as they are, and bits 2 to 6 stay at 0 (reserved).
 
 Enable heater:
 
