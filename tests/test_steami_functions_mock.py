@@ -1904,3 +1904,41 @@ def test_mock_buttons_called_last_get_the_interrupts(rig, steami):
     assert outer.was_pressed("A") is True
     assert outer.was_pressed("UP") is True
     assert inner.was_pressed("A") is False
+
+
+def test_mock_buttons_dpad_level_is_shared_by_every_object(rig, steami):
+    # The D-pad level is the hardware one: an event taken while another object
+    # is active must still reach the object that is not.
+    first = rig.buttons
+    assert first.is_pressed("UP") is False
+    rig.advance(50)
+    rig.chip.press(UP)
+    rig.advance(30)
+    assert first.is_pressed("UP") is True
+    other = steami["Buttons"]()
+    assert other.is_pressed("UP") is True
+    rig.advance(50)
+    rig.chip.release(UP)  # its event goes to the other object
+    other.is_pressed("UP")
+    rig.advance(30)
+    assert other.is_pressed("UP") is False
+    rig.advance(500)
+    assert first.is_pressed("UP") is False
+    assert first.was_released("UP") is True
+    assert first.is_pressed("UP") is False
+
+
+def test_mock_buttons_dpad_press_while_another_object_is_active(rig, steami):
+    first = rig.buttons
+    assert first.is_pressed("DOWN") is False
+    other = steami["Buttons"]()
+    assert other.is_pressed("DOWN") is False
+    rig.advance(50)
+    rig.chip.press(DOWN)  # held, its event goes to the other object
+    rig.advance(30)
+    assert other.is_pressed("DOWN") is True
+    rig.advance(30)
+    assert first.is_pressed("DOWN") is True
+    assert first.was_pressed("DOWN") is True
+    rig.advance(500)
+    assert first.is_pressed("DOWN") is True

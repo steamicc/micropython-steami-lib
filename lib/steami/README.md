@@ -295,7 +295,9 @@ silences them, and `Steami.last_error()` returns the last one.
   each call reads the latch of the MCP23009E (`interrupt_event()`), so a tap
   gives `was_pressed()` and `is_pressed()` at the next call and the release
   one call later (20 ms with no change on that button). At most one press
-  per button is reported between two calls.
+  per button is reported between two calls. With several `Buttons` objects,
+  those taps go to the one started or called last; every object follows the
+  levels of all the buttons.
 * `Buttons` cannot share EXTI line 0 with
   `MCP23009E(interrupt_pin=Pin("INT_EXPANDER"))`, as in the mcp23009e
   examples `reaction_timer.py` and `sleep_on_button.py`: when the line is

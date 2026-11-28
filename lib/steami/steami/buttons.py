@@ -20,9 +20,14 @@ _PINS = ("A_BUTTON", "B_BUTTON", "MENU_BUTTON")
 # Expander bit of UP, DOWN, LEFT and RIGHT.
 _DPAD_BITS = (MCP23009_BTN_UP, MCP23009_BTN_DOWN, MCP23009_BTN_LEFT, MCP23009_BTN_RIGHT)
 
-# The object the IRQs of A, B and MENU and the D-pad events update: the one
+# The object the IRQs of A, B and MENU and the D-pad presses update: the one
 # started or called last. The handlers hold no object of their own.
 _active = None
+# The D-pad as the expander events left it, shared by every object since it is
+# the hardware: bit d for _DPAD_BITS[d] set while pressed, and the time of the
+# last event of each button.
+_dpad_level = 0
+_dpad_event_at = [0] * 4
 
 
 def _locked(t, stamp):
@@ -41,9 +46,19 @@ def _edge(i):
 
 
 def _dpad(d):
+    # Run by MCP23009E.interrupt_event(), once per event, in order: the level
+    # captured at the interrupt, then the current one.
+    bit = 1 << d
+
     def callback(level):
-        if _active is not None:
-            _active._dpad_event(d, level)
+        global _dpad_level
+        _dpad_event_at[d] = ticks_ms()
+        if level == MCP23009_LOGIC_LOW:
+            _dpad_level |= bit
+            if _active is not None:
+                _active._dpad_down |= bit
+        else:
+            _dpad_level &= ~bit
 
     return callback
 
@@ -98,8 +113,9 @@ class Buttons(Handle):
     expander interrupt is pending leave no trace. Buttons uses EXTI lines 0, 7
     and 8: a line already taken (MCP23009E(interrupt_pin=Pin("INT_EXPANDER"))
     takes line 0) leaves that button sampled at each call only, and a later
-    Pin.irq() on such a line raises OSError. Only one Buttons object gets the
-    interrupts: the one started or called last.
+    Pin.irq() on such a line raises OSError. With several Buttons objects, the
+    taps made between two calls go to the one started or called last only;
+    every object follows the levels of all the buttons.
     """
 
     _NOUN = "D-PAD expander"
@@ -114,19 +130,16 @@ class Buttons(Handle):
         self._state = 0  # bit i set: button i pressed
         self._edges = [0, 0]  # latched presses, latched releases
         self._changed_at = [0] * len(_NAMES)  # time of the last accepted change
-        # D-pad, bit d for _DPAD_BITS[d], set by the expander callbacks: the
-        # level of the last event (set: pressed), a pressed level seen since
-        # the last sample, and the time of the last event.
-        self._dpad_level = 0
+        # D-pad, bit d for _DPAD_BITS[d]: a press seen by the expander
+        # callbacks since the last sample of this object, while it is active.
         self._dpad_down = 0
-        self._dpad_event_at = [0] * 4
 
     def begin(self):
         """Set the pins and their IRQs up and find the D-pad expander.
 
         True when it answered. A, B and MENU work whatever the answer.
         """
-        global _active
+        global _active, _dpad_level
         if self._pins is None:
             self._pins = [Pin(name, Pin.IN, Pin.PULL_UP) for name in _PINS]
             _active = self
@@ -140,11 +153,11 @@ class Buttons(Handle):
             if port is None:
                 port = 0xFF  # on an error the D-pad reads released
             t = ticks_ms() - DEBOUNCE_MS
-            self._dpad_level = 0
+            _dpad_level = 0
             for d, bit in enumerate(_DPAD_BITS):
                 if not port & (1 << bit):
-                    self._dpad_level |= 1 << d
-                self._dpad_event_at[d] = t
+                    _dpad_level |= 1 << d
+                _dpad_event_at[d] = t
         return ok
 
     def is_pressed(self, name):
@@ -213,17 +226,6 @@ class Buttons(Handle):
         if self._primed:
             self._debounce(i, self._pins[i].value() == 0, ticks_ms())
 
-    def _dpad_event(self, d, level):
-        # Run by MCP23009E.interrupt_event(), once per event, in order: the
-        # level captured at the interrupt, then the current one.
-        bit = 1 << d
-        self._dpad_event_at[d] = ticks_ms()
-        if level == MCP23009_LOGIC_LOW:
-            self._dpad_down |= bit
-            self._dpad_level |= bit
-        else:
-            self._dpad_level &= ~bit
-
     def _sample(self):
         global _active
         if self._status == Status.NOT_STARTED:
@@ -231,7 +233,7 @@ class Buttons(Handle):
         _active = self
         # The D-pad first, IRQs enabled: the read uses the I2C bus. On an
         # error the D-pad reads released, with no event.
-        dpad = self._dpad_level if self._read(False, _read_latch) else 0
+        dpad = _dpad_level if self._read(False, _read_latch) else 0
         down = self._dpad_down
         self._dpad_down = 0
 
@@ -260,7 +262,7 @@ class Buttons(Handle):
             if not self._state & (1 << i):
                 if (down | dpad) & bit:
                     self._debounce(i, True, t)
-            elif not dpad & bit and not _locked(t, self._dpad_event_at[d]):
+            elif not dpad & bit and not _locked(t, _dpad_event_at[d]):
                 self._debounce(i, False, t)
         enable_irq(irq)
 
