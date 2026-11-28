@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [0.38.9](https://github.com/steamicc/micropython-steami-lib/compare/v0.38.8...v0.38.9) (2026-11-28)
+
+
+### Bug Fixes
+
+* **lis2mdl:** Align the tilt-compensated heading with the STeaMi axes. ([#500](https://github.com/steamicc/micropython-steami-lib/issues/500)) ([9b01181](https://github.com/steamicc/micropython-steami-lib/commit/9b01181ade2aea13e576131ac953469a664f3f6a)), closes [#344](https://github.com/steamicc/micropython-steami-lib/issues/344) [MPY#344](https://github.com/MPY/issues/344)
+
 ## [0.38.8](https://github.com/steamicc/micropython-steami-lib/compare/v0.38.7...v0.38.8) (2026-11-28)
 
 
