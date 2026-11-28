@@ -55,9 +55,11 @@ import sys
 if "remote" in os.listdir("/"):
     # The sources of this checkout first; '' (the mounted lib/) would make a
     # bare driver folder hide the frozen package of the same name.
-    sys.path[:] = ["/remote/steami", "/remote/mcp23009e"] + [
-        p for p in sys.path if p not in ("", ".", "/remote")
-    ]
+    for entry in ("", ".", "/remote"):
+        while entry in sys.path:
+            sys.path.remove(entry)
+    sys.path.insert(0, "/remote/mcp23009e")
+    sys.path.insert(0, "/remote/steami")
 
 from time import sleep_ms, ticks_add, ticks_diff, ticks_ms
 
