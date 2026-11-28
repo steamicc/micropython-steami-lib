@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [0.35.0](https://github.com/steamicc/micropython-steami-lib/compare/v0.34.0...v0.35.0) (2026-11-28)
+
+
+### Features
+
+* **steami_screen:** Turn the compass rose so the needle shows north. ([#484](https://github.com/steamicc/micropython-steami-lib/issues/484)) ([e6b961a](https://github.com/steamicc/micropython-steami-lib/commit/e6b961afeee924869f0cf87600382bb9ad206d92)), closes [#434](https://github.com/steamicc/micropython-steami-lib/issues/434) [#435](https://github.com/steamicc/micropython-steami-lib/issues/435) [#483](https://github.com/steamicc/micropython-steami-lib/issues/483) [#436](https://github.com/steamicc/micropython-steami-lib/issues/436)
+
 # [0.34.0](https://github.com/steamicc/micropython-steami-lib/compare/v0.33.0...v0.34.0) (2026-11-28)
 
 
