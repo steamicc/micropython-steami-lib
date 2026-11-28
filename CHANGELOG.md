@@ -3,6 +3,8 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [0.32.2](https://github.com/steamicc/micropython-steami-lib/compare/v0.32.1...v0.32.2) (2026-11-28)
+
 ## [0.32.1](https://github.com/steamicc/micropython-steami-lib/compare/v0.32.0...v0.32.1) (2026-11-28)
 
 
