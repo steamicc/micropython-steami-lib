@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [0.37.0](https://github.com/steamicc/micropython-steami-lib/compare/v0.36.1...v0.37.0) (2026-11-28)
+
+
+### Features
+
+* **steami:** Add tone(), no_tone() and the expander pad constants. ([#496](https://github.com/steamicc/micropython-steami-lib/issues/496)) ([a06fe15](https://github.com/steamicc/micropython-steami-lib/commit/a06fe15eff7ed3c0e989dd2d92f66e3bf2b6e896)), closes [#494](https://github.com/steamicc/micropython-steami-lib/issues/494) [#494](https://github.com/steamicc/micropython-steami-lib/issues/494)
+
 ## [0.36.1](https://github.com/steamicc/micropython-steami-lib/compare/v0.36.0...v0.36.1) (2026-11-28)
 
 # [0.36.0](https://github.com/steamicc/micropython-steami-lib/compare/v0.35.0...v0.36.0) (2026-11-28)
