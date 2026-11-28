@@ -47,7 +47,7 @@ make test-sensors
 ### Run tests for a specific driver
 
 ```bash
-make test-hts221
+make test-wsen-hids
 ```
 
 Per-scenario targets are generated automatically from `tests/scenarios/*.yaml`. Any YAML file added to that directory creates a corresponding `make test-<name>` target.
@@ -95,8 +95,9 @@ Each scenario describes:
 Example structure:
 
 ```yaml
-driver: hts221
-driver_class: HTS221
+driver: wsen-hids
+module_name: wsen_hids
+driver_class: WSEN_HIDS
 i2c_address: 0x5F
 
 i2c:

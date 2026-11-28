@@ -72,33 +72,36 @@ same code is used by the Arduino library and documented on the STeaMi wiki.
 
 ## Temperature Calibration
 
-Six sensors are supported: `hts221`, `lis2mdl`, `ism330dl`, `wsen_hids`,
-`wsen_pads`, `bme280`.
+Five sensors are supported: `wsen_hids`, `wsen_pads`, `bme280`, `lis2mdl`,
+`ism330dl`. The name `hts221` is still accepted: it reads and writes the `hts`
+key that older calibration tools filled for the chip at 0x5F, which is the
+WSEN-HIDS (no STeaMi board has an HTS221). `steami` falls back on it for the
+WSEN-HIDS.
 
 ### Store calibration
 
 ```python
-config.set_temperature_calibration("hts221", gain=1.0, offset=-0.5)
+config.set_temperature_calibration("wsen_hids", gain=1.0, offset=-0.5)
 ```
 
 ### Read calibration
 
 ```python
-cal = config.get_temperature_calibration("hts221")
+cal = config.get_temperature_calibration("wsen_hids")
 # -> {"gain": 1.0, "offset": -0.5}   or   None
 ```
 
 ### Apply calibration to a sensor
 
 ```python
-from hts221 import HTS221
+from wsen_hids import WSEN_HIDS
 
-hts = HTS221(i2c)
-config.apply_temperature_calibration(hts)
-# hts._temp_gain and hts._temp_offset are now set
+hids = WSEN_HIDS(i2c)
+config.apply_temperature_calibration(hids)
+# hids._temp_gain and hids._temp_offset are now set
 ```
 
-The sensor class name is used for lookup (`HTS221` -> `"hts221"`).
+The sensor class name is used for lookup (`WSEN_HIDS` -> `"wsen_hids"`).
 
 ---
 
@@ -190,7 +193,7 @@ config.increment_boot_count()
 Data is stored as compact JSON to fit within 1 KB:
 
 ```json
-{"rev":131,"name":"STeaMi-01","tc":{"hts":{"g":1.0,"o":-0.5}},"cm":{"hx":12.3,"hy":-5.1,"hz":0.8,"sx":1.01,"sy":0.98,"sz":1.0},"ca":{"ox":0.01,"oy":-0.02,"oz":0.03},"bc":0}
+{"rev":131,"name":"STeaMi-01","tc":{"hid":{"g":1.0,"o":-0.5}},"cm":{"hx":12.3,"hy":-5.1,"hz":0.8,"sx":1.01,"sy":0.98,"sz":1.0},"ca":{"ox":0.01,"oy":-0.02,"oz":0.03},"bc":0}
 ```
 
 | Key | Content |
@@ -207,8 +210,9 @@ Data is stored as compact JSON to fit within 1 KB:
 | `ca.ox/oy/oz` | Bias offsets in g (X, Y, Z) |
 | `bc` | Boot counter |
 
-Sensor short keys: `hts` (HTS221), `mag` (LIS2MDL), `ism` (ISM330DL),
-`hid` (WSEN-HIDS), `pad` (WSEN-PADS), `bme` (BME280).
+Sensor short keys: `hid` (WSEN-HIDS), `pad` (WSEN-PADS), `bme` (BME280),
+`mag` (LIS2MDL), `ism` (ISM330DL), and `hts`, the legacy key of older
+calibration tools for the WSEN-HIDS (read through the name `hts221`).
 
 ---
 

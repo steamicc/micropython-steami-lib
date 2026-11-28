@@ -12,7 +12,6 @@ firmware with the latest drivers before running this script.
 from time import sleep_ms
 
 from daplink_bridge import DaplinkBridge
-from hts221 import HTS221
 from ism330dl import ISM330DL
 from lis2mdl import LIS2MDL
 from machine import I2C
@@ -33,7 +32,6 @@ config.set_temperature_calibration("wsen_hids", gain=1.0, offset=0.0)
 
 # Calibrate each sensor
 sensors = [
-    ("hts221", HTS221(i2c)),
     ("wsen_pads", WSEN_PADS(i2c)),
     ("lis2mdl", LIS2MDL(i2c)),
     ("ism330dl", ISM330DL(i2c)),
@@ -55,7 +53,6 @@ config2 = SteamiConfig(bridge)
 config2.load()
 
 verify_sensors = [
-    ("hts221", HTS221(i2c)),
     ("wsen_pads", WSEN_PADS(i2c)),
     ("lis2mdl", LIS2MDL(i2c)),
     ("ism330dl", ISM330DL(i2c)),
