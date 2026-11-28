@@ -1036,6 +1036,87 @@ def test_mock_compass_failed_read(steami):
     assert compass.direction() == ""
 
 
+def set_accel_g(s, ax, ay, az):
+    """The raw acceleration of the ISM330DL at +-8 g (0.244 mg/LSB), from values in g."""
+    set_raw(s, 0x6B, 0x28, *(round(v / 0.000244) for v in (ax, ay, az)))
+
+
+@pytest.mark.parametrize(("x", "y"), [(0, 100), (-100, 100), (-100, 0), (300, -150), (100, 100)])
+def test_mock_compass_tilt_heading_flat_is_the_flat_heading(steami, x, y):
+    s = board(steami)
+    compass = steami["Compass"]()
+    set_field(s, x, y, 300)
+    set_accel_g(s, 0, 0, -1)  # screen up and flat
+    assert compass.heading_tilt_compensated() == compass.heading()
+    assert s.messages() == []
+
+
+def test_mock_compass_tilt_heading_sets_the_accelerometer_range(steami):
+    s = board(steami)
+    compass = steami["Compass"]()
+    set_field(s, 0, 100, 300)
+    set_accel_g(s, 0, 0, -1)
+    s.bus.clear_write_log()
+    assert compass.heading_tilt_compensated() == pytest.approx(0)
+    assert (*CTRL1_XL, b"\x4c") in s.bus.get_write_log()  # +-8 g at 104 Hz, as Accelerometer
+
+
+@pytest.mark.parametrize("sign", [1, -1])
+def test_mock_compass_tilt_heading_removes_the_roll_error(steami, sign):
+    # Pointing north with the right edge raised by 20 degrees, dip 60 degrees.
+    s = board(steami)
+    compass = steami["Compass"]()
+    driver_sign = s.steami.lis2mdl()._MAG_Z_SIGN
+    r = math.radians(20 * sign)
+    h, v = 500 * 0.5, 500 * math.sqrt(3) / 2
+    field = (-v * math.sin(r), h, driver_sign * -v * math.cos(r))
+    set_field(s, *(round(c) for c in field))
+    set_accel_g(s, 0, -math.sin(r), -math.cos(r))
+    tilt = compass.heading_tilt_compensated()
+    assert min(tilt, 360 - tilt) == pytest.approx(0, abs=0.1)
+    flat = compass.heading()
+    assert min(flat, 360 - flat) > 25  # the flat heading is about 30 degrees off
+
+
+def test_mock_compass_tilt_heading_without_accelerometer(steami):
+    s = board(steami, missing=("ISM330DL",))
+    compass = steami["Compass"]()
+    set_field(s, 0, 100, 300)
+    assert math.isnan(compass.heading_tilt_compensated())
+    assert math.isnan(compass.heading_tilt_compensated())
+    assert compass.heading() == pytest.approx(0)  # the flat heading does not need it
+    messages = s.messages()  # reported once, under the Accelerometer name
+    assert len(messages) == 1
+    assert messages[0].startswith("[STeaMi] Accelerometer: ")
+    assert "(E10)" in messages[0]
+
+
+def test_mock_compass_tilt_heading_without_magnetometer(steami):
+    s = board(steami, missing=("LIS2MDL",))
+    compass = steami["Compass"]()
+    set_accel_g(s, 0, 0, -1)
+    assert math.isnan(compass.heading_tilt_compensated())
+
+
+@pytest.mark.parametrize("address", [0x6B, 0x1E])
+def test_mock_compass_tilt_heading_failed_read(steami, address):
+    s = board(steami)
+    compass = steami["Compass"]()
+    set_field(s, 0, 100, 300)
+    set_accel_g(s, 0, 0, -1)
+    assert compass.heading_tilt_compensated() == pytest.approx(0)
+    del s.bus._devices[address]
+    assert math.isnan(compass.heading_tilt_compensated())
+
+
+def test_mock_compass_tilt_heading_without_gravity_is_nan(steami):
+    s = board(steami)
+    compass = steami["Compass"]()
+    set_field(s, 0, 100, 300)
+    set_accel_g(s, 0, 0, 0)
+    assert math.isnan(compass.heading_tilt_compensated())
+
+
 @pytest.mark.parametrize("cls", ["Magnetometer", "Compass"])
 def test_mock_calibrate_stores_the_result_in_the_driver(steami, fake_time, cls):
     s = board(steami, config='{"rev": 131}', zone=True)

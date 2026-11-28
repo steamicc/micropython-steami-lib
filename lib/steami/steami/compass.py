@@ -1,5 +1,6 @@
 import math
 
+from steami.accelerometer import Accelerometer
 from steami.const import Function, Status
 from steami.handle import NAN, Handle
 from steami.magnetometer import calibrate_minmax
@@ -17,6 +18,7 @@ class Compass(Handle):
     def __init__(self):
         super().__init__(Function.COMPASS)
         self._declination = None
+        self._accelerometer = None
 
     def begin(self):
         """Find the chip and apply the declination set before. True when it answered."""
@@ -33,6 +35,20 @@ class Compass(Handle):
         Calls begin() on first use.
         """
         return self._read(NAN, "heading_flat_only")
+
+    def heading_tilt_compensated(self):
+        """As heading(), but corrected with the accelerometer when the board is tilted.
+
+        Equals heading() when flat; nan when either sensor is unavailable.
+        Needs the 3D calibration of calibrate() or of the board config; valid
+        up to about 60 degrees of tilt. The first call sets the ISM330DL to
+        +-8 g at 104 Hz, as Accelerometer does; a missing accelerometer is
+        reported under the Accelerometer name.
+        """
+        if self._accelerometer is None:
+            self._accelerometer = Accelerometer()
+        a = self._accelerometer.read()
+        return self._read(NAN, "heading_with_tilt_compensation", lambda: a)
 
     def direction(self):
         """ "N", "NE", "E"... for heading(); "" when unavailable."""

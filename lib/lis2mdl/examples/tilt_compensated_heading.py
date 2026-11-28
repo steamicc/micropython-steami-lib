@@ -1,7 +1,7 @@
 """
 Heading that works even when the board is tilted.
 Combine heading_with_tilt_compensation() with the ISM330DL accelerometer.
-Note: the tilt-compensated heading keeps the old, unverified axis convention and may differ from heading_flat_only().
+Same convention as heading_flat_only(), which it equals when the board is flat.
 Show heading + pitch/roll. Demonstrates cross-sensor fusion (magnetometer + accelerometer).
 """
 
@@ -14,8 +14,11 @@ from machine import I2C
 
 
 def pitch_roll_from_accel(ax, ay, az):
-    roll_rad = atan2(ay, az)
+    # ISM330DL axes: X towards the bottom of the screen (away from the USB
+    # connector), Y to the left, Z to the back.
+    # Pitch > 0 when the top of the screen goes up, roll > 0 when the right edge does.
     pitch_rad = atan2(-ax, sqrt(ay * ay + az * az))
+    roll_rad = atan2(-ay, -az)
     return degrees(pitch_rad), degrees(roll_rad)
 
 
