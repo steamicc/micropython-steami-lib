@@ -75,7 +75,7 @@ jobs:
         run: python3 scripts/write_firmware_version.py "v${{ needs.release.outputs.new-release-version }}"
 
       - name: Build MicroPython firmware
-        run: make micropython-firmware
+        run: make -j"$(nproc)" micropython-firmware
 
       - name: Attach MicroPython firmware to release
         env:
@@ -170,3 +170,29 @@ jobs:
           gh release edit "v${{ needs.release.outputs.new-release-version }}" \
             --repo "${{ github.repository }}" \
             --draft=false
+
+      - name: Jeton pour les robots en aval
+        id: jeton_aval
+        continue-on-error: true
+        uses: actions/create-github-app-token@64ab729a6294000f5aa4a4bc0b73d1f32bc45510 # v3.3.0
+        with:
+          client-id: ${{ secrets.RELEASE_APP_ID }}
+          private-key: ${{ secrets.RELEASE_APP_SECRET }}
+          owner: steamicc
+          repositories: wiki_steami
+          permission-actions: write
+
+      - name: Déclencher les robots en aval
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ steps.jeton_aval.outputs.token }}
+        run: |
+          if [ -z "$GH_TOKEN" ]; then
+            echo "::warning::Pas de jeton d'App : les robots en aval attendront leur cron."
+            exit 0
+          fi
+          for cible in "wiki_steami suivre-micropython.yml"; do
+            # shellcheck disable=SC2086
+            set -- $cible
+            gh workflow run "$2" -R "steamicc/$1" || echo "::warning::Échec du déclenchement de $2 dans $1 : son cron rattrapera."
+          done
