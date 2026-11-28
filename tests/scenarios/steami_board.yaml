@@ -1,6 +1,9 @@
 type: board
 name: "steami_board"
 
+# V1c only: the hardware tests are skipped on a V1a or V1b.
+releases: [V1c]
+
 # Hardware-only checks of the `steami` package on a STeaMi V1c.
 # Needs the board in V1c state with no button pressed.
 # Each test starts from a fresh interpreter, so the `Steami` state does not

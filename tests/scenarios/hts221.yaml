@@ -2,6 +2,10 @@ driver: hts221
 driver_class: HTS221
 i2c_address: 0x5F
 
+# Runs on the WSEN-HIDS (HTS221-compatible), on the V1a and V1b only: the
+# hardware tests are skipped on a V1c. The mock tests always run.
+releases: [V1a, V1b]
+
 # I2C config for hardware tests (STeaMi board - STM32WB55)
 i2c:
   id: 1

@@ -3,6 +3,10 @@ module_name: wsen_pads
 driver_class: WSEN_PADS
 i2c_address: 0x5D
 
+# The WSEN-PADS is on the V1a and V1b only: the hardware tests are
+# skipped on a V1c. The mock tests always run.
+releases: [V1a, V1b]
+
 # I2C config for hardware tests (STeaMi board - STM32WB55)
 i2c:
   id: 1
