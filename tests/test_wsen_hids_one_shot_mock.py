@@ -420,6 +420,13 @@ def test_mock_healthy_read_from_power_down(drv, healthy):
         assert value & ONE_SHOT == 0
 
 
+def test_mock_healthy_read_one_shot_after_trigger_takes_new_sample(drv, healthy):
+    dev = drv.WSEN_HIDS(healthy)
+    dev.trigger_one_shot()
+    assert _wait_data_ready(dev)  # converts SAMPLE_50_25
+    assert dev.read_one_shot() == pytest.approx((40.0, 30.0))
+
+
 def test_mock_healthy_init_after_latched_one_shot_then_read(drv):
     chip = FakeHIDS(ctrl_1=PD | BDU, ctrl_2=ONE_SHOT, one_shot_works=True)
     dev = drv.WSEN_HIDS(chip)
@@ -442,3 +449,15 @@ def test_mock_status_temperature_bit(dev, chip):
     assert dev.temperature_ready()
     assert not dev.humidity_ready()
     assert not dev.data_ready()
+
+
+# ----- A sample left unread is not returned as a new one -----
+
+
+def test_mock_read_after_unread_continuous_sample_takes_new_sample(drv, chip):
+    chip.samples = [SAMPLE_50_25, SAMPLE_40_30]
+    dev = drv.WSEN_HIDS(chip)
+    dev.set_continuous(dev.ODR_1_HZ)
+    assert _wait_data_ready(dev)  # converts SAMPLE_50_25, left unread
+    dev.power_off()
+    assert dev.read() == pytest.approx((40.0, 30.0))
