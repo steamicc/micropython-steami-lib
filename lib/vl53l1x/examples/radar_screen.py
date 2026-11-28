@@ -1,27 +1,26 @@
-"""Radar screen example using VL53L1X and SSD1327 OLED.
+"""Radar screen example using VL53L1X and the board screen.
 
 Displays a real-time distance bar on the screen. The closer the object,
 the longer and brighter the bar, similar to a car parking sensor.
 Adapted for a round display bezel using steami_screen widgets.
+
+The screen is steami.Screen: the SSD1327 OLED on V1a/V1b, the round GC9A01
+TFT on V1c.
 """
 
 from time import sleep_ms
 
-import ssd1327
-from machine import I2C, SPI, Pin
-from steami_screen import DARK, GRAY, LIGHT, RED, Screen, SSD1327Display
+from machine import I2C
+from steami import Screen
+from steami_screen import DARK, GRAY, LIGHT, RED
 from vl53l1x import VL53L1X
 
 # === Constants ===
 MAX_DISTANCE_MM = 1000
 
 # === Display ===
-spi = SPI(1)
-dc = Pin("DATA_COMMAND_DISPLAY")
-res = Pin("RST_DISPLAY")
-cs = Pin("CS_DISPLAY")
-display = SSD1327Display(ssd1327.WS_OLED_128X128_SPI(spi, dc, res, cs))
-screen = Screen(display)
+screen = Screen()
+screen.begin()  # allocate the frame buffer early in the program
 
 # === Sensor ===
 i2c = I2C(1)

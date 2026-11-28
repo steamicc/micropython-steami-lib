@@ -232,7 +232,7 @@ calibration tools for the WSEN-HIDS (read through the name `hts221`).
 | ------- | ----------- |
 | `show_config.py` | Display current board configuration |
 | `calibrate_temperature.py` | Calibrate the temperature sensors against the BME280 (V1c) or the WSEN-HIDS (V1a/V1b), with `steami` |
-| `calibrate_magnetometer.py` | Calibrate LIS2MDL with OLED display and persistent storage |
+| `calibrate_magnetometer.py` | Calibrate LIS2MDL with the board screen and persistent storage |
 | `calibrate_accelerometer.py` | Calibrate ISM330DL accelerometer bias and persist it |
 | `boot_counter.py` | Increment and display the boot counter |
 | `populate_demo_config.py` | **WARNING:** Overwrites all config with demo values (testing only) |

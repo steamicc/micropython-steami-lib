@@ -265,7 +265,7 @@ The library includes several practical examples:
 | `morse_code.py`       | Morse code input using button press duration (dot/dash detection) |
 | `binary_counter.py`   | 4-bit binary counter displayed on GPIO outputs (GPIO1–GPIO4 / pins 0–3) |  
 | `dpad_piano.py`       | Play musical notes with the D-PAD and buzzer (multi-press = higher octave) |
-| `menu_navigation.py`  | Minimal centered UI for navigating a menu on the SSD1327 OLED display |
+| `menu_navigation.py`  | Minimal centered UI for navigating a menu on the board screen (`steami.Screen`) |
 | `sleep_on_button.py`  | Low-power example: wake the board from sleep using MCP23009E interrupts |
 
 ### How to run 

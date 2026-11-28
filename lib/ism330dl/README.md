@@ -285,7 +285,7 @@ The repository provides several example scripts:
 | `basic_read.py`         | Simple sensor readout                             |
 | `static_orientation.py` | Detect device orientation using the accelerometer |
 | `motion_orientation.py` | Detect rotation using the gyroscope               |
-| `spirit_level.py`       | Interactive digital bubble level using SSD1327 OLED|
-| `maze_game.py`          | Tilt-controlled maze game with score on SSD1327 OLED|
+| `spirit_level.py`       | Interactive digital bubble level on the board screen (`steami.Screen`)|
+| `maze_game.py`          | Tilt-controlled maze game with score on the board screen (`steami.Screen`)|
 
 ---

@@ -1,4 +1,4 @@
-"""Maze game example using ISM330DL accelerometer and SSD1327 OLED.
+"""Maze game example using ISM330DL accelerometer and the board screen.
 
 Navigate through a randomly generated maze by tilting the STeaMi board.
 Your score is computed at the end based on how close you were to the
@@ -6,7 +6,8 @@ optimal path, calculated with Dijkstra's algorithm.
 
 Hardware:
     - ISM330DL accelerometer (tilt input)
-    - SSD1327 128x128 OLED display (round)
+    - Board screen through steami.Screen: SSD1327 128x128 OLED on V1a/V1b,
+      round GC9A01 240x240 TFT on V1c
 
 Controls:
     - Tilt the board forward  → move UP
@@ -19,21 +20,17 @@ import random
 from time import sleep_ms
 
 import micropython
-import ssd1327
 from ism330dl import ISM330DL
-from machine import I2C, SPI, Pin
-from steami_screen import GRAY, LIGHT, WHITE, Screen, SSD1327Display
+from machine import I2C
+from steami import Screen
+from steami_screen import GRAY, LIGHT, WHITE
 
 # =============================================================================
 # === Display setup ===========================================================
 # =============================================================================
 
-spi = SPI(1)
-dc = Pin("DATA_COMMAND_DISPLAY")
-res = Pin("RST_DISPLAY")
-cs = Pin("CS_DISPLAY")
-display = SSD1327Display(ssd1327.WS_OLED_128X128_SPI(spi, dc, res, cs))
-screen = Screen(display)
+screen = Screen()
+screen.begin()  # allocate the frame buffer early in the program
 
 # =============================================================================
 # === Accelerometer setup =====================================================
@@ -66,11 +63,13 @@ LEFT = (0, -1)
 RIGHT = (0, 1)
 NONE = (0, 0)
 
-# Display safe zone for round screen
-SAFE_X = 19
-SAFE_Y = 19
-SAFE_SIZE = 90
-CELL_SIZE = SAFE_SIZE // MAZE_W  # 8px per cell
+# Display safe zone for round screen: a square of 90 units (128 px layout,
+# scaled by screen.u) centred on the screen, so that its corners stay
+# inside the circle on 128 and 240 px.
+SAFE_SIZE = screen.u(90)
+CELL_SIZE = SAFE_SIZE // MAZE_W  # 8 px per cell on 128 px, 15 px on 240 px
+SAFE_X = (screen.width - CELL_SIZE * MAZE_W) // 2
+SAFE_Y = (screen.height - CELL_SIZE * MAZE_H) // 2
 
 # =============================================================================
 # === Maze generation (Recursive Backtracker / DFS) ===========================

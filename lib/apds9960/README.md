@@ -154,7 +154,7 @@ if sensor.is_gesture_available():
 | `ambient_light.py` | Read ambient light and RGB values |
 | `proximity.py`     | Detect nearby objects             |
 | `gesture.py`       | Detect directional gestures       |
-| `color_lamp.py`         | Reactive color lamp with auto-calibration and OLED display. **Dependency: `ssd1327`** |
+| `color_lamp.py`         | Reactive color lamp with auto-calibration, shown on the board screen. **Dependency: `steami` (`Screen`)** |
 | `light_thermein.py`| Theremin controlled by light using the buzzer |
 
 
