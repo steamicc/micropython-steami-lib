@@ -66,6 +66,10 @@ test-hardware: ## Run all hardware tests (needs board on PORT)
 test-board: ## Run board tests only (buttons, LEDs, buzzer, screen)
 	$(PYTHON) -m pytest tests/ -v --port $(PORT) -s -k "board_ and hardware"
 
+.PHONY: test-interactive-buttons
+test-interactive-buttons: ## Interactive check of the buttons on a V1c, with a human (STEP=n: one step)
+	$(PYTHON) -m mpremote connect $(PORT) mount lib exec "STEP = $(or $(STEP),0)" run tests/interactive/steami_buttons.py
+
 .PHONY: test-sensors
 test-sensors: ## Run sensor driver hardware tests (I2C devices)
 	$(PYTHON) -m pytest tests/ -v --port $(PORT) -s -k "hardware and not board_"

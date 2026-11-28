@@ -26,6 +26,7 @@ from tests.fake_machine.mcp23009 import (
     INTCON,
     INTF,
     LEFT,
+    RELEASED,
     RIGHT,
     UP,
     FakeMCP23009,
@@ -134,9 +135,29 @@ def test_intcc_set_clears_on_intcap_read(drv, dev, chip):
     dev.interrupt_event()
     assert chip.log[:3] == [("r", INTF), ("r", INTCAP), ("r", GPIO)]
     assert events == [("UP", 0, 1), ("UP", 1, 1)]
-    assert chip.regs[INTF] == 0
+    # Datasheet 1.7.4, note: the release made while INTF was set is still
+    # there when the read clears it, so the interrupt sets again.
+    assert chip.regs[INTF] == 1 << UP
     dev.interrupt_event()
+    assert chip.regs[INTF] == 0
     assert events == [("UP", 0, 1), ("UP", 1, 1)]
+
+
+def test_interrupt_set_again_after_a_tap_gives_no_second_event(drv, dev, chip):
+    # The release made while INTF was set is still pending once the read
+    # clears the interrupt, which sets again with a new INTCAP. The next read
+    # finds the level it already reported: no second event.
+    levels = []
+    dpad_pin(drv, dev, UP)
+    dev.interrupt_on_change(UP, levels.append)
+    chip.press(UP)
+    chip.release(UP)
+    dev.interrupt_event()
+    assert chip.regs[INTF] == 1 << UP
+    assert chip.regs[INTCAP] == RELEASED
+    dev.interrupt_event()
+    assert chip.regs[INTF] == 0
+    assert levels == [0, 1]
 
 
 def test_active_low_pin_inverts_captured_level(drv, dev, chip):
