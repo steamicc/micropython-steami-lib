@@ -251,13 +251,144 @@ tests:
     expect_true: true
     mode: [mock]
 
-  - name: "heading_with_tilt_compensation returns angle 0-360"
+  - name: "heading_with_tilt_compensation equals the flat heading when flat"
+    action: script
+    script: |
+      import math
+      dev.calibrate_reset()
+      dev.set_heading_offset(0)
+      dev.set_declination(0)
+      dev.set_heading_filter(0)
+      # Screen up and flat, the ISM330DL reads about (0, 0, -1) g: same atan2 as the flat path
+      ok = dev.heading_with_tilt_compensation(lambda: (0.0, 0.0, -1.0)) == dev.heading_flat_only()
+      for k in range(72):
+          t = math.radians(5 * k + 0.3)
+          x, y, z = -400 * math.sin(t), 400 * math.cos(t), 300 - 9 * k
+          flat = dev.heading_from_vectors(x, y, z)
+          for g in (-1.0, -0.97, -1.04):
+              ok = ok and dev.heading_from_vectors_tilt(x, y, z, 0.0, 0.0, g) == flat
+      result = ok
+    expect_true: true
+    mode: [mock]
+
+  - name: "heading_from_vectors_tilt gives back the heading of a tilted board"
+    action: script
+    script: |
+      import math
+      dev.calibrate_reset()
+      dev.set_heading_offset(0)
+      dev.set_declination(0)
+      dev.set_heading_filter(0)
+      s = dev._MAG_Z_SIGN
+      dip = math.radians(60)
+      field = (0.0, 40 * math.cos(dip), -40 * math.sin(dip))  # world (east, north, up)
+      def rot(v, k, a):
+          # Rotation of v by a around the unit axis k (Rodrigues)
+          c, sn = math.cos(a), math.sin(a)
+          d = sum(v[i] * k[i] for i in range(3))
+          w = (k[1] * v[2] - k[2] * v[1], k[2] * v[0] - k[0] * v[2], k[0] * v[1] - k[1] * v[0])
+          return tuple(v[i] * c + w[i] * sn + k[i] * d * (1 - c) for i in range(3))
+      def dot(a, b):
+          return sum(a[i] * b[i] for i in range(3))
+      worst = 0.0
+      for heading in range(0, 360, 15):
+          h = math.radians(heading)
+          # Flat board: T (top of the screen) to the heading, R to its right, U up
+          t_ax, r_ax, u_ax = (math.sin(h), math.cos(h), 0.0), (math.cos(h), -math.sin(h), 0.0), (0, 0, 1)
+          for pitch in range(-45, 46, 15):
+              p = math.radians(pitch)  # raises the top of the screen
+              t1, u1 = rot(t_ax, r_ax, p), rot(u_ax, r_ax, p)
+              for roll in range(-45, 46, 15):
+                  r = math.radians(roll)  # raises the right edge
+                  r2, u2 = rot(r_ax, t1, -r), rot(u1, t1, -r)
+                  x, y, z = dot(field, r2), dot(field, t1), s * dot(field, u2)
+                  # ISM330DL: X = -T, Y = -R, Z = -U; at rest it reads the up vector
+                  ax, ay, az = -t1[2], -r2[2], -u2[2]
+                  got = dev.heading_from_vectors_tilt(x, y, z, ax, ay, az)
+                  err = abs((got - heading + 180) % 360 - 180)
+                  worst = max(worst, err)
+                  ok_range = 0 <= got < 360
+                  if not ok_range:
+                      worst = 999
+      result = worst < 0.01
+    expect_true: true
+    mode: [mock]
+
+  - name: "tilt heading uses the magnetometer Z sign"
+    action: script
+    script: |
+      import math
+      dev.calibrate_reset()
+      dev.set_heading_offset(0)
+      dev.set_declination(0)
+      dev.set_heading_filter(0)
+      s = dev._MAG_Z_SIGN
+      r = math.radians(20)  # right edge raised by 20 degrees, pointing north
+      h, v = 0.5, math.sqrt(3) / 2  # dip 60 degrees
+      x, y, z = -v * math.sin(r), h, s * -v * math.cos(r)
+      ax, ay, az = 0.0, -math.sin(r), -math.cos(r)
+      good = dev.heading_from_vectors_tilt(x, y, z, ax, ay, az)
+      wrong = dev.heading_from_vectors_tilt(x, y, -z, ax, ay, az)
+      flat = dev.heading_from_vectors(x, y, z)
+      result = (min(good, 360 - good) < 0.01 and min(wrong, 360 - wrong) > 10
+                and 25 < flat < 35 and s in (1, -1))
+    expect_true: true
+    mode: [mock]
+
+  - name: "heading_with_tilt_compensation reads the field and the accelerometer"
+    action: script
+    script: |
+      import math
+      dev.calibrate_reset()
+      dev.set_heading_offset(0)
+      dev.set_declination(0)
+      dev.set_heading_filter(0)
+      t = math.radians(20)  # top of the screen raised by 20 degrees, pointing east
+      h, v = 0.5, math.sqrt(3) / 2
+      s = dev._MAG_Z_SIGN
+      dev.magnetic_field = lambda: (-h, -v * math.sin(t), s * -v * math.cos(t))
+      got = dev.heading_with_tilt_compensation(lambda: (-math.sin(t), 0.0, -math.cos(t)))
+      flat = dev.heading_flat_only()
+      del dev.magnetic_field
+      result = abs(got - 90) < 0.01 and abs(flat - 90) > 10
+    expect_true: true
+    mode: [mock]
+
+  - name: "tilt heading applies the calibration, the offsets and the filter"
     action: script
     script: |
       dev.calibrate_reset()
-      # Simulate flat accelerometer: (0, 0, 1g)
-      h = dev.heading_with_tilt_compensation(lambda: (0.0, 0.0, 1.0))
-      result = 0 <= h < 360
+      dev.set_heading_filter(0)
+      dev.set_calibrate_step(10, -20, 30, 2.0, 3.0, 4.0)
+      dev.set_heading_offset(12)
+      dev.set_declination(-2)
+      ok = True
+      for x, y, z in ((110, -20, 0), (10, 280, 500), (-190, -320, -70)):
+          ok = ok and dev.heading_from_vectors_tilt(x, y, z, 0, 0, -1) == dev.heading_from_vectors(x, y, z)
+      raw = dev.heading_from_vectors_tilt(110, -20, 30, 0, 0, -1, calibrated=False)
+      ok = ok and raw == dev.heading_from_vectors(110, -20, 30, calibrated=False)
+      dev.set_heading_filter(0.5)
+      a = dev.heading_from_vectors_tilt(10, 100, 30, 0, 0, -1)
+      b = dev.heading_from_vectors_tilt(-90, -20, 30, 0, 0, -1)
+      dev.set_heading_filter(0)
+      dev.calibrate_reset()
+      dev.set_heading_offset(0)
+      dev.set_declination(0)
+      result = ok and abs(a - 10) < 1e-6 and 10 < b < 100
+    expect_true: true
+    mode: [mock]
+
+  - name: "tilt heading is nan without gravity and in [0, 360) screen down"
+    action: script
+    script: |
+      import math
+      dev.calibrate_reset()
+      dev.set_heading_filter(0)
+      nan = float("nan")
+      zero = dev.heading_from_vectors_tilt(300, -150, 450, 0.0, 0.0, 0.0)
+      bad = dev.heading_from_vectors_tilt(300, -150, 450, nan, nan, nan)
+      down = dev.heading_with_tilt_compensation(lambda: (0.0, 0.0, 1.0))
+      result = math.isnan(zero) and math.isnan(bad) and 0 <= down < 360
     expect_true: true
     mode: [mock]
 

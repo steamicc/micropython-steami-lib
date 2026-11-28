@@ -572,37 +572,46 @@ class LIS2MDL(object):
         x, y, z = self.magnetic_field()
         return self.heading_from_vectors(x, y, z, calibrated=True)
 
-    def heading_with_tilt_compensation(self, read_accel):
+    # Board frame: R right of the screen, T top of the screen (side opposite
+    # the USB connector), U out of the screen. LIS2MDL: X = R, Y = T (measured,
+    # #434), Z = _MAG_Z_SIGN * U. ISM330DL: X = -T, Y = -R, Z = -U.
+    # Provisional: awaits the V1c measurement of issue #344 (-1 if the two
+    # chips have their Z on the same side of the board, +1 otherwise).
+    _MAG_Z_SIGN = -1
+
+    def heading_from_vectors_tilt(self, x, y, z, ax, ay, az, calibrated=True):
         """
-        Tilt-compensated compass (if an accelerometer is available).
-        read_accel() must return (ax, ay, az) ~g.
-
-        Note: this keeps the old, unverified axis convention (atan2(yh, xh)).
-        It has not been checked on hardware and may differ from the heading
-        returned by heading_flat_only() / heading_from_vectors().
+        Tilt-compensated heading (0..360°, never 360), clockwise from north,
+        of the top of the screen. x, y, z: LIS2MDL field; ax, ay, az: ISM330DL
+        acceleration in g (screen up and flat: about 0, 0, -1).
+        Equals heading_from_vectors() when the board is flat; nan without
+        gravity. Needs a 3D calibration (calibrate_minmax_3d): after a 2D one
+        Z is not calibrated and the result is meaningless. Valid up to about
+        60° of tilt.
         """
-
-        x, y, z = self.magnetic_field()
-        # NOTE: formula and axes not verified on hardware (see docstring).
-        # 3D calibration
-        x = (x - self.x_off) / (self.x_scale or 1.0)
-        y = (y - self.y_off) / (self.y_scale or 1.0)
-        z = (z - self.z_off) / (self.z_scale or 1.0)
-
-        ax, ay, az = read_accel()
-        # roll / pitch from accelerometer
-        roll = math.atan2(ay, az)
-        pitch = math.atan2(-ax, math.sqrt(ay * ay + az * az))
-        # straighten the magnetic vector
-        xh = x * math.cos(pitch) + z * math.sin(pitch)
-        yh = (
-            x * math.sin(roll) * math.sin(pitch)
-            + y * math.cos(roll)
-            - z * math.sin(roll) * math.cos(pitch)
-        )
-        ang = math.degrees(math.atan2(yh, xh))
+        g = math.sqrt(ax * ax + ay * ay + az * az)
+        if not g > 0.0:
+            return float("nan")
+        if calibrated:
+            x = (x - self.x_off) / (self.x_scale or 1.0)
+            y = (y - self.y_off) / (self.y_scale or 1.0)
+            z = (z - self.z_off) / (self.z_scale or 1.0)
+        ur, ut, uu = -ay / g, -ax / g, -az / g  # up vector, board frame
+        bu = self._MAG_Z_SIGN * z
+        dot = x * ur + y * ut + bu * uu
+        # East = b x u and north = u x east, read along T. Flat: atan2(-x, y).
+        ang = math.degrees(math.atan2(bu * ur - x * uu, y - ut * dot))
         ang = self._apply_heading_offsets(ang)
         return self._filter_heading(ang)
+
+    def heading_with_tilt_compensation(self, read_accel):
+        """
+        Reads the field and read_accel() -> (ax, ay, az) in g on the ISM330DL
+        axes, and returns heading_from_vectors_tilt().
+        """
+        x, y, z = self.magnetic_field()
+        ax, ay, az = read_accel()
+        return self.heading_from_vectors_tilt(x, y, z, ax, ay, az)
 
     def direction_label(self, angle=None):
         """Returns N/NE/E/... ; if angle=None, reads heading_flat_only().

@@ -85,18 +85,28 @@ It is computed as `atan2(-x, y)` on the calibrated X and Y axes, so run a calibr
 
 ### With tilt compensation
 
-Requires a function returning accelerometer data `(ax, ay, az)` in g:
+Pass a function returning the ISM330DL acceleration `(ax, ay, az)` in g (screen up and flat,
+it reads about `(0, 0, -1)`):
 
 ```python
-def read_accel():
-    return (0.0, 0.0, 1.0)  # Example static vector
+from ism330dl import ISM330DL
 
-heading = mag.heading_with_tilt_compensation(read_accel)
+imu = ISM330DL(i2c)
+mag.calibrate_minmax_3d(samples=600)  # a 3D calibration is required
+heading = mag.heading_with_tilt_compensation(imu.acceleration_g)
 ```
 
-> **Note:** `heading_with_tilt_compensation()` keeps the previous axis convention, which has not been
-> verified on hardware. It may differ from `heading_flat_only()`; use the flat heading when the
-> board is held level.
+`heading_from_vectors_tilt(x, y, z, ax, ay, az)` does the same from values already read.
+The tilt-compensated heading uses the same convention as `heading_flat_only()` and gives exactly
+the same value when the board is flat. It is nan when the acceleration is zero.
+
+* It needs a **3D calibration** (`calibrate_minmax_3d()`, or the calibration of the board config).
+  `calibrate_minmax_2d()` leaves Z uncalibrated, in raw LSB, and the tilt-compensated heading is
+  then meaningless.
+* It is valid up to about 60° of tilt. Near vertical, the heading of the top of the screen is not
+  defined. The accelerometer noise adds a few degrees: `set_heading_filter()` smooths it.
+* The sign of the LIS2MDL Z axis (`_MAG_Z_SIGN`) is provisional until it is measured on a V1c
+  (issue #344).
 
 ---
 
@@ -221,7 +231,8 @@ print("Register dump:", regs)
 | `magnetic_field_ut()`                 | Magnetic field in µT           |
 | `calibrated_field()`    | Calibrated and normalized data |
 | `heading_flat_only()`              | Flat compass heading (clockwise from north) |
-| `heading_with_tilt_compensation()` | Tilt-corrected heading         |
+| `heading_with_tilt_compensation()` | Tilt-compensated heading (needs a 3D calibration) |
+| `heading_from_vectors_tilt()` | Same, from a field and an acceleration already read |
 | `temperature()`             | Read relative temperature      |
 | `power_on()` / `power_off()`      | Power management               |
 | `soft_reset()` / `reboot()`        | Sensor reset functions         |
