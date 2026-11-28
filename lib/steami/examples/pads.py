@@ -9,8 +9,8 @@ source it, so the LED goes from 3V3 to the pad and lights when the pad is
 driven to 0.
 
 Wiring: an LED with a 220 ohm resistor from 3V3 to P28 (anode on 3V3, cathode
-on P28), and a crocodile wire that touches P24 to GND. The LED lights and the
-buzzer beeps while P24 is grounded.
+on P28), and a crocodile wire that touches P24 to GND. The LED lights while P24
+is grounded, and the buzzer beeps once (100 ms) each time the contact is made.
 """
 
 from time import sleep_ms
