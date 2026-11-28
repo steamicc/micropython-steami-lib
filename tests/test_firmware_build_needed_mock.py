@@ -74,8 +74,65 @@ def _run(stdin):
 
 
 def test_main_prints_a_github_output_line_for_a_driver_change():
-    assert _run("README.md\nlib/steami/steami/buzzer.py\n").splitlines() == ["build=true"]
+    assert _run("README.md\0lib/steami/steami/buzzer.py\0").splitlines() == ["build=true"]
 
 
 def test_main_prints_a_github_output_line_for_a_docs_change():
-    assert _run("README.md\ndocs/guide.md\n").splitlines() == ["build=false"]
+    assert _run("README.md\0docs/guide.md\0").splitlines() == ["build=false"]
+
+
+def _git(repo, *args):
+    return subprocess.run(
+        ["git", *args], cwd=repo, capture_output=True, text=True, check=True
+    ).stdout
+
+
+def _decision_after(tmp_path, setup):
+    """Commit a base, apply `setup`, commit it, and run the workflow's pipeline."""
+    _git(tmp_path, "init", "-q")
+    _git(tmp_path, "config", "user.email", "ci@example.org")
+    _git(tmp_path, "config", "user.name", "ci")
+    (tmp_path / "lib" / "bme280").mkdir(parents=True)
+    (tmp_path / "lib" / "bme280" / "manifest.py").write_text("freeze('.')\n" * 20)
+    (tmp_path / "docs").mkdir()
+    (tmp_path / "docs" / "guide.md").write_text("guide\n" * 20)
+    _git(tmp_path, "add", "-A")
+    _git(tmp_path, "commit", "-q", "-m", "base")
+    setup(tmp_path)
+    _git(tmp_path, "add", "-A")
+    _git(tmp_path, "commit", "-q", "-m", "change")
+    # Same command as the "decide" step of firmware.yml.
+    diff = subprocess.run(
+        ["git", "diff", "--name-only", "--no-renames", "-z", "HEAD^1", "HEAD"],
+        cwd=tmp_path,
+        capture_output=True,
+        check=True,
+    ).stdout
+    return _run(diff.decode()).strip()
+
+
+def test_workflow_lists_paths_without_rename_detection():
+    workflow = (REPO / ".github" / "workflows" / "firmware.yml").read_text()
+    assert "git diff --name-only --no-renames -z HEAD^1 HEAD" in workflow
+
+
+def test_rename_out_of_lib_needs_a_build(tmp_path):
+    def move(repo):
+        (repo / "archive").mkdir()
+        _git(repo, "mv", "lib/bme280", "archive/bme280")
+
+    assert _decision_after(tmp_path, move) == "build=true"
+
+
+def test_rename_into_lib_needs_a_build(tmp_path):
+    def move(repo):
+        _git(repo, "mv", "docs/guide.md", "lib/bme280/guide.md")
+
+    assert _decision_after(tmp_path, move) == "build=true"
+
+
+def test_rename_between_docs_does_not_need_a_build(tmp_path):
+    def move(repo):
+        _git(repo, "mv", "docs/guide.md", "docs/manual.md")
+
+    assert _decision_after(tmp_path, move) == "build=false"

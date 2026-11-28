@@ -33,7 +33,16 @@ jobs:
         id: decide
         shell: bash
         run: |
-          git diff --name-only HEAD^1 HEAD | python3 scripts/firmware_build_needed.py >>"$GITHUB_OUTPUT"
+          # --no-renames: a driver moved out of lib/ must list its old path too.
+          # -z: NUL-separated paths, safe with any file name.
+          # Fail closed: if git or the script fails, build.
+          if git diff --name-only --no-renames -z HEAD^1 HEAD >"$RUNNER_TEMP/changed.z" \
+              && python3 scripts/firmware_build_needed.py <"$RUNNER_TEMP/changed.z" >"$RUNNER_TEMP/decision"; then
+            cat "$RUNNER_TEMP/decision" >>"$GITHUB_OUTPUT"
+          else
+            echo "::warning::Could not decide from the changed files: building the firmware."
+            echo "build=true" >>"$GITHUB_OUTPUT"
+          fi
           if grep -qx 'build=false' "$GITHUB_OUTPUT"; then
             echo "::notice::No firmware input changed (lib/, Makefile, env.mk, scripts, workflows): build skipped."
           fi

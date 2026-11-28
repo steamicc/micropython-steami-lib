@@ -1,9 +1,13 @@
 """Tell whether a pull request has to build the MicroPython firmware.
 
-Reads the paths changed by the pull request, one per line, on stdin and
-prints `build=true` or `build=false`, a line for $GITHUB_OUTPUT.
+Reads the paths changed by the pull request, separated by NUL bytes, on stdin
+and prints `build=true` or `build=false`, a line for $GITHUB_OUTPUT.
 
-Usage: git diff --name-only HEAD^1 HEAD | python3 scripts/firmware_build_needed.py
+The list must come from `--no-renames`: with rename detection, a driver moved
+out of lib/ would only list its destination and the build would be skipped.
+
+Usage: git diff --name-only --no-renames -z HEAD^1 HEAD \\
+           | python3 scripts/firmware_build_needed.py
 """
 
 import sys
@@ -34,7 +38,8 @@ def build_needed(paths):
 
 
 def main():
-    print(f"build={'true' if build_needed(sys.stdin) else 'false'}")
+    paths = sys.stdin.read().split("\0")
+    print(f"build={'true' if build_needed(paths) else 'false'}")
     return 0
 
 
