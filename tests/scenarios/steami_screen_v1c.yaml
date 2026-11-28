@@ -1,6 +1,9 @@
 type: board
 name: "steami_screen_v1c"
 
+# V1c only: the hardware tests are skipped on a V1a or V1b.
+releases: [V1c]
+
 # Hardware-only checks of the round GC9A01 screen of a STeaMi V1c, drawn
 # through steami.Screen (240 x 240, scaling factor k = 2).
 # Needs the release firmware, which freezes gc9a01, steami_screen and steami,

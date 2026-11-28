@@ -1,8 +1,18 @@
 type: board
 name: "board_i2c_scan"
 
+# Devices of the internal I2C bus (I2C1, 7-bit addresses), per release
+# (lib/steami/steami/const.py and the wiki page "Capteurs et bus internes"):
+#   all releases: 0x1E=LIS2MDL, 0x20=MCP23009E, 0x29=VL53L1X,
+#                 0x3B=STM32F103CB (DAPLink bridge), 0x6B=ISM330DL,
+#                 0x55=BQ27441 (only present when a battery is connected)
+#   V1a/V1b only: 0x39=APDS9960, 0x5D=WSEN-PADS, 0x5F=WSEN-HIDS
+#   V1c only:     0x76=BME280
+# The tests limited by `releases` are skipped on the other releases.
+
 tests:
-  - name: "I2C bus scan finds expected devices"
+  - name: "I2C bus scan finds expected devices (V1a/V1b)"
+    releases: [V1a, V1b]
     action: hardware_script
     script: |
       from machine import I2C, Pin
@@ -13,18 +23,15 @@ tests:
       sleep_ms(10)
       i2c = I2C(1)
       found = i2c.scan()
-      # Expected I2C addresses on STeaMi board (7-bit):
-      # 0x1E=LIS2MDL, 0x20=MCP23009E, 0x29=VL53L1X, 0x39=APDS9960
-      # 0x3B=STM32F103CB, 0x5D=WSEN-PADS
-      # 0x5F=WSEN-HIDS, 0x6B=ISM330DL
-      # Note: 0x55=BQ27441 excluded (only present when battery connected)
+      # 0x55=BQ27441 excluded (only present when battery connected)
       expected = [0x1E, 0x20, 0x29, 0x39, 0x3B, 0x5D, 0x5F, 0x6B]
       missing = sorted([hex(a) for a in expected if a not in found])
       result = missing
     expect: []
     mode: [hardware]
 
-  - name: "No unexpected I2C devices"
+  - name: "No unexpected I2C devices (V1a/V1b)"
+    releases: [V1a, V1b]
     action: hardware_script
     script: |
       from machine import I2C, Pin
@@ -35,6 +42,42 @@ tests:
       i2c = I2C(1)
       found = i2c.scan()
       known = [0x1E, 0x20, 0x29, 0x39, 0x3B, 0x55, 0x5D, 0x5F, 0x6B]
+      unexpected = sorted([hex(a) for a in found if a not in known])
+      result = unexpected
+    expect: []
+    mode: [hardware]
+
+  - name: "I2C bus scan finds expected devices (V1c)"
+    releases: [V1c]
+    action: hardware_script
+    script: |
+      from machine import I2C, Pin
+      # Release MCP23009E from reset so it responds to scan
+      rst = Pin("RST_EXPANDER", Pin.OUT)
+      rst.on()
+      from time import sleep_ms
+      sleep_ms(10)
+      i2c = I2C(1)
+      found = i2c.scan()
+      # 0x55=BQ27441 excluded (only present when battery connected)
+      expected = [0x1E, 0x20, 0x29, 0x3B, 0x6B, 0x76]
+      missing = sorted([hex(a) for a in expected if a not in found])
+      result = missing
+    expect: []
+    mode: [hardware]
+
+  - name: "No unexpected I2C devices (V1c)"
+    releases: [V1c]
+    action: hardware_script
+    script: |
+      from machine import I2C, Pin
+      rst = Pin("RST_EXPANDER", Pin.OUT)
+      rst.on()
+      from time import sleep_ms
+      sleep_ms(10)
+      i2c = I2C(1)
+      found = i2c.scan()
+      known = [0x1E, 0x20, 0x29, 0x3B, 0x55, 0x6B, 0x76]
       unexpected = sorted([hex(a) for a in found if a not in known])
       result = unexpected
     expect: []
@@ -77,6 +120,7 @@ tests:
     mode: [hardware]
 
   - name: "APDS9960 device ID (0x39)"
+    releases: [V1a, V1b]
     action: hardware_script
     script: |
       from machine import I2C
@@ -86,6 +130,7 @@ tests:
     mode: [hardware]
 
   - name: "WSEN-PADS device ID (0x5D)"
+    releases: [V1a, V1b]
     action: hardware_script
     script: |
       from machine import I2C
@@ -95,6 +140,7 @@ tests:
     mode: [hardware]
 
   - name: "WSEN-HIDS device ID (0x5F)"
+    releases: [V1a, V1b]
     action: hardware_script
     script: |
       from machine import I2C
@@ -110,4 +156,14 @@ tests:
       i2c = I2C(1)
       result = i2c.readfrom_mem(0x6B, 0x0F, 1)[0]
     expect: 0x6A
+    mode: [hardware]
+
+  - name: "BME280 chip ID (0x76)"
+    releases: [V1c]
+    action: hardware_script
+    script: |
+      from machine import I2C
+      i2c = I2C(1)
+      result = i2c.readfrom_mem(0x76, 0xD0, 1)[0]
+    expect: 0x60
     mode: [hardware]

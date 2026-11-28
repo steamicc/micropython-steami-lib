@@ -64,6 +64,16 @@ make test-all
 make test-hardware PORT=/dev/ttyACM1
 ```
 
+### Board release
+
+Some hardware tests only apply to one STeaMi release (see [Board release of a scenario](#board-release-of-a-scenario)). Before the first of them, the runner finds the release with `Steami.begin()` of `lib/steami`, run on the board with `lib/` mounted, and prints it (`[STeaMi] Board V1c (found by Steami.begin())`). The tests of the other releases are skipped with the reason, for example `needs a STeaMi V1a or V1b, this board is a V1c`.
+
+When the board cannot tell its release, these tests are skipped. Give the release on the command line to skip the detection:
+
+```bash
+python -m pytest tests/ -v --port /dev/ttyACM0 -s -k hardware --release V1c
+```
+
 ## Test reports
 
 Test reports can be generated in Markdown format.
@@ -121,6 +131,24 @@ tests:
 ```
 
 The test runner automatically discovers new YAML files.
+
+### Board release of a scenario
+
+A scenario whose chip is not on every release lists the releases it applies to with `releases`, using the names of `steami.Release` (`V1a`, `V1b`, `V1c`). The field may also be set on one test, and then replaces the value of the scenario:
+
+```yaml
+# tests/scenarios/apds9960.yaml: the APDS-9960 is not on the V1c
+driver: apds9960
+releases: [V1a, V1b]
+
+# tests/scenarios/board_i2c_scan.yaml: one test per release
+tests:
+  - name: "BME280 chip ID (0x76)"
+    releases: [V1c]
+    ...
+```
+
+Only hardware tests are filtered; mock tests always run. Probing cannot tell a V1a from a V1b, so a board found as `V1a/V1b` runs the tests of `V1a` and of `V1b`. A scenario or test without `releases` runs on every board. `tests/test_scenario_release_mock.py` checks that every `releases` value is a known release.
 
 ### Naming convention
 
