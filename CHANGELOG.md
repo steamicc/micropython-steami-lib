@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [0.32.4](https://github.com/steamicc/micropython-steami-lib/compare/v0.32.3...v0.32.4) (2026-11-28)
+
+
+### Bug Fixes
+
+* **steami_screen:** Centre value() on the 128 px screen. ([#481](https://github.com/steamicc/micropython-steami-lib/issues/481)) ([369b814](https://github.com/steamicc/micropython-steami-lib/commit/369b8145042310464938aac486bdde49fc008a3e)), closes [#351](https://github.com/steamicc/micropython-steami-lib/issues/351)
+
 ## [0.32.3](https://github.com/steamicc/micropython-steami-lib/compare/v0.32.2...v0.32.3) (2026-11-28)
 
 
