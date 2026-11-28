@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [0.38.6](https://github.com/steamicc/micropython-steami-lib/compare/v0.38.5...v0.38.6) (2026-11-28)
+
+
+### Bug Fixes
+
+* **tooling:** Flash the DAPLink interface at 0x0800C000, above the bootloader. ([#519](https://github.com/steamicc/micropython-steami-lib/issues/519)) ([a37ee74](https://github.com/steamicc/micropython-steami-lib/commit/a37ee74ca196c4d6e4eea3eeca33c208f0f73d42)), closes [#516](https://github.com/steamicc/micropython-steami-lib/issues/516)
+
 ## [0.38.5](https://github.com/steamicc/micropython-steami-lib/compare/v0.38.4...v0.38.5) (2026-11-28)
 
 
