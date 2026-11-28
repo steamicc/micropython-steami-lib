@@ -221,7 +221,7 @@ def test_i2c_scan_v1c_addresses():
     assert "0x76" not in v1ab
 
 
-@pytest.mark.parametrize("name", ["apds9960", "wsen_hids", "wsen_pads", "hts221", "ssd1327"])
+@pytest.mark.parametrize("name", ["apds9960", "wsen_hids", "wsen_pads", "ssd1327"])
 def test_v1ab_driver_scenarios_skip_hardware_on_v1c(name):
     scenario = _scenario(name)
     assert _hardware_names(scenario, "V1c") == []
@@ -229,8 +229,8 @@ def test_v1ab_driver_scenarios_skip_hardware_on_v1c(name):
 
 
 def test_steami_config_real_sensor_calibration_skips_on_v1c():
-    # It reads the WSEN-HIDS and the HTS221 (0x5F), absent on the V1c. The
-    # other hardware tests of steami_config only use the bridge.
+    # It reads the WSEN-HIDS (0x5F), absent on the V1c. The other hardware
+    # tests of steami_config only use the bridge.
     scenario = _scenario("steami_config")
     name = "Apply calibration to real sensor"
     assert name not in _hardware_names(scenario, "V1c")
@@ -239,7 +239,7 @@ def test_steami_config_real_sensor_calibration_skips_on_v1c():
 
 
 # Driver modules of the chips that are only on the V1a/V1b.
-_V1AB_ONLY_MODULES = re.compile(r"\b(?:from|import)\s+(wsen_hids|hts221|wsen_pads|apds9960)\b")
+_V1AB_ONLY_MODULES = re.compile(r"\b(?:from|import)\s+(wsen_hids|wsen_pads|apds9960)\b")
 
 
 def test_no_v1c_hardware_test_imports_a_v1ab_only_driver():
