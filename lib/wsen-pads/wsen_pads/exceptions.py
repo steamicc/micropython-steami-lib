@@ -1,4 +1,4 @@
-class WSENPADSError(Exception):
+class WSENPADSError(OSError):
     """Base exception for all WSEN-PADS driver errors."""
 
 

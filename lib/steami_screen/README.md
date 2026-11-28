@@ -148,7 +148,7 @@ The 240 px panel (V1c) draws every text in the Spleen 2.1.0 bitmap fonts, with A
 | Pixel text, cardinal text, title, subtitle, value unit, graph value, menu, compass and watch letters | 8x16 x `f / 2` |
 | Value label, gauge labels, graph scale labels | 6x12, whatever the scale |
 | Value made only of `0-9`, `+`, `-`, `.`, `:` and spaces | 16x32 x `f / 4` when `f` is a multiple of 4, else 12x24 x `f / 3` when a multiple of 3, else 8x16 x `f / 2` when even (no face otherwise) |
-| Any other value (`nan`, `1e-05`, `OK`) | 8x16 x `f / 2`, like text |
+| Any other value (`1e-05`, `OK`, the text `"nan"`) | 8x16 x `f / 2`, like text |
 
 In a value, the 12x24 and 16x32 faces are bold (each glyph is drawn twice, one font column apart), and `.` and `:` are narrow on every face (half a cell wide). `value()` lowers the factor until the value fits, down to `k`, and skips a factor that has no face.
 
@@ -198,6 +198,8 @@ screen.value(23.5, label="Temp", unit="C")
 
 Displays a large centered value with optional label above and unit below.
 
+A float that is NaN, infinite or not below 1e9 in magnitude shows `--`, as on Arduino.
+
 ---
 
 #### Progress Bar
@@ -207,6 +209,8 @@ screen.bar(75, max_val=100)
 ```
 
 `y_offset` (in 128 px units) moves the bar down, or up when negative. A bar moved far from the centre is cut to the round screen, row by row.
+
+NaN, a value not above 0, or a `max_val` not above 0 leaves the bar empty; a value from `max_val` up (`inf` included) fills it, as on Arduino.
 
 ---
 
@@ -218,7 +222,7 @@ screen.gauge(60, min_val=0, max_val=100)
 
 Draws a 270-degree arc gauge near the screen border.
 
-The fill covers `int(270 * ratio)` degrees, where `ratio = (val - min_val) / (max_val - min_val)` is clamped to 0..1. A value with `0 < ratio < 1/270` (less than one degree) therefore shows an empty gauge, as on Arduino: `gauge(0.3)` draws no fill, `gauge(0.4)` a 1-degree one.
+The fill covers `int(270 * ratio)` degrees, where `ratio = (val - min_val) / (max_val - min_val)` is clamped to 0..1. A value with `0 < ratio < 1/270` (less than one degree) therefore shows an empty gauge, as on Arduino: `gauge(0.3)` draws no fill, `gauge(0.4)` a 1-degree one. A NaN ratio (a NaN argument, `inf / inf`) also shows an empty gauge, and a `min_val` or `max_val` label that is NaN, infinite or not below 1e9 in magnitude shows `--`.
 
 The arc is drawn row by row with integer arithmetic and its colour converted once: a gauge allocates only a few small objects per call, most of them for its two labels.
 
@@ -232,9 +236,9 @@ screen.graph([10, 20, 15, 30], min_val=0, max_val=100)
 
 Draws a scrolling line graph with the last value displayed above.
 
-With an empty list, or when the last value is NaN or infinite, the frame is drawn and the value shows `--`. With a single value, only the frame and that value are drawn. A NaN value elsewhere leaves a gap in the line: no segment reaches it, and the other points keep their place.
+With an empty list, or when the last value is NaN, infinite or not below 1e9 in magnitude, the frame is drawn and the value shows `--`; an axis label shows `--` likewise. With a single value, only the frame and that value are drawn. A NaN value elsewhere leaves a gap in the line: no segment reaches it, and the other points keep their place. A NaN `min_val` or `max_val` draws no line.
 
-On the 240 px screen, a value or an axis label too long for the round screen keeps only the characters that fit (for example `graph(data, -1e38, 1e38)`).
+On the 240 px screen, a value or an axis label too long for the round screen keeps only the characters that fit.
 
 ---
 
@@ -252,7 +256,7 @@ screen.menu(["Item 1", "Item 2", "Item 3"], selected=1)
 screen.compass(heading=45)
 ```
 
-Draws a compass with cardinal labels and a rotating needle.
+Draws a compass with cardinal labels and a rotating needle. A NaN or infinite heading (`Compass.heading()` returns NaN when it has no reading) draws the rose and the pivot without a needle, as on Arduino.
 
 ---
 
@@ -262,7 +266,7 @@ Draws a compass with cardinal labels and a rotating needle.
 screen.watch(hours=10, minutes=30, seconds=15)
 ```
 
-Draws an analog clock face.
+Draws an analog clock face. A hand whose angle is NaN or infinite is not drawn; the minute angle includes the seconds, so NaN seconds also hide the minute hand.
 
 ---
 
@@ -308,6 +312,8 @@ from steami_screen import RED, GREEN, BLUE, YELLOW
 ```
 
 Colors are RGB tuples. On SSD1327 they degrade to greyscale automatically.
+
+Some colours share a grey level on the SSD1327 (V1a/V1b): `BLUE` and `DARK` are both level 6 of 15. So that a widget stays readable, its foreground drawn over the widget's own background is lifted to at least 4 grey levels above it (capped at 15), as on Arduino: the bar fill over its `GRID_DARK` track (level 3), the gauge fill over its `DARK` track and the selected menu text over its `DARK` bar (level 6). A `BLUE` bar fill shows at level 7, a `BLUE` or `RED` gauge fill at level 10. Colours already bright enough are kept, and the GC9A01 colour screen (V1c) keeps every colour. Primitives never adjust colours: `rect(..., BLUE)` drawn on a `DARK` area stays invisible on the SSD1327.
 
 On the GC9A01 round screen the frame holds 16 colours: each pixel is a palette index (0-15), not an RGB565 value. `GC9A01Display` maps any RGB tuple to the nearest entry of the driver palette (smallest squared RGB distance) with `steami_screen.gc9a01.rgb_to_index(color)`. A legacy int is a grey4 level: it becomes the grey `level * 17`, then the nearest palette entry, but a non-zero level never becomes black (level 1 gives the darkest grey, as it is visible on the SSD1327).
 

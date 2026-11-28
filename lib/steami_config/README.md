@@ -91,6 +91,16 @@ cal = config.get_temperature_calibration("wsen_hids")
 # -> {"gain": 1.0, "offset": -0.5}   or   None
 ```
 
+### Clear calibration
+
+```python
+config.clear_temperature_calibration("hts221")
+# the "hts" entry is gone; the other sensors keep theirs
+```
+
+Same as Arduino `clearTemperatureCalibration()`. An unknown sensor name raises
+`ValueError`.
+
 ### Apply calibration to a sensor
 
 ```python
@@ -221,7 +231,7 @@ calibration tools for the WSEN-HIDS (read through the name `hts221`).
 | Example | Description |
 | ------- | ----------- |
 | `show_config.py` | Display current board configuration |
-| `calibrate_temperature.py` | Calibrate all sensors against WSEN-HIDS reference |
+| `calibrate_temperature.py` | Calibrate the temperature sensors against the BME280 (V1c) or the WSEN-HIDS (V1a/V1b), with `steami` |
 | `calibrate_magnetometer.py` | Calibrate LIS2MDL with the board screen and persistent storage |
 | `calibrate_accelerometer.py` | Calibrate ISM330DL accelerometer bias and persist it |
 | `boot_counter.py` | Increment and display the boot counter |
@@ -243,5 +253,5 @@ exec(open('/remote/steami_config/examples/show_config.py').read())
 # Memory Note
 
 Loading all five sensor drivers simultaneously exceeds the STM32WB55 RAM.
-Use `gc.collect()` between sensor imports (see `calibrate_temperature.py`).
+Use `gc.collect()` between sensor imports when the drivers are not frozen.
 See issue #175 for investigation.

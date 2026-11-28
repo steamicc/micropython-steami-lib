@@ -37,3 +37,17 @@ class Color(Handle):
 
     def blue(self):
         return self.read()[2]
+
+    def rgb(self):
+        """Hue as a tuple (r, g, b): the largest count scaled to 255, the others
+        in proportion, rounded as SteamiColor::rgb() in Arduino.
+
+        (0, 0, 0) when unavailable or when the three counts are zero. The tuple
+        is a steami_screen colour.
+        """
+        r, g, b = self.read()
+        m = max(r, g, b)
+        if not m:
+            return _ABSENT
+        h = m // 2
+        return ((r * 255 + h) // m, (g * 255 + h) // m, (b * 255 + h) // m)

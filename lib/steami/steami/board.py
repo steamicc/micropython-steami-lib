@@ -396,6 +396,11 @@ class _Board(object):
         info = decode_revision(self._revision)
         return info is not None and info[1]
 
+    def schematic_index(self):
+        """Return the units digit of a valid revision (0 is a prototype), or None."""
+        self.begin()
+        return None if decode_revision(self._revision) is None else self._revision % 10
+
     def is_v1c(self):
         return self.release() == Release.V1C
 

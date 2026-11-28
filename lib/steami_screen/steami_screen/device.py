@@ -28,6 +28,7 @@ pixels.
 import math
 
 from steami_screen import fonts
+from steami_screen.colors import rgb_to_gray4
 from steami_screen.const import (
     BLACK,
     DARK,
@@ -50,6 +51,8 @@ from steami_screen.const import (
     STEAMI_GRAPH_Y,
     STEAMI_MENU_BAR_PAD,
     STEAMI_MENU_ROW_CELLS,
+    STEAMI_MIN_CONTRAST,
+    STEAMI_NUMBER_LIMIT,
     STEAMI_TITLE_CAP_CELLS,
     STEAMI_VALUE_FIT_MARGIN,
     STEAMI_VALUE_LABEL_GAP,
@@ -65,6 +68,11 @@ def _ray(deg):
     """(cos, sin) of an angle in degrees, in Q14 fixed point."""
     a = math.radians(deg)
     return round(16384 * math.cos(a)), round(16384 * math.sin(a))
+
+
+def _int_text(v):
+    """v's integer part, or "--" when |v| >= 1e9, NaN and infinities included."""
+    return str(int(v)) if abs(v) < STEAMI_NUMBER_LIMIT else "--"
 
 
 class Screen:
@@ -271,8 +279,11 @@ class Screen:
         self.text(text, "N", color)
 
     def value(self, val, unit=None, at="CENTER", label=None, color=WHITE, scale=2, y_offset=0):
-        """Draw a large value, optionally with unit below and label above."""
-        text = str(val)
+        """Draw a large value, optionally with unit below and label above.
+
+        A float that is NaN, infinite or not below 1e9 in magnitude shows "--".
+        """
+        text = "--" if isinstance(val, float) and not abs(val) < STEAMI_NUMBER_LIMIT else str(val)
         if self.k > 1:
             self._value(text, unit, at, label, color, scale, y_offset)
             return
@@ -451,18 +462,26 @@ class Screen:
         """Draw a horizontal progress bar below center.
 
         A bar moved far from the centre by y_offset is cut to the circle on
-        each of its rows (Arduino rule 7).
+        each of its rows (Arduino rule 7). NaN, a value not above 0 or a
+        max_val not above 0 leaves it empty; a value from max_val up fills it.
         """
         cx, cy = self.center
         bar_w = self.width - self.u(40)
         bar_h = self.u(8)
         bx = cx - bar_w // 2
         by = cy + self.u(20) + self.u(y_offset)
-        fill_w = int(bar_w * min(val, max_val) / max_val) if max_val else 0
+        fill_w = 0
+        if val >= max_val > 0:
+            fill_w = bar_w
+        elif val > 0 and max_val > 0:  # False for NaN
+            f = bar_w * val
+            # Past the float range (a huge val, max_val inf) the ratio goes first.
+            fill_w = int(bar_w * (val / max_val) if math.isinf(f) else f / max_val)
 
-        self._bar_rows(bx, bx + bar_w - 1, by, bar_h, DARK)
+        # Track GRID_DARK and fill lifted over it on a grey panel (Arduino 5.10).
+        self._bar_rows(bx, bx + bar_w - 1, by, bar_h, GRID_DARK)
         if fill_w > 0:
-            self._bar_rows(bx, bx + fill_w - 1, by, bar_h, color)
+            self._bar_rows(bx, bx + fill_w - 1, by, bar_h, self._lifted(color, GRID_DARK))
 
     def _bar_rows(self, left, right, top, h, c):
         """Fill columns left..right of rows top..top + h - 1 inside the circle.
@@ -482,6 +501,21 @@ class Screen:
                 if x0 <= x1:
                     self._fill_rect(x0, y, x1 - x0 + 1, 1, c)
 
+    def _lifted(self, fg, bg):
+        """fg, or on a grey panel the grey STEAMI_MIN_CONTRAST levels above bg when fg is darker.
+
+        For a widget foreground drawn over the widget's own background (bar
+        fill over its track, gauge fill over its track, selected menu text
+        over its bar), as Arduino SteamiScreen::lifted (spec 5.10): on the
+        SSD1327 BLUE is grey4 6, as DARK, and would vanish on a DARK track.
+        The level is capped at 15. A display whose is_color is true, or
+        that has none, keeps fg. Primitives never adjust colours.
+        """
+        if getattr(self._d, "is_color", True):
+            return fg
+        level = min(rgb_to_gray4(bg) + STEAMI_MIN_CONTRAST, 15)
+        return fg if rgb_to_gray4(fg) >= level else (level * 17,) * 3
+
     def gauge(self, val, min_val=0, max_val=100, color=LIGHT, arc_width=None):
         """Draw a circular arc gauge (270 deg, gap at bottom).
 
@@ -490,7 +524,9 @@ class Screen:
 
         The fill sweeps int(270 * ratio) degrees, ratio = (val - min_val) /
         (max_val - min_val) clamped to 0..1, so a value with 0 < ratio <
-        1/270 shows an empty gauge, as the Arduino gauge does.
+        1/270 shows an empty gauge, as the Arduino gauge does. A NaN ratio
+        (a NaN argument, inf / inf) is an empty gauge, and a min/max label
+        not below 1e9 in magnitude (NaN and infinities included) shows "--".
 
         Args:
             val: Current value to display.
@@ -508,21 +544,22 @@ class Screen:
         start_angle = 135
         sweep = 270
         ratio = (val - min_val) / (max_val - min_val) if max_val != min_val else 0
-        ratio = max(0.0, min(1.0, ratio))
+        ratio = min(1.0, max(0.0, ratio))  # max() first: NaN gives 0.0
 
         # Background arc
         self._draw_arc(cx, cy, r, start_angle, sweep, DARK, arc_w)
-        # Filled arc
+        # Filled arc, lifted over the DARK track on a grey panel
         if ratio > 0:
-            self._draw_arc(cx, cy, r, start_angle, int(sweep * ratio), color, arc_w + 2)
+            fill = self._lifted(color, DARK)
+            self._draw_arc(cx, cy, r, start_angle, int(sweep * ratio), fill, arc_w + 2)
 
         # Min/max labels, their top row on the point; when k > 1 at distance
         # outer - arc_w - u(10), in the 6x12 LABEL face, kept inside the circle.
         r_label = r - arc_w - self.u(10) + (0 if k == 1 else arc_w // 2)
         q = int if k == 1 else round
         for t, deg in (
-            (str(int(min_val)), start_angle + 8),
-            (str(int(max_val)), start_angle + sweep - 8),
+            (_int_text(min_val), start_angle + 8),
+            (_int_text(max_val), start_angle + sweep - 8),
         ):
             a = math.radians(deg)
             px = q(cx + r_label * math.cos(a))
@@ -536,12 +573,14 @@ class Screen:
         """Draw a scrolling line graph with the current value above.
 
         The current value is the integer part of the last point, or "--"
-        when data is empty or its last point is NaN or infinite (Arduino
-        5.9). An infinite point is clamped to the box like any other. With 0
-        or 1 point only the frame and the value are drawn. A NaN point is
-        skipped and leaves a gap: no segment reaches it, and the other
-        points keep their x. When k > 1 the value and the axis labels keep
-        the longest prefix that fits the circle at their ink rows.
+        when data is empty or its last point is NaN, infinite or not below
+        1e9 in magnitude (Arduino 5.9); the axis labels show "--" likewise.
+        An infinite point is clamped to the box like any other. With 0 or 1
+        point only the frame and the value are drawn. A NaN point, or any
+        point when a bound is NaN, is skipped and leaves a gap: no segment
+        reaches it, and the other points keep their x. When k > 1 the value
+        and the axis labels keep the longest prefix that fits the circle at
+        their ink rows.
         """
         k = self.k
         u = self.u
@@ -552,9 +591,7 @@ class Screen:
         gw = self.width - margin - gx
         gh = u(STEAMI_GRAPH_HEIGHT)
 
-        text = "--"
-        if data and math.isfinite(data[-1]):
-            text = str(int(data[-1]))
+        text = _int_text(data[-1]) if data else "--"
         if k > 1:
             # Centred on cx, cut to the chord at its ink rows (rule 7).
             self._put(text, cx, u(STEAMI_GRAPH_VALUE_Y), WHITE, TEXT, k)
@@ -563,9 +600,9 @@ class Screen:
             self._txt(text, cx - tw // 2, u(STEAMI_GRAPH_VALUE_Y), WHITE, k, "draw_medium_text")
 
         def _fmt(v):
-            if v >= 1000 and v % 1000 == 0:
+            if 1000 <= v < STEAMI_NUMBER_LIMIT and v % 1000 == 0:
                 return str(int(v // 1000)) + "k"
-            return str(int(v))
+            return _int_text(v)
 
         mid_y = gy + gh // 2
         mid_val = (min_val + max_val) / 2
@@ -609,11 +646,11 @@ class Screen:
 
         prev_px, prev_py = None, None
         for i, v in enumerate(data):
-            if math.isnan(v):
+            ratio = (v - min_val) / span
+            if math.isnan(ratio):  # a NaN point or bound, inf - inf
                 prev_px = None
                 continue
             px = int(gx + i * step)
-            ratio = (v - min_val) / span
             ratio = max(0.0, min(1.0, ratio))
             py = int(gy + gh - ratio * gh)
             if prev_px is not None:
@@ -645,7 +682,7 @@ class Screen:
             if i == selected:
                 by = iy - u(STEAMI_MENU_BAR_PAD)
                 self._fill_rect(u(15), by, self.width - u(30), item_h, DARK)
-                text, c = "> " + items[i], color
+                text, c = "> " + items[i], self._lifted(color, DARK)
             else:
                 text, c = "  " + items[i], GRAY
             if k > 1:
@@ -654,7 +691,7 @@ class Screen:
                 self._text8(text, x, iy, c, 1, "text")
 
     def compass(self, heading, color=LIGHT):
-        """Draw a compass with a rotating needle."""
+        """Draw a compass with a rotating needle (none for a NaN or infinite heading)."""
         k = self.k
         u = self.u
         q = int if k == 1 else round
@@ -684,23 +721,25 @@ class Screen:
             c = LIGHT if angle % 90 == 0 else DARK
             self._sline(x1, y1, x2, y2, c)
 
-        rad = math.radians(heading)
-        needle_len = int(r * 0.85)
-        half_w = u(3)
+        # A NaN or infinite heading points nowhere: no needle (Arduino).
+        if math.isfinite(heading):
+            rad = math.radians(heading)
+            needle_len = int(r * 0.85)
+            half_w = u(3)
 
-        nx = cx + q(needle_len * math.sin(rad))
-        ny = cy - q(needle_len * math.cos(rad))
-        sx = cx - q(needle_len * math.sin(rad))
-        sy = cy + q(needle_len * math.cos(rad))
-        px = q(half_w * math.cos(rad))
-        py = q(half_w * math.sin(rad))
+            nx = cx + q(needle_len * math.sin(rad))
+            ny = cy - q(needle_len * math.cos(rad))
+            sx = cx - q(needle_len * math.sin(rad))
+            sy = cy + q(needle_len * math.cos(rad))
+            px = q(half_w * math.cos(rad))
+            py = q(half_w * math.sin(rad))
 
-        self._fill_triangle(nx, ny, cx - px, cy - py, cx + px, cy + py, color)
-        self._fill_triangle(sx, sy, cx - px, cy - py, cx + px, cy + py, DARK)
+            self._fill_triangle(nx, ny, cx - px, cy - py, cx + px, cy + py, color)
+            self._fill_triangle(sx, sy, cx - px, cy - py, cx + px, cy + py, DARK)
         self._fill_circle(cx, cy, u(3), GRAY)
 
     def watch(self, hours, minutes, seconds=0, color=LIGHT):
-        """Draw an analog watch face."""
+        """Draw an analog watch face; a hand whose angle is NaN or infinite is not drawn."""
         k = self.k
         u = self.u
         q = int if k == 1 else round
@@ -737,6 +776,8 @@ class Screen:
             ((hours % 12 + minutes / 60) * 30, int(r * 0.50), u(STEAMI_WATCH_HOUR_HALF_W)),
             ((minutes + seconds / 60) * 6, int(r * 0.75), u(STEAMI_WATCH_MINUTE_HALF_W)),
         ):
+            if not math.isfinite(deg):  # NaN or infinite: no hand
+                continue
             rad = math.radians(deg)
             hx = cx + q(length * math.sin(rad))
             hy = cy - q(length * math.cos(rad))
@@ -744,11 +785,12 @@ class Screen:
             py = q(half * math.sin(rad))
             self._fill_triangle(hx, hy, cx - px, cy - py, cx + px, cy + py, color)
 
-        s_rad = math.radians(seconds * 6)
-        s_len = int(r * 0.85)
-        sx = cx + q(s_len * math.sin(s_rad))
-        sy = cy - q(s_len * math.cos(s_rad))
-        self._sline(cx, cy, sx, sy, GRAY)
+        if math.isfinite(seconds):
+            s_rad = math.radians(seconds * 6)
+            s_len = int(r * 0.85)
+            sx = cx + q(s_len * math.sin(s_rad))
+            sy = cy - q(s_len * math.cos(s_rad))
+            self._sline(cx, cy, sx, sy, GRAY)
         self._fill_circle(cx, cy, u(3), GRAY)
 
     def face(self, expression, compact=False, color=LIGHT):

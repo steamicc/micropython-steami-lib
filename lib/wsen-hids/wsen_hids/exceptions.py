@@ -1,4 +1,4 @@
-class WSENHIDSError(Exception):
+class WSENHIDSError(OSError):
     """Base exception for the WSEN-HIDS driver."""
 
 

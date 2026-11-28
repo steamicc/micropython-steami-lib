@@ -523,10 +523,10 @@ def test_mock_read_driver_exception_gives_absent_value(steami):
     humidity = steami["Humidity"]()
     assert humidity.begin() is True
     del s.bus._devices[0x5F]
-    # The driver raises its own class, which is not an OSError.
+    # The driver raises its own class, an OSError subclass (#320).
     with pytest.raises(WSENHIDSError) as info:
         s.steami.wsen_hids().humidity()
-    assert not isinstance(info.value, OSError)
+    assert isinstance(info.value, OSError)
     assert math.isnan(humidity.read())
 
 
@@ -1134,6 +1134,49 @@ def test_mock_color_reads_a_tuple_and_each_channel(steami):
     assert color.read() == (128, 64, 32)
     assert isinstance(color.read(), tuple)
     assert (color.red(), color.green(), color.blue()) == (128, 64, 32)
+
+
+def test_mock_color_rgb_scales_the_largest_channel_to_255(steami):
+    board(steami, V1AB)
+    color = steami["Color"]()
+    # (128, 64, 32): 128 -> 255, the others rounded as Arduino SteamiColor::rgb().
+    assert color.rgb() == (255, 128, 64)
+    assert isinstance(color.rgb(), tuple)
+
+
+@pytest.mark.parametrize(
+    ("counts", "expected"),
+    [
+        ((0, 0, 0), (0, 0, 0)),
+        ((3, 0, 1), (255, 0, 85)),
+        ((7, 2, 1), (255, 73, 36)),
+        ((65535, 65535, 1), (255, 255, 0)),
+        ((1, 1, 1), (255, 255, 255)),
+    ],
+)
+def test_mock_color_rgb_rounds_as_arduino(steami, counts, expected):
+    s = board(steami, V1AB)
+    color = steami["Color"]()
+    assert color.begin() is True
+    driver = s.steami.apds9960()
+    driver.red_light = lambda: counts[0]
+    driver.green_light = lambda: counts[1]
+    driver.blue_light = lambda: counts[2]
+    assert color.rgb() == expected
+
+
+def test_mock_color_rgb_absent_or_failing_is_black(steami):
+    board(steami)
+    assert steami["Color"]().rgb() == (0, 0, 0)
+    s = board(steami, V1AB)
+    color = steami["Color"]()
+    assert color.begin() is True
+
+    def fail():
+        raise OSError("bus")
+
+    s.steami.apds9960().red_light = fail
+    assert color.rgb() == (0, 0, 0)
 
 
 def test_mock_light_color_and_gesture_share_one_driver(steami):

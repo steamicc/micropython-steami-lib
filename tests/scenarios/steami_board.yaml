@@ -1,6 +1,9 @@
 type: board
 name: "steami_board"
 
+# V1c only: the hardware tests are skipped on a V1a or V1b.
+releases: [V1c]
+
 # Hardware-only checks of the `steami` package on a STeaMi V1c.
 # Needs the board in V1c state with no button pressed.
 # Each test starts from a fresh interpreter, so the `Steami` state does not
@@ -26,6 +29,21 @@ tests:
         sys.path.insert(0, '/remote/' + d)
       from steami import Steami, Release
       result = Steami.begin() == Release.V1C == "V1c"
+    expect_true: true
+    mode: [hardware]
+
+  - name: "Steami.schematic_index() is the units digit of the revision"
+    action: hardware_script
+    script: |
+      import os, sys
+      for d in os.listdir('/remote'):
+        sys.path.insert(0, '/remote/' + d)
+      from steami import Steami
+      Steami.begin()
+      rev = Steami.revision()
+      index = Steami.schematic_index()
+      print("revision:", rev, "schematic index:", index)
+      result = index is None if rev is None else index == rev % 10
     expect_true: true
     mode: [hardware]
 

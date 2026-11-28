@@ -85,6 +85,7 @@ Steami.is_v1ab()
 Steami.origin()         # Origin.FORCED, CONFIG, PROBE or NONE
 Steami.revision()       # the code of the board config, or None
 Steami.is_prototype()
+Steami.schematic_index()  # units digit of a valid revision (0 = prototype), or None
 Steami.has(Function.LIGHT)   # True when this release has the function
 ```
 
@@ -162,7 +163,7 @@ create the function objects again.
 | `Magnetometer` | `read()` in µT as a `Vector`, `x()`, `y()`, `z()`, `strength()`, `calibrate(seconds=12)` | `nan` |
 | `Compass` | `heading()` in degrees, `direction()`, `set_declination(deg)`, `calibrate(seconds=12)` | `nan`, `""` |
 | `Light` | `read()`, the raw clear count | `0` |
-| `Color` | `read()` returns `(r, g, b)`, `red()`, `green()`, `blue()` | `(0, 0, 0)`, `0` |
+| `Color` | `read()` returns `(r, g, b)`, `red()`, `green()`, `blue()`; `rgb()`, the hue with the largest channel scaled to 255 (a `steami_screen` colour) | `(0, 0, 0)`, `0` |
 | `Gesture` | `read(timeout_ms=0)` returns `Gesture.NONE`, `LEFT`, `RIGHT`, `UP`, `DOWN`, `NEAR` or `FAR`; `name(g)` | `Gesture.NONE` |
 | `Buttons` | `is_pressed(b)`, `was_pressed(b)`, `was_released(b)`, `wait_for_press(timeout_ms=None)` | the D-pad stays released; A, B and MENU always work |
 
@@ -230,7 +231,8 @@ The calibrations of the DAPLink config zone (`tc`, `cm`, `ca`; see
 when the release is forced. For the WSEN-HIDS, the `tc.hid` key is used like in
 Arduino, or `tc.hts` when `tc.hid` is missing or is the identity (the key that
 older versions of `steami_config/examples/calibrate_temperature.py` wrote,
-through the removed HTS221 driver).
+through the removed HTS221 driver; the current tool removes it). Arduino reads
+it the same way (steamicc/arduino-steami-lib#301).
 
 ---
 
@@ -272,9 +274,16 @@ silences them, and `Steami.last_error()` returns the last one.
 * Three-axis reads return a `Vector` namedtuple with fields `x`, `y`, `z`,
   instead of `SteamiVector`.
 * `Color.read()` returns a tuple, because Python has no output arguments.
-  Arduino's boolean result is replaced by `is_available()`.
+  Arduino's boolean result is replaced by `is_available()`. `Color.rgb()`
+  returns a tuple `(r, g, b)` (a `steami_screen` colour) instead of
+  `SteamiRgb`, and `(0, 0, 0)` where Arduino returns `STEAMI_BLACK`.
+* `Steami.revision()` and `Steami.schematic_index()` return `None` when there
+  is no valid revision, where Arduino returns -1 and 0xFF.
+* `Gesture.read()` returns a text (`Gesture.RIGHT == "RIGHT"`), where Arduino
+  returns a `SteamiGesture::Direction` value.
 * Buttons are named by strings: `"A"`, `"B"`, `"MENU"`, `"UP"`, `"DOWN"`,
-  `"LEFT"`, `"RIGHT"`.
+  `"LEFT"`, `"RIGHT"`. Any other name raises `ValueError`, where Arduino
+  returns false for `SteamiButton::NONE`.
 * `Buttons.wait_for_press(None)` waits forever and `wait_for_press(0)` samples
   once. Arduino uses 0 for "forever".
 * Debounce is the Arduino 20 ms lock-out: a change is taken at once, then the
@@ -284,6 +293,12 @@ silences them, and `Steami.last_error()` returns the last one.
 * `Steami.begin()` returns the release text (truthy when the release is
   known) where Arduino returns a bool.
 * Statuses are class constants (`Status.OK`, ...).
+* `Steami.config()` loads the config zone on demand, on its first call.
+  Arduino's `config()` returns `nullptr` until detection or `calibrate()` has
+  loaded it.
+* `Steami.print_info()` sends its lines through the logger only (see
+  `set_logger()`); there is no `printInfo(Print& out)` with an output
+  argument.
 * `Screen` is `SteamiScreen`, with the `steami_screen` widgets. Its frame is
   16 colours (28 800 bytes on V1c) instead of RGB565 (115 200 bytes), so E31
   gives that size.
@@ -307,6 +322,7 @@ silences them, and `Steami.last_error()` returns the last one.
 | `compass.py` | Heading and direction, with a calibration on MENU |
 | `light.py`, `color.py`, `gesture.py` | APDS-9960, V1a and V1b only |
 | `buttons.py` | Press and release of the seven buttons |
+| `weather_station.py` | Temperature, humidity, pressure graph and compass on four screen pages, changed with the buttons (and a swipe on V1a/V1b) |
 
 ---
 

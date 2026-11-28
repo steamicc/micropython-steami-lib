@@ -123,6 +123,22 @@ def test_mock_config_rev_130_prototype(board_module):
     assert banner(s)[0].endswith(", prototype)")
 
 
+@pytest.mark.parametrize(("rev", "index"), [(130, 0), (131, 1), (139, 9), (112, 2)])
+def test_mock_schematic_index_is_the_units_digit(board_module, rev, index):
+    s = Setup(board_module, config=f'{{"rev": {rev}}}')
+    assert s.steami.schematic_index() == index
+
+
+def test_mock_schematic_index_none_without_a_valid_revision(board_module):
+    s = Setup(board_module, config='{"rev": 42}')
+    assert s.steami.schematic_index() is None
+    s = Setup(board_module, config="", zone=False)
+    assert s.steami.schematic_index() is None
+    s = Setup(board_module)
+    s.steami.begin("V1c")
+    assert s.steami.schematic_index() is None
+
+
 def test_mock_config_rev_111(board_module):
     s = Setup(board_module, release="V1a/V1b", config='{"rev": 111}')
     assert s.steami.begin() == "V1a"
