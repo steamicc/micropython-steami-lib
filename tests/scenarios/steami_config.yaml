@@ -476,7 +476,9 @@ tests:
     mode: [hardware]
 
   # -- Hardware Temperature Calibration --
+  # The WSEN-HIDS and the HTS221 (0x5F) are not on the V1c.
   - name: "Apply calibration to real sensor"
+    releases: [V1a, V1b]
     action: script
     script: |
       from time import sleep_ms

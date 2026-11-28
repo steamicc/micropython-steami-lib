@@ -1,6 +1,7 @@
 """Tests of the release filtering of the hardware scenarios (tests/runner/release.py)."""
 
 import importlib.util
+import re
 import sys
 from pathlib import Path
 
@@ -225,6 +226,38 @@ def test_v1ab_driver_scenarios_skip_hardware_on_v1c(name):
     scenario = _scenario(name)
     assert _hardware_names(scenario, "V1c") == []
     assert _hardware_names(scenario, "V1a/V1b") != []
+
+
+def test_steami_config_real_sensor_calibration_skips_on_v1c():
+    # It reads the WSEN-HIDS and the HTS221 (0x5F), absent on the V1c. The
+    # other hardware tests of steami_config only use the bridge.
+    scenario = _scenario("steami_config")
+    name = "Apply calibration to real sensor"
+    assert name not in _hardware_names(scenario, "V1c")
+    assert name in _hardware_names(scenario, "V1a/V1b")
+    assert "Save and load config on hardware" in _hardware_names(scenario, "V1c")
+
+
+# Driver modules of the chips that are only on the V1a/V1b.
+_V1AB_ONLY_MODULES = re.compile(r"\b(?:from|import)\s+(wsen_hids|hts221|wsen_pads|apds9960)\b")
+
+
+def test_no_v1c_hardware_test_imports_a_v1ab_only_driver():
+    found = []
+    for yaml_file in sorted(runner.SCENARIOS_DIR.glob("*.yaml")):
+        with open(yaml_file, encoding="utf-8") as f:
+            scenario = yaml.safe_load(f)
+        for test in scenario.get("tests", []):
+            if "hardware" not in test.get("mode", ["mock", "hardware"]):
+                continue
+            if release.skip_reason(scenario, test, "V1c") is not None:
+                continue
+            code = (scenario.get("hardware_init") or "") + (test.get("script") or "")
+            found.extend(
+                f"{yaml_file.name}: {test['name']!r} imports {module}"
+                for module in _V1AB_ONLY_MODULES.findall(code)
+            )
+    assert found == []
 
 
 @pytest.mark.parametrize("name", ["steami_board", "steami_screen_v1c"])
