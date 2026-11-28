@@ -16,8 +16,13 @@ RED = (255, 85, 85)
 BLUE = (85, 85, 255)
 YELLOW = (255, 255, 85)
 
-# Internal grid color (used by graph widget)
+# Internal grid color (graph middle line, bar track)
 GRID_DARK = (51, 51, 51)
+
+# Grey minimum contrast (Arduino STEAMI_MIN_CONTRAST): on a grey panel, a
+# widget foreground over the widget's own background is at least this many
+# grey4 levels above it (BLUE and DARK are both grey4 6).
+STEAMI_MIN_CONTRAST = const(4)
 
 # --- Pixel-art face bitmaps (8x8, MSB = left) ---
 FACES = {

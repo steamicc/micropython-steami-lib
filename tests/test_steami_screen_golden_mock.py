@@ -18,7 +18,12 @@ draw_scaled_text has been a true zoom since #398, but value() still halved
 the width, so the value was 2 * scale px per character right of its anchor.
 Only the x of the value glyphs changed, by that amount (4 px per character at
 scale 2; at="N" did not move); the label and unit calls are unchanged and no
-other entry changed.
+other entry changed. The bar, gauge and menu entries were re-recorded for the
+grey minimum contrast (#437, Arduino 5.10): only colours changed. The bar
+track is GRID_DARK (3, was DARK 6, 5 calls) and the color=5 fill over it is
+lifted to 7 (1 call); the color=5 gauge fill over its DARK track is lifted to
+10 (217 calls); the color=5 selected menu text over its DARK bar is lifted to
+10 (1 call). No coordinate and no other entry changed.
 
 Regenerate (only on purpose): STEAMI_GOLDEN_WRITE=1 python3 -m pytest <this file>
 The writer rewrites every entry the same way, so `git diff` must show only the
