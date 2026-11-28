@@ -4,9 +4,9 @@ Measure a baseline, then loop and print an alert (with intensity bar)
 when magnitude deviates significantly.  Higher-pitched buzzer beep for
 stronger fields — like a real metal detector.
 
-steami.tone() drives the buzzer with hardware PWM and stops it by itself,
-so the tone plays in the background while the CPU keeps reading the
-magnetometer.
+steami.tone() drives the buzzer with hardware PWM and stops it by itself.
+The loop still waits for the end of each beep, so a beep is always
+followed by 100 ms of silence and beeps never merge into one tone.
 """
 
 from time import sleep_ms
@@ -31,11 +31,12 @@ def make_bar(value, max_value, width=20):
 
 
 def alert_tone(delta_ut):
-    """Play a higher-pitched tone when the magnetic disturbance is larger."""
+    """Beep higher and longer when the magnetic disturbance is larger."""
     normalized = min(delta_ut, MAX_ALERT_DELTA_UT) / MAX_ALERT_DELTA_UT
     freq = int(800 + normalized * 2200)  # 800 -> 3000 Hz
     duration_ms = int(40 + normalized * 80)
     tone(freq, duration_ms)
+    sleep_ms(duration_ms)
 
 
 i2c = I2C(1)

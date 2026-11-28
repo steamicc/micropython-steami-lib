@@ -1,3 +1,4 @@
+import sys
 from time import sleep_ms, ticks_diff, ticks_ms
 
 from machine import Pin, disable_irq, enable_irq
@@ -70,16 +71,36 @@ def _attach(pin, i):
         return  # line taken (INT_EXPANDER on EXTI 0): the button is only sampled
 
 
+def _dispatch(driver):
+    # Run the pad callbacks of the program held by the driver. Their errors
+    # are printed and the call goes on, as for an IRQ handler: only a bus
+    # error, raised outside this function, makes the D-pad read released.
+    try:
+        driver._dispatch_queued()
+    except Exception as e:
+        sys.print_exception(e)
+
+
 def _setup_dpad(driver):
-    for d, bit in enumerate(_DPAD_BITS):
-        driver.setup(bit, MCP23009_DIR_INPUT, MCP23009_PULLUP)
-        # No event for the level at registration: it is read below.
-        driver.interrupt_on_change(bit, _dpad(d))
-    return driver.get_gpio()
+    # A pad event pending since before begin() is held while the arrows are
+    # registered (interrupt_on_change() would dispatch it), then dispatched.
+    driver._dispatching = True
+    try:
+        for d, bit in enumerate(_DPAD_BITS):
+            driver.setup(bit, MCP23009_DIR_INPUT, MCP23009_PULLUP)
+            # No event for the level at registration: it is read below.
+            driver.interrupt_on_change(bit, _dpad(d))
+    finally:
+        driver._dispatching = False
+    port = driver.get_gpio()
+    _dispatch(driver)
+    return port
 
 
 def _read_latch(driver):
-    driver.interrupt_event()
+    # MCP23009E.interrupt_event() in two steps: the read, then the dispatch.
+    driver._read_interrupt(0)
+    _dispatch(driver)
     return True
 
 
@@ -115,7 +136,9 @@ class Buttons(Handle):
     takes line 0) leaves that button sampled at each call only, and a later
     Pin.irq() on such a line raises OSError. With several Buttons objects, the
     taps made between two calls go to the one started or called last only;
-    every object follows the levels of all the buttons.
+    every object follows the levels of all the buttons. A pad callback set
+    with Steami.mcp23009e().interrupt_on_*() runs during the calls; an error
+    it raises is printed and does not stop the call.
     """
 
     _NOUN = "D-PAD expander"

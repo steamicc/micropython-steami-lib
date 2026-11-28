@@ -317,8 +317,9 @@ silences them, and `Steami.last_error()` returns the last one.
 * Buttons are named by strings: `"A"`, `"B"`, `"MENU"`, `"UP"`, `"DOWN"`,
   `"LEFT"`, `"RIGHT"`. Any other name raises `ValueError`, where Arduino
   returns false for `SteamiButton::NONE`.
-* `Buttons.wait_for_press(None)` waits forever and `wait_for_press(0)` samples
-  once. Arduino uses 0 for "forever".
+* `Buttons.wait_for_press(None)` waits forever. `wait_for_press(0)` does not
+  wait: it samples, drops the presses found, samples again and returns `None`
+  unless a press came between the two samples. Arduino uses 0 for "forever".
 * Debounce is the Arduino 20 ms lock-out: a change is taken at once, then the
   bounces of the next 20 ms are ignored. As in Arduino, a tap made between
   two calls is not missed. A, B and MENU get a hard IRQ on both edges
@@ -337,7 +338,10 @@ silences them, and `Steami.last_error()` returns the last one.
   already taken, MENU is only sampled at each call; when `Buttons` took it
   first, the later `Pin.irq()` raises `OSError`. Pad callbacks set with
   `Steami.mcp23009e().interrupt_on_*()` are still called, by every
-  `Buttons` call.
+  `Buttons` call. As in Arduino, such a callback cannot stop `Buttons`: an
+  exception it raises is printed (`sys.print_exception()`, as for an IRQ
+  handler) and the call returns its result. `interrupt_event()` called by
+  the program itself still raises it.
 * `Steami.end()` also resets the logger to `print`; Arduino keeps it.
 * `tone(frequency, duration_ms)` takes no pin: the board has one buzzer.
   Arduino calls `tone(SPEAKER, frequency, duration)`.
