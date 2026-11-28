@@ -121,6 +121,11 @@ Rotate the board **in all orientations**:
 mag.calibrate_minmax_3d(samples=600)
 ```
 
+Both routines are all or nothing: the offsets and scales only change once
+every sample was read. A failed read raises `OSError` and `samples < 1` raises
+`ValueError`, with the previous calibration kept (the Arduino driver returns
+`false` in both cases).
+
 ### Apply and test calibration
 
 ```python
