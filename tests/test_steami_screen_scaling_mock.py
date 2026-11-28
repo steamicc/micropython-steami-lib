@@ -1228,7 +1228,9 @@ def test_mock_gauge_nan_ratio_is_an_empty_gauge(panel, size):
     full.gauge(100, color=green)
     s, raw = panel(size)
     s.gauge(float("inf"), color=green)
-    assert box(raw, GREEN) == box(full_raw, GREEN) is not None
+    full_box = box(full_raw, GREEN)
+    assert full_box is not None
+    assert box(raw, GREEN) == full_box
 
 
 def test_mock_gauge_and_graph_labels_show_dashes_when_not_finite(mods):
