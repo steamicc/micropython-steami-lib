@@ -28,6 +28,8 @@ The BME280 is a high-precision environmental sensor suitable for applications su
 * data-ready status helpers
 * sleep mode (power off)
 * soft reset and full reset with recalibration
+* temperature offset calibration
+* two-point temperature calibration
 
 ---
 
@@ -212,6 +214,49 @@ Note: in practice, prefer `read_one_shot()` which handles triggering and waiting
 
 ---
 
+## Temperature Calibration
+
+The driver supports a software temperature correction on top of the factory trimming. It is applied to `temperature()`, `read()`, and `read_one_shot()`. Pressure and humidity are not changed: their compensation still uses the factory temperature.
+
+### Temperature offset
+
+Use this method when the sensor temperature is consistently shifted by a fixed offset:
+
+```python
+sensor.set_temp_offset(-1.2)
+```
+
+This applies a simple correction in degrees Celsius and sets the gain back to `1.0`.
+
+---
+
+### Two-point calibration
+
+Use this method to correct both offset and slope from two reference measurements:
+
+```python
+sensor.calibrate_temperature(
+    ref_low=0.0,
+    measured_low=0.8,
+    ref_high=50.0,
+    measured_high=48.7,
+)
+```
+
+The driver computes:
+
+```text
+gain = (ref_high - ref_low) / (measured_high - measured_low)
+offset = ref_low - gain * measured_low
+temperature = gain * factory_temperature + offset
+```
+
+The measured values must be read without calibration (gain `1.0`, offset `0.0`). A `ValueError` is raised when `measured_low` and `measured_high` are equal.
+
+The `steami_config` library can store the gain and offset under the `bme` key and restore them with `apply_temperature_calibration(sensor)`.
+
+---
+
 ## Data-Ready Status
 
 ```python
@@ -351,8 +396,8 @@ Performs a soft reset, re-reads calibration data, and re-applies default configu
 | Multi-unit temperature | ❌ | ❌ | ❌ | ✅ C/F/K | ❌ | ❌ |
 | BMP280 compatibility | ❌ | ❌ | ❌ | ❌ | ✅ | ❌ |
 | Dedicated exceptions | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ |
-| Mock test suite | ✅ (39) | ❌ | ❌ | ❌ | ❌ | ❌ |
-| Hardware test suite | ✅ (6) | ❌ | ❌ | ❌ | ❌ | ❌ |
+| Mock test suite | ✅ (60) | ❌ | ❌ | ❌ | ❌ | ❌ |
+| Hardware test suite | ✅ (8) | ❌ | ❌ | ❌ | ❌ | ❌ |
 
 Reference implementations:
 

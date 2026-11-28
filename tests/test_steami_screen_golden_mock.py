@@ -12,7 +12,13 @@ letters were folded to one 8x8 cell (they were two checkerboards, 16 px, for
 one counted cell) and '°' drawn with the Arduino 8x8 degree glyph (it was two
 checkerboards); no other entry changed. The graph_empty_nan entry was added
 when graph() drew "--" for an empty history or a NaN last value (#463); the
-graph entry gained only that "--" call for its graph([]) case.
+graph entry gained only that "--" call for its graph([]) case. The value and accents
+entries were re-recorded when value() took the real width of its text (#351):
+draw_scaled_text has been a true zoom since #398, but value() still halved
+the width, so the value was 2 * scale px per character right of its anchor.
+Only the x of the value glyphs changed, by that amount (4 px per character at
+scale 2; at="N" did not move); the label and unit calls are unchanged and no
+other entry changed.
 
 Regenerate (only on purpose): STEAMI_GOLDEN_WRITE=1 python3 -m pytest <this file>
 The writer rewrites every entry the same way, so `git diff` must show only the
@@ -333,3 +339,27 @@ def test_mock_compass_of_nan_or_infinity_has_no_needle_at_128(bad):
     calls = record(lambda s: s.compass(bad, color=5))
     assert calls
     assert not [c for c in calls if c[-1] == 5]
+
+
+# value() centring on 128 (#351, Arduino placeValue: x = cx - tw / 2, with tw
+# the real width of the text). draw_scaled_text is a true zoom, so a scale 2
+# character is 16 px wide. With the test glyphs, '9' and '0' light their whole
+# 8x8 cell, so the WHITE (15) ink box is the box of the text cells, and it is
+# centred on the screen when x0 + x1 == 127 (pixels 0..127, centre 63.5).
+
+
+def _ink_box(calls, color=15):
+    rects = [c for c in calls if c[0] == "fill_rect" and c[5] == color]
+    return (
+        min(r[1] for r in rects),
+        min(r[2] for r in rects),
+        max(r[1] + r[3] - 1 for r in rects),
+        max(r[2] + r[4] - 1 for r in rects),
+    )
+
+
+@pytest.mark.parametrize("val", (9, 900, 99.9))
+def test_mock_value_is_centred_at_128(val):
+    x0, _, x1, _ = _ink_box(record(lambda s: s.value(val)))
+    assert x1 - x0 + 1 == len(str(val)) * 16
+    assert x0 + x1 == 127

@@ -288,7 +288,7 @@ class Screen:
         cx, cy = self.center
         char_w = self.CHAR_W * scale
         char_h = self.CHAR_H * scale
-        tw = len(text) * char_w // 2
+        tw = len(text) * char_w
 
         if unit:
             gap = char_h // 3

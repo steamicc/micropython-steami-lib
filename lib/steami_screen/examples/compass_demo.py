@@ -20,6 +20,9 @@ print("Calibrate the magnetometer by moving it flat.")
 sensor.calibrate_minmax_2d()
 print("Calibration complete.")
 
+# Smooth the heading: the raw value jitters by a few degrees on a still board.
+sensor.set_heading_filter(0.2)
+
 heading = 0
 
 # --- Main loop ---

@@ -3,6 +3,36 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [0.32.4](https://github.com/steamicc/micropython-steami-lib/compare/v0.32.3...v0.32.4) (2026-11-28)
+
+
+### Bug Fixes
+
+* **steami_screen:** Centre value() on the 128 px screen. ([#481](https://github.com/steamicc/micropython-steami-lib/issues/481)) ([369b814](https://github.com/steamicc/micropython-steami-lib/commit/369b8145042310464938aac486bdde49fc008a3e)), closes [#351](https://github.com/steamicc/micropython-steami-lib/issues/351)
+
+## [0.32.3](https://github.com/steamicc/micropython-steami-lib/compare/v0.32.2...v0.32.3) (2026-11-28)
+
+
+### Bug Fixes
+
+* **bme280:** Apply the humidity >> 14 to the second factor only. ([#479](https://github.com/steamicc/micropython-steami-lib/issues/479)) ([429efc8](https://github.com/steamicc/micropython-steami-lib/commit/429efc89389a64522e95f13990a22b016b541be7)), closes [#476](https://github.com/steamicc/micropython-steami-lib/issues/476)
+
+## [0.32.2](https://github.com/steamicc/micropython-steami-lib/compare/v0.32.1...v0.32.2) (2026-11-28)
+
+## [0.32.1](https://github.com/steamicc/micropython-steami-lib/compare/v0.32.0...v0.32.1) (2026-11-28)
+
+
+### Bug Fixes
+
+* **steami_screen:** Smooth the heading of the compass demo. ([#477](https://github.com/steamicc/micropython-steami-lib/issues/477)) ([b2c0855](https://github.com/steamicc/micropython-steami-lib/commit/b2c08559a6b1a3e54a74cd202540f3fbca9a1d6d)), closes [#371](https://github.com/steamicc/micropython-steami-lib/issues/371)
+
+# [0.32.0](https://github.com/steamicc/micropython-steami-lib/compare/v0.31.3...v0.32.0) (2026-11-28)
+
+
+### Features
+
+* **bme280:** Add two-point temperature calibration methods. ([#469](https://github.com/steamicc/micropython-steami-lib/issues/469)) ([c1ed3af](https://github.com/steamicc/micropython-steami-lib/commit/c1ed3af48cd97d7e22e37a0c197074e76f35f4ef))
+
 ## [0.31.3](https://github.com/steamicc/micropython-steami-lib/compare/v0.31.2...v0.31.3) (2026-11-27)
 
 

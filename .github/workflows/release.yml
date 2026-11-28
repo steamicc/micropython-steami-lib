@@ -75,7 +75,7 @@ jobs:
         run: python3 scripts/write_firmware_version.py "v${{ needs.release.outputs.new-release-version }}"
 
       - name: Build MicroPython firmware
-        run: make micropython-firmware
+        run: make -j"$(nproc)" micropython-firmware
 
       - name: Attach MicroPython firmware to release
         env:
@@ -170,3 +170,31 @@ jobs:
           gh release edit "v${{ needs.release.outputs.new-release-version }}" \
             --repo "${{ github.repository }}" \
             --draft=false
+
+      - name: Jeton pour les robots en aval
+        id: jeton_aval
+        continue-on-error: true   # without a token, warn and let the crons take over
+        uses: actions/create-github-app-token@64ab729a6294000f5aa4a4bc0b73d1f32bc45510 # v3.3.0
+        with:
+          client-id: ${{ secrets.RELEASE_APP_ID }}
+          private-key: ${{ secrets.RELEASE_APP_SECRET }}
+          owner: steamicc
+          repositories: wiki_steami          # the target repositories, comma-separated
+          permission-actions: write
+
+      - name: Déclencher les robots en aval
+        continue-on-error: true   # a failed dispatch never fails the publication
+        env:
+          GH_TOKEN: ${{ steps.jeton_aval.outputs.token }}
+          JETON: ${{ steps.jeton_aval.outcome }}
+        run: |
+          if [ "$JETON" != success ]; then
+            echo "::warning::App token unavailable: the downstream bots will run on their cron."
+            exit 0
+          fi
+          # One target per "<repository> <bot>" string; a failed target does not stop the next ones.
+          for cible in "wiki_steami suivre-micropython.yml"; do
+            read -r repo workflow <<<"$cible"
+            gh workflow run "$workflow" -R "steamicc/$repo" \
+              || echo "::warning::Bot $workflow of steamicc/$repo not dispatched: its cron will take over (check the App's Actions write permission and its installation on this repository)."
+          done

@@ -229,7 +229,8 @@ The calibrations of the DAPLink config zone (`tc`, `cm`, `ca`; see
 `steami_config`) are applied automatically, once per chip, on first use, even
 when the release is forced. For the WSEN-HIDS, the `tc.hid` key is used like in
 Arduino, or `tc.hts` when `tc.hid` is missing or is the identity (the key that
-`steami_config/examples/calibrate_temperature.py` writes).
+older versions of `steami_config/examples/calibrate_temperature.py` wrote,
+through the removed HTS221 driver).
 
 ---
 

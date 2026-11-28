@@ -18,7 +18,7 @@ config.board_revision = 131  # series V1c (schematic index C1)
 config.board_name = "STeaMi Demo Board"
 
 # Temperature calibration (example values)
-config.set_temperature_calibration("hts221", gain=1.01, offset=-0.5)
+config.set_temperature_calibration("bme280", gain=1.01, offset=-0.5)
 config.set_temperature_calibration("lis2mdl", gain=0.99, offset=+0.2)
 config.set_temperature_calibration("ism330dl", gain=1.00, offset=0.0)
 config.set_temperature_calibration("wsen_hids", gain=1.02, offset=-0.3)

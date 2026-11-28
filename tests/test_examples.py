@@ -308,3 +308,24 @@ def test_steami_classes_inherit_handle_and_the_wrapped_driver():
     # steami.Screen(Handle, steami_screen.Screen)
     assert {"begin", "title", "gauge", "show"} <= methods["Screen"]
     assert "read" not in methods["Screen"]
+
+
+# ----- Example-specific checks -----
+
+
+def test_compass_demo_smooths_the_heading():
+    # The raw LIS2MDL heading jitters by a few degrees on a still board
+    # (#371): the demo must turn on the heading low-pass filter, with the
+    # same alpha as the Arduino DigitalCompass example (setHeadingFilter(0.2f)).
+    path = LIB_DIR / "steami_screen" / "examples" / "compass_demo.py"
+    tree = ast.parse(path.read_text(encoding="utf-8"))
+    alphas = [
+        node.args[0].value
+        for node in ast.walk(tree)
+        if isinstance(node, ast.Call)
+        and isinstance(node.func, ast.Attribute)
+        and node.func.attr == "set_heading_filter"
+        and node.args
+        and isinstance(node.args[0], ast.Constant)
+    ]
+    assert alphas == [0.2]

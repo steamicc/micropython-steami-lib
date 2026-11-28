@@ -7,7 +7,6 @@ drivers = [
     "daplink_bridge",
     "daplink_flash",
     "gc9a01",
-    "hts221",
     "im34dt05",
     "ism330dl",
     "lis2mdl",

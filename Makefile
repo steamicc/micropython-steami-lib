@@ -43,7 +43,7 @@ lint-fix: ## Auto-fix lint issues
 
 # --- Testing ---
 
-# Dynamic per-scenario targets (test-apds9960, test-hts221, etc.)
+# Dynamic per-scenario targets (test-apds9960, test-wsen-hids, etc.)
 # Uses 'driver' field for driver scenarios, filename stem for board scenarios.
 # Convention: for board scenarios, the YAML 'name' field must match the filename.
 SCENARIOS := $(shell $(PYTHON) -c "import yaml,glob,os; [print(d.get('driver',os.path.basename(f).replace('.yaml',''))) for f in sorted(glob.glob('tests/scenarios/*.yaml')) for d in [yaml.safe_load(open(f))]]" 2>/dev/null)
