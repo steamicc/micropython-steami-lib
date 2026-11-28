@@ -1083,7 +1083,12 @@ def test_mock_compass_tilt_heading_without_accelerometer(steami):
     compass = steami["Compass"]()
     set_field(s, 0, 100, 300)
     assert math.isnan(compass.heading_tilt_compensated())
+    assert math.isnan(compass.heading_tilt_compensated())
     assert compass.heading() == pytest.approx(0)  # the flat heading does not need it
+    messages = s.messages()  # reported once, under the Accelerometer name
+    assert len(messages) == 1
+    assert messages[0].startswith("[STeaMi] Accelerometer: ")
+    assert "(E10)" in messages[0]
 
 
 def test_mock_compass_tilt_heading_without_magnetometer(steami):

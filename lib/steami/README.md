@@ -167,11 +167,14 @@ create the function objects again.
 | `Gesture` | `read(timeout_ms=0)` returns `Gesture.NONE`, `LEFT`, `RIGHT`, `UP`, `DOWN`, `NEAR` or `FAR`; `name(g)` | `Gesture.NONE` |
 | `Buttons` | `is_pressed(b)`, `was_pressed(b)`, `was_released(b)`, `get_presses(b)`, `wait_for_press(timeout_ms=None)` | the D-pad stays released; A, B and MENU always work |
 
-`Compass.heading()` is for the board held flat. `Compass.heading_tilt_compensated()`
-also reads the accelerometer (set as `Accelerometer` sets it) and corrects the heading
-when the board is tilted, up to about 60 degrees; it equals `heading()` when flat and
-is `nan` when either sensor is missing. It needs the 3D calibration of `calibrate()`
-or of the board config: after `calibrate_minmax_2d()` on the driver, it is meaningless.
+`Compass.heading()` is for the board held flat: 0 when the top of the screen (the USB
+connector side) points north, then clockwise. `Compass.heading_tilt_compensated()`
+also reads the accelerometer and corrects the heading when the board is tilted, up to
+about 60 degrees; it equals `heading()` when flat and is `nan` when either sensor is
+missing. Its first call sets the ISM330DL to +-8 g at 104 Hz, as `Accelerometer` does.
+A missing accelerometer is reported once, under the `Accelerometer` name. It needs the
+3D calibration of `calibrate()` or of the board config: after `calibrate_minmax_2d()` on
+the driver, it is meaningless.
 
 When a vector is missing, `read()` returns `Vector(nan, nan, nan)`.
 

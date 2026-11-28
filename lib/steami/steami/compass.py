@@ -41,7 +41,9 @@ class Compass(Handle):
 
         Equals heading() when flat; nan when either sensor is unavailable.
         Needs the 3D calibration of calibrate() or of the board config; valid
-        up to about 60 degrees of tilt. Sets the accelerometer as Accelerometer.
+        up to about 60 degrees of tilt. The first call sets the ISM330DL to
+        +-8 g at 104 Hz, as Accelerometer does; a missing accelerometer is
+        reported under the Accelerometer name.
         """
         if self._accelerometer is None:
             self._accelerometer = Accelerometer()
