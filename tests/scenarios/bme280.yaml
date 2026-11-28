@@ -2,6 +2,10 @@ driver: bme280
 driver_class: BME280
 i2c_address: 0x76
 
+# The BME280 is on the V1c only: the hardware tests are skipped on a V1a
+# or V1b. The mock tests always run.
+releases: [V1c]
+
 i2c:
   id: 1
 

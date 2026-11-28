@@ -238,11 +238,13 @@ def test_steami_config_real_sensor_calibration_skips_on_v1c():
     assert "Save and load config on hardware" in _hardware_names(scenario, "V1c")
 
 
-# Driver modules of the chips that are only on the V1a/V1b.
+# Driver modules of the chips that are only on the V1a/V1b, or only on the V1c.
 _V1AB_ONLY_MODULES = re.compile(r"\b(?:from|import)\s+(wsen_hids|wsen_pads|apds9960)\b")
+_V1C_ONLY_MODULES = re.compile(r"\b(?:from|import)\s+(bme280)\b")
 
 
-def test_no_v1c_hardware_test_imports_a_v1ab_only_driver():
+def _imports_on(board, modules):
+    """Driver imports of the hardware tests that run on this release."""
     found = []
     for yaml_file in sorted(runner.SCENARIOS_DIR.glob("*.yaml")):
         with open(yaml_file, encoding="utf-8") as f:
@@ -250,17 +252,57 @@ def test_no_v1c_hardware_test_imports_a_v1ab_only_driver():
         for test in scenario.get("tests", []):
             if "hardware" not in test.get("mode", ["mock", "hardware"]):
                 continue
-            if release.skip_reason(scenario, test, "V1c") is not None:
+            if release.skip_reason(scenario, test, board) is not None:
                 continue
             code = (scenario.get("hardware_init") or "") + (test.get("script") or "")
             found.extend(
                 f"{yaml_file.name}: {test['name']!r} imports {module}"
-                for module in _V1AB_ONLY_MODULES.findall(code)
+                for module in modules.findall(code)
             )
-    assert found == []
+    return found
 
 
-@pytest.mark.parametrize("name", ["steami_board", "steami_screen_v1c"])
+def test_no_v1c_hardware_test_imports_a_v1ab_only_driver():
+    assert _imports_on("V1c", _V1AB_ONLY_MODULES) == []
+
+
+def test_no_v1ab_hardware_test_imports_a_v1c_only_driver():
+    assert _imports_on("V1a/V1b", _V1C_ONLY_MODULES) == []
+
+
+def test_temperature_comparison_v1c_uses_the_bme280():
+    names = _hardware_names(_scenario("board_temperature_comparison"), "V1c")
+    assert names == [
+        "Read all temperature sensors (V1c)",
+        "Offset-align all sensors to BME280 reference (V1c)",
+        "Temperature values feel correct",
+    ]
+
+
+def test_temperature_comparison_v1ab_uses_the_wsen_sensors():
+    names = _hardware_names(_scenario("board_temperature_comparison"), "V1a/V1b")
+    assert names == [
+        "Read all temperature sensors (V1a/V1b)",
+        "Temperature spread with barometer (V1a/V1b)",
+        "Offset-align all sensors to WSEN-HIDS reference (V1a/V1b)",
+        "Temperature values feel correct",
+    ]
+
+
+def test_temperature_comparison_v1c_reads_the_sensors_of_the_v1c():
+    # BME280 as reference, LIS2MDL and ISM330DL as auxiliary sensors.
+    scenario = _scenario("board_temperature_comparison")
+    v1c_tests = [t for t in scenario["tests"] if t.get("releases") == ["V1c"]]
+    assert len(v1c_tests) == 2
+    for test in v1c_tests:
+        script = test["script"]
+        assert "from bme280.device import BME280" in script
+        assert "from lis2mdl.device import LIS2MDL" in script
+        assert "from ism330dl.device import ISM330DL" in script
+    assert "bme280" in scenario["drivers"]
+
+
+@pytest.mark.parametrize("name", ["steami_board", "steami_screen_v1c", "bme280"])
 def test_v1c_scenarios_skip_on_v1ab(name):
     scenario = _scenario(name)
     assert _hardware_names(scenario, "V1a/V1b") == []

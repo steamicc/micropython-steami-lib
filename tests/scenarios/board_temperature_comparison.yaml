@@ -1,9 +1,14 @@
 type: board
 name: "board_temperature_comparison"
 
-# Reads the WSEN-HIDS (HTS221 driver too) and the WSEN-PADS, on the V1a and
-# V1b only: the tests are skipped on a V1c.
-releases: [V1a, V1b]
+# Compares the temperatures read by the sensors of the board. The
+# thermometers are not the same on every release, so each automatic test
+# lists the releases it applies to:
+#   V1a/V1b: WSEN-HIDS (reference) and WSEN-PADS, plus LIS2MDL and ISM330DL
+#   V1c:     BME280 (reference), plus LIS2MDL and ISM330DL
+# The LIS2MDL and the ISM330DL are on every release. Their temperature is
+# auxiliary: the datasheets do not guarantee its offset. The manual test
+# runs on every release.
 
 i2c:
   id: 1
@@ -12,11 +17,15 @@ i2c:
 drivers:
   - wsen-hids
   - wsen-pads
+  - bme280
   - lis2mdl
   - ism330dl
 
 tests:
-  - name: "Read all temperature sensors"
+  # ----- V1a/V1b: WSEN-HIDS and WSEN-PADS -----
+
+  - name: "Read all temperature sensors (V1a/V1b)"
+    releases: [V1a, V1b]
     action: hardware_script
     script: |
       import sys
@@ -71,10 +80,12 @@ tests:
     expect_true: true
     mode: [hardware]
 
-  - name: "Temperature spread with barometer"
+  - name: "Temperature spread with barometer (V1a/V1b)"
+    releases: [V1a, V1b]
     action: hardware_script
     script: |
       import sys
+      sys.path.insert(0, '/remote/wsen-hids')
       sys.path.insert(0, '/remote/wsen-pads')
 
       from machine import I2C
@@ -96,7 +107,8 @@ tests:
     expect_true: true
     mode: [hardware]
 
-  - name: "Offset-align all sensors to WSEN-HIDS reference"
+  - name: "Offset-align all sensors to WSEN-HIDS reference (V1a/V1b)"
+    releases: [V1a, V1b]
     action: hardware_script
     script: |
       import sys
@@ -168,6 +180,125 @@ tests:
       result = spread_after < 2.0
     expect_true: true
     mode: [hardware]
+
+  # ----- V1c: BME280 -----
+
+  - name: "Read all temperature sensors (V1c)"
+    releases: [V1c]
+    action: hardware_script
+    script: |
+      import sys
+      sys.path.insert(0, '/remote/bme280')
+      sys.path.insert(0, '/remote/lis2mdl')
+      sys.path.insert(0, '/remote/ism330dl')
+
+      from machine import I2C
+      from time import sleep_ms
+
+      i2c = I2C(1)
+
+      temps = {}
+
+      # BME280 (the only thermometer of the V1c)
+      from bme280.device import BME280
+      env = BME280(i2c)
+      temps['BME280'] = env.temperature()
+
+      # LIS2MDL (auxiliary, offset not guaranteed by datasheet)
+      from lis2mdl.device import LIS2MDL
+      mag = LIS2MDL(i2c)
+      temps['LIS2MDL'] = mag.temperature()
+
+      # ISM330DL (auxiliary, offset not guaranteed by datasheet)
+      from ism330dl.device import ISM330DL
+      imu = ISM330DL(i2c)
+      sleep_ms(200)  # stabilize after reset
+      temps['ISM330DL'] = imu.temperature()
+
+      # Print comparison table, with the gap to the BME280
+      ref_t = temps['BME280']
+      print('--- Temperature Comparison ---')
+      for name, t in temps.items():
+        pad = ' ' * (12 - len(name))
+        line = '  ' + name + pad + ': ' + str(round(t, 2)) + ' C'
+        if name != 'BME280':
+          line += '  (gap ' + str(round(t - ref_t, 2)) + ' C)'
+        print(line)
+
+      # With a single thermometer there is no spread to check: the BME280
+      # must be in a plausible range, the auxiliary sensors inside the
+      # operating range of the chips (-40 to +85 C).
+      ref_ok = 5.0 <= ref_t <= 50.0
+      aux_ok = all(-40.0 <= temps[n] <= 85.0 for n in ('LIS2MDL', 'ISM330DL'))
+
+      result = ref_ok and aux_ok
+    expect_true: true
+    mode: [hardware]
+
+  - name: "Offset-align all sensors to BME280 reference (V1c)"
+    releases: [V1c]
+    action: hardware_script
+    script: |
+      import sys
+      sys.path.insert(0, '/remote/bme280')
+      sys.path.insert(0, '/remote/lis2mdl')
+      sys.path.insert(0, '/remote/ism330dl')
+
+      from machine import I2C
+      from time import sleep_ms
+
+      i2c = I2C(1)
+
+      # Initialize all sensors
+      from bme280.device import BME280
+      ref = BME280(i2c)
+
+      from lis2mdl.device import LIS2MDL
+      mag = LIS2MDL(i2c)
+
+      from ism330dl.device import ISM330DL
+      imu = ISM330DL(i2c)
+      sleep_ms(200)  # stabilize after reset
+
+      # Read reference just before each sensor to minimize drift
+      ref_t = ref.temperature()
+      mag_t = mag.temperature()
+
+      ref_t2 = ref.temperature()
+      imu_t = imu.temperature()
+
+      print('--- Before offset alignment ---')
+      print('  BME280 (ref): ' + str(round(ref_t, 2)) + ' C')
+      print('  LIS2MDL:      ' + str(round(mag_t, 2)) + ' C')
+      print('  ISM330DL:     ' + str(round(imu_t, 2)) + ' C')
+
+      spread_before = max(mag_t, imu_t, ref_t) - min(mag_t, imu_t, ref_t)
+      print('  Spread: ' + str(round(spread_before, 2)) + ' C')
+
+      # Apply offset to align each sensor to the reference reading
+      mag.set_temp_offset(ref_t - mag_t)
+      imu.set_temp_offset(ref_t2 - imu_t)
+
+      # Re-read after offset alignment
+      sleep_ms(50)
+      ref_t3 = ref.temperature()
+      mag_t2 = mag.temperature()
+      imu_t2 = imu.temperature()
+
+      print('--- After offset alignment ---')
+      print('  BME280 (ref): ' + str(round(ref_t3, 2)) + ' C')
+      print('  LIS2MDL:      ' + str(round(mag_t2, 2)) + ' C')
+      print('  ISM330DL:     ' + str(round(imu_t2, 2)) + ' C')
+
+      spread_after = max(mag_t2, imu_t2, ref_t3) - min(mag_t2, imu_t2, ref_t3)
+      print('  Spread: ' + str(round(spread_after, 2)) + ' C')
+
+      # After alignment, spread should be < 2°C
+      result = spread_after < 2.0
+    expect_true: true
+    mode: [hardware]
+
+  # ----- Every release -----
 
   - name: "Temperature values feel correct"
     action: manual
