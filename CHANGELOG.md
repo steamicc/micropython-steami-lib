@@ -3,6 +3,14 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [0.34.0](https://github.com/steamicc/micropython-steami-lib/compare/v0.33.0...v0.34.0) (2026-11-28)
+
+
+### Features
+
+* **steami_screen:** Keep widgets readable in grey on the SSD1327. ([#485](https://github.com/steamicc/micropython-steami-lib/issues/485)) ([56227df](https://github.com/steamicc/micropython-steami-lib/commit/56227df8159ef62ec071e5cc7d52a4617543ce87)), closes [#437](https://github.com/steamicc/micropython-steami-lib/issues/437)
+* **steami:** Add Color.rgb() and Steami.schematic_index() as in Arduino. ([#492](https://github.com/steamicc/micropython-steami-lib/issues/492)) ([4a85bb7](https://github.com/steamicc/micropython-steami-lib/commit/4a85bb7a32f1c8d399f16c353b3b6fca28504dae))
+
 # [0.33.0](https://github.com/steamicc/micropython-steami-lib/compare/v0.32.5...v0.33.0) (2026-11-28)
 
 
