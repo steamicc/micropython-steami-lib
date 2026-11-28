@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [0.38.5](https://github.com/steamicc/micropython-steami-lib/compare/v0.38.4...v0.38.5) (2026-11-28)
+
+
+### Bug Fixes
+
+* **bq27441:** End the user config session in exit_config. ([#510](https://github.com/steamicc/micropython-steami-lib/issues/510)) ([a4d9db8](https://github.com/steamicc/micropython-steami-lib/commit/a4d9db8eaabc2baa4114bdc6a4343e4357406bc0)), closes [#509](https://github.com/steamicc/micropython-steami-lib/issues/509)
+
 ## [0.38.4](https://github.com/steamicc/micropython-steami-lib/compare/v0.38.3...v0.38.4) (2026-11-28)
 
 
