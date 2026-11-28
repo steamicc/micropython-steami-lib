@@ -698,12 +698,24 @@ class Screen:
         cx, cy = self.center
         r = self.radius - u(12)
 
+        # A real rose, as Arduino (#436): heading is where the top of the
+        # screen points, in degrees clockwise from north, rounded to a whole
+        # degree after fmod. Every element at angle a is drawn at a - heading,
+        # so the N and the needle show real north. A NaN or infinite heading
+        # leaves the rose at 0. From here on, heading is the needle's angle.
+        north = 0
+        if math.isfinite(heading):
+            h = math.fmod(heading, 360)
+            north = -int(h + 0.5) if h >= 0 else int(0.5 - h)
+            heading = north
+
         self._ring(cx, cy, r, DARK)
         self._ring(cx, cy, int(r * 0.7), DARK)
 
         for label, angle in (("N", 0), ("E", 90), ("S", 180), ("W", 270)):
-            lx = cx + q((r + u(5)) * math.sin(math.radians(angle)))
-            ly = cy - q((r + u(5)) * math.cos(math.radians(angle)))
+            rad = math.radians(angle + north)
+            lx = cx + q((r + u(5)) * math.sin(rad))
+            ly = cy - q((r + u(5)) * math.cos(rad))
             c = WHITE if label == "N" else GRAY
             # The letter's cell centred on the point (8x16 on 240 px).
             self._txt(
@@ -713,7 +725,7 @@ class Screen:
         for angle in range(0, 360, 45):
             inner = r - u(6)
             outer = r
-            rad = math.radians(angle)
+            rad = math.radians(angle + north)
             x1 = cx + q(inner * math.sin(rad))
             y1 = cy - q(inner * math.cos(rad))
             x2 = cx + q(outer * math.sin(rad))

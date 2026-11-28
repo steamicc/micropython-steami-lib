@@ -258,6 +258,8 @@ screen.compass(heading=45)
 
 Draws a compass with cardinal labels and a rotating needle. A NaN or infinite heading (`Compass.heading()` returns NaN when it has no reading) draws the rose and the pivot without a needle, as on Arduino.
 
+`heading` is the direction the top of the screen points to, in degrees clockwise from north (0 = north, as `Compass.heading()` gives it), rounded to a whole degree. The whole rose (needle, ticks and N/E/S/W letters, which stay upright) turns by `-heading`, so the needle and the N point to real north, as on Arduino. At `heading=0` the N is at the top; at `heading=90` it is on the left.
+
 ---
 
 #### Watch
